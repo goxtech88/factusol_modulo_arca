@@ -54,6 +54,9 @@ class AppARCA(tk.Tk):
 
         self._build_ui()
         self._poll_queue()
+        # Cargar series automáticamente al inicio si hay BD configurada
+        if config.FACTUSOL_MDB:
+            self.after(500, self._cargar_series_async)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Construcción de la interfaz
@@ -153,36 +156,45 @@ class AppARCA(tk.Tk):
     def _build_tab_manual(self):
         frame = self._tab_manual
 
-        # ── Selector de serie ─────────────────────────────────────────────────
+        # ── Selector de serie (poblado desde BD) ──────────────────────────────
         serie_frame = tk.Frame(frame, bg=CLR_PANEL)
         serie_frame.pack(fill=tk.X, padx=10, pady=8)
 
-        tk.Label(serie_frame, text="Serie:", bg=CLR_PANEL, fg=CLR_WHITE,
+        # Tipo de comprobante — se carga desde la BD
+        tk.Label(serie_frame, text="Tipo:", bg=CLR_PANEL, fg=CLR_WHITE,
                  font=("Segoe UI", 10, "bold")).pack(side=tk.LEFT, padx=(10, 4), pady=6)
 
-        self._var_tipo_serie = tk.StringVar(value="FA")
-        tipos = ["FA", "FB", "FC", "FM", "NCA", "NCB", "NCC", "NDA", "NDB", "NDC"]
-        cb_tipo = ttk.Combobox(serie_frame, textvariable=self._var_tipo_serie,
-                               values=tipos, width=6, state="readonly",
-                               font=("Segoe UI", 10))
-        cb_tipo.pack(side=tk.LEFT, padx=4, pady=6)
+        self._var_tipo_serie = tk.StringVar()
+        self._cb_tipo = ttk.Combobox(serie_frame, textvariable=self._var_tipo_serie,
+                                      values=[], width=7, state="readonly",
+                                      font=("Segoe UI", 10))
+        self._cb_tipo.pack(side=tk.LEFT, padx=4, pady=6)
+        self._cb_tipo.bind("<<ComboboxSelected>>", self._on_tipo_seleccionado)
 
+        # Punto de venta — se filtra según el Tipo elegido
         tk.Label(serie_frame, text="Pto. Venta:", bg=CLR_PANEL, fg=CLR_WHITE,
-                 font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=(10, 4))
+                 font=("Segoe UI", 10)).pack(side=tk.LEFT, padx=(12, 4))
 
-        self._var_pv_serie = tk.IntVar(value=1)
-        spin = tk.Spinbox(serie_frame, from_=1, to=9999, textvariable=self._var_pv_serie,
-                          width=5, bg=CLR_BG, fg=CLR_WHITE,
-                          insertbackground=CLR_WHITE, relief=tk.FLAT,
-                          font=("Segoe UI", 10), buttonbackground=CLR_PANEL)
-        spin.pack(side=tk.LEFT, padx=4, pady=6)
+        self._var_pv_serie = tk.StringVar()
+        self._cb_pv = ttk.Combobox(serie_frame, textvariable=self._var_pv_serie,
+                                    values=[], width=7, state="readonly",
+                                    font=("Segoe UI", 10))
+        self._cb_pv.pack(side=tk.LEFT, padx=4, pady=6)
+
+        # Botón para (re)cargar series desde la BD
+        tk.Button(
+            serie_frame, text="↻ Actualizar series",
+            bg=CLR_PANEL, fg=CLR_CYAN, relief=tk.FLAT,
+            cursor="hand2", font=("Segoe UI", 9),
+            command=self._cargar_series_async
+        ).pack(side=tk.LEFT, padx=8, pady=6)
 
         tk.Button(
             serie_frame, text="📋 Cargar serie",
             bg=CLR_ACCENT, fg=CLR_WHITE, relief=tk.FLAT,
             cursor="hand2", font=("Segoe UI", 10, "bold"),
             command=self._cargar_serie
-        ).pack(side=tk.LEFT, padx=10, pady=6)
+        ).pack(side=tk.LEFT, padx=6, pady=6)
 
         tk.Button(
             serie_frame, text="🔄 Todas las pendientes",
@@ -190,6 +202,9 @@ class AppARCA(tk.Tk):
             cursor="hand2", font=("Segoe UI", 10),
             command=self._cargar_todas_pendientes
         ).pack(side=tk.LEFT, padx=4, pady=6)
+
+        # Mapa interno: tipo → lista de PVs (int)
+        self._series_map: dict[str, list[int]] = {}
 
         # ── Barra de acciones ─────────────────────────────────────────────────
         actions = tk.Frame(frame, bg=CLR_BG)
@@ -375,6 +390,7 @@ class AppARCA(tk.Tk):
         )
         if path:
             self._var_mdb.set(path)
+            self._cargar_series_async()
 
     def _get_mdb(self) -> str:
         return self._var_mdb.get().strip()
@@ -387,9 +403,71 @@ class AppARCA(tk.Tk):
     # Acciones — Modo Manual
     # ──────────────────────────────────────────────────────────────────────────
 
-    def _cargar_serie(self):
+    def _cargar_series_async(self):
+        """Carga desde la BD los tipos y PVs existentes y puebla los combos."""
+        self._status("Cargando series desde Factusol...")
+        threading.Thread(target=self._thr_cargar_series, daemon=True).start()
+
+    def _thr_cargar_series(self):
+        try:
+            with FactusolDB(self._get_mdb()) as db:
+                series = db.obtener_series()  # [{"tipo": "FA", "punto_venta": 1}, ...]
+            self._queue.put(("series_cargadas", series))
+        except FactusolDBError as e:
+            self._queue.put(("error_msg", f"Error cargando series: {e}"))
+
+    def _aplicar_series(self, series: list):
+        """Puebla los combos Tipo y PV con los datos de la BD."""
+        # Construir mapa tipo → [pvs]
+        self._series_map.clear()
+        for s in series:
+            t  = s["tipo"]
+            pv = s["punto_venta"]
+            self._series_map.setdefault(t, [])
+            if pv not in self._series_map[t]:
+                self._series_map[t].append(pv)
+
+        tipos = sorted(self._series_map.keys())
+        self._cb_tipo.config(values=tipos)
+
+        if tipos:
+            self._var_tipo_serie.set(tipos[0])
+            self._actualizar_pvs(tipos[0])
+        else:
+            self._cb_tipo.config(values=[])
+            self._cb_pv.config(values=[])
+            self._var_tipo_serie.set("")
+            self._var_pv_serie.set("")
+
+        n = len(series)
+        self._status(f"Series cargadas: {n} combinación(es) encontradas en Factusol")
+
+    def _on_tipo_seleccionado(self, event=None):
+        """Al cambiar el Tipo, actualiza los PVs disponibles."""
         tipo = self._var_tipo_serie.get()
-        pv   = self._var_pv_serie.get()
+        self._actualizar_pvs(tipo)
+
+    def _actualizar_pvs(self, tipo: str):
+        """Filtra el combo de PV según el tipo seleccionado."""
+        pvs = sorted(self._series_map.get(tipo, []))
+        pv_strs = [f"{pv:04d}" for pv in pvs]
+        self._cb_pv.config(values=pv_strs)
+        if pv_strs:
+            self._var_pv_serie.set(pv_strs[0])
+        else:
+            self._var_pv_serie.set("")
+
+    def _cargar_serie(self):
+        tipo   = self._var_tipo_serie.get()
+        pv_str = self._var_pv_serie.get()
+        if not tipo or not pv_str:
+            messagebox.showwarning("Serie", "Seleccione Tipo y Punto de Venta.\nUse '↻ Actualizar series' para cargar las series disponibles.")
+            return
+        try:
+            pv = int(pv_str)
+        except ValueError:
+            messagebox.showerror("Punto de Venta", f"Valor de PV inválido: {pv_str}")
+            return
         self._status(f"Cargando serie {tipo} PV {pv:04d}...")
         threading.Thread(
             target=self._thr_cargar_serie, args=(pv, tipo), daemon=True
@@ -626,7 +704,10 @@ class AppARCA(tk.Tk):
             while True:
                 tipo, datos = self._queue.get_nowait()
 
-                if tipo == "load_facturas":
+                if tipo == "series_cargadas":
+                    self._aplicar_series(datos)
+
+                elif tipo == "load_facturas":
                     facturas, titulo = datos
                     self._mostrar_facturas(facturas, titulo)
 
