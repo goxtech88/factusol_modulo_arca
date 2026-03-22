@@ -21,6 +21,10 @@ class FactusolDBError(Exception):
     pass
 
 
+# Tipos de comprobante que requieren referencia al comprobante original
+TIPOS_CON_ASOC = {"NCA", "NCB", "NCC", "NDA", "NDB", "NDC"}
+
+
 @dataclass
 class FacturaFactusol:
     """Representación de una factura leída desde la BD de Factusol."""
@@ -41,12 +45,28 @@ class FacturaFactusol:
     cae: Optional[str] = None
     cae_fecha_vto: Optional[str] = None
     estado_cae: str = "PENDIENTE"   # PENDIENTE | APROBADO | RECHAZADO | ERROR
+    # ── Comprobante asociado (para NC/ND) ──────────────────────────────────────
+    asoc_tipo: Optional[str] = None   # Tipo del cbte que anula (ej. "FA")
+    asoc_pv: Optional[int] = None     # Punto de venta del cbte original
+    asoc_nro: Optional[int] = None    # Número del cbte original
+    asoc_cae: Optional[str] = None    # CAE del cbte original (si disponible)
+
+    @property
+    def es_nota(self) -> bool:
+        return self.tipo in TIPOS_CON_ASOC
+
+    @property
+    def tiene_asoc(self) -> bool:
+        return bool(self.asoc_tipo and self.asoc_pv and self.asoc_nro)
 
     def __str__(self):
-        return (
+        base = (
             f"{self.tipo} {self.punto_venta:04d}-{self.nro_comprobante:08d} | "
             f"{self.nombre_receptor} | ${self.imp_total:,.2f} | CAE: {self.cae or 'Pendiente'}"
         )
+        if self.es_nota and self.tiene_asoc:
+            base += f" | Anula: {self.asoc_tipo} {self.asoc_pv:04d}-{self.asoc_nro:08d}"
+        return base
 
 
 class FactusolDB:
@@ -81,6 +101,13 @@ class FactusolDB:
     CAMPO_IMP_EXENTO = "FAEEXE"
     CAMPO_CAE        = "FAECAE"
     CAMPO_CAE_VTO    = "FAECAEVTO"
+    # Comprobante original referenciado (para NC/ND)
+    # Factusol almacena la referencia al comprobante que se anula.
+    # Nombre real puede variar según versión; ajustar si difiere.
+    CAMPO_ASOC_TIPO  = "FAEORI"    # Tipo del cbte original (FA, FB...)
+    CAMPO_ASOC_SER   = "FAEORISER" # Serie/PV del cbte original
+    CAMPO_ASOC_NRO   = "FAEORINUM" # Número del cbte original
+    CAMPO_ASOC_CAE   = "FAEORIAE"  # CAE del cbte original (si está grabado)
 
     # Campos clave en FACCLI
     CAMPO_CLI_COD    = "CLICOD"
@@ -161,7 +188,11 @@ class FactusolDB:
                 f.{self.CAMPO_IMP_EXENTO},
                 c.{self.CAMPO_CLI_NOM},
                 c.{self.CAMPO_CLI_CUIT},
-                c.{self.CAMPO_CLI_IVA}
+                c.{self.CAMPO_CLI_IVA},
+                f.{self.CAMPO_ASOC_TIPO},
+                f.{self.CAMPO_ASOC_SER},
+                f.{self.CAMPO_ASOC_NRO},
+                f.{self.CAMPO_ASOC_CAE}
             FROM {self.TABLE_FACTURAS} f
             LEFT JOIN {self.TABLE_CLIENTES} c
                 ON f.{self.CAMPO_COD_CLI} = c.{self.CAMPO_CLI_COD}
@@ -169,7 +200,7 @@ class FactusolDB:
               AND f.{self.CAMPO_TIPO} IN ('FA','FB','FC','FM','NCA','NCB','NCC','NDA','NDB','NDC')
             ORDER BY f.{self.CAMPO_FECHA} ASC, f.{self.CAMPO_NRO} ASC
         """
-        return self._ejecutar_query_facturas(sql)
+        return self._ejecutar_query_facturas(sql, include_asoc=True)
 
     def obtener_factura_por_id(self, id_factura: int) -> Optional[FacturaFactusol]:
         """Retorna una factura específica por su ID interno de Factusol."""
@@ -187,13 +218,17 @@ class FactusolDB:
                 f.{self.CAMPO_IMP_EXENTO},
                 c.{self.CAMPO_CLI_NOM},
                 c.{self.CAMPO_CLI_CUIT},
-                c.{self.CAMPO_CLI_IVA}
+                c.{self.CAMPO_CLI_IVA},
+                f.{self.CAMPO_ASOC_TIPO},
+                f.{self.CAMPO_ASOC_SER},
+                f.{self.CAMPO_ASOC_NRO},
+                f.{self.CAMPO_ASOC_CAE}
             FROM {self.TABLE_FACTURAS} f
             LEFT JOIN {self.TABLE_CLIENTES} c
                 ON f.{self.CAMPO_COD_CLI} = c.{self.CAMPO_CLI_COD}
             WHERE f.{self.CAMPO_ID} = ?
         """
-        resultados = self._ejecutar_query_facturas(sql, (id_factura,))
+        resultados = self._ejecutar_query_facturas(sql, (id_factura,), include_asoc=True)
         return resultados[0] if resultados else None
 
     def obtener_ultimas_facturas(self, limite: int = 50) -> List[FacturaFactusol]:
@@ -214,13 +249,17 @@ class FactusolDB:
                 c.{self.CAMPO_CLI_CUIT},
                 c.{self.CAMPO_CLI_IVA},
                 f.{self.CAMPO_CAE},
-                f.{self.CAMPO_CAE_VTO}
+                f.{self.CAMPO_CAE_VTO},
+                f.{self.CAMPO_ASOC_TIPO},
+                f.{self.CAMPO_ASOC_SER},
+                f.{self.CAMPO_ASOC_NRO},
+                f.{self.CAMPO_ASOC_CAE}
             FROM {self.TABLE_FACTURAS} f
             LEFT JOIN {self.TABLE_CLIENTES} c
                 ON f.{self.CAMPO_COD_CLI} = c.{self.CAMPO_CLI_COD}
             ORDER BY f.{self.CAMPO_FECHA} DESC, f.{self.CAMPO_NRO} DESC
         """
-        return self._ejecutar_query_facturas(sql, include_cae=True)
+        return self._ejecutar_query_facturas(sql, include_cae=True, include_asoc=True)
 
     def obtener_series(self) -> list:
         """Retorna las series/puntos de venta disponibles en Factusol."""
@@ -260,7 +299,11 @@ class FactusolDB:
                 f.{self.CAMPO_IMP_EXENTO},
                 c.{self.CAMPO_CLI_NOM},
                 c.{self.CAMPO_CLI_CUIT},
-                c.{self.CAMPO_CLI_IVA}
+                c.{self.CAMPO_CLI_IVA},
+                f.{self.CAMPO_ASOC_TIPO},
+                f.{self.CAMPO_ASOC_SER},
+                f.{self.CAMPO_ASOC_NRO},
+                f.{self.CAMPO_ASOC_CAE}
             FROM {self.TABLE_FACTURAS} f
             LEFT JOIN {self.TABLE_CLIENTES} c
                 ON f.{self.CAMPO_COD_CLI} = c.{self.CAMPO_CLI_COD}
@@ -269,7 +312,62 @@ class FactusolDB:
               AND f.{self.CAMPO_TIPO} = ?
             ORDER BY f.{self.CAMPO_NRO} ASC
         """
-        return self._ejecutar_query_facturas(sql, (punto_venta, tipo.upper()))
+        return self._ejecutar_query_facturas(sql, (punto_venta, tipo.upper()), include_asoc=True)
+
+    def buscar_factura_original(self, tipo: str, punto_venta: int, nro: int) -> Optional[FacturaFactusol]:
+        """
+        Busca la factura original que se desea anular con una NC/ND.
+        Retorna la factura si existe (tenga o no CAE).
+        """
+        sql = f"""
+            SELECT
+                f.{self.CAMPO_ID},
+                f.{self.CAMPO_TIPO},
+                f.{self.CAMPO_PV},
+                f.{self.CAMPO_NRO},
+                f.{self.CAMPO_FECHA},
+                f.{self.CAMPO_COD_CLI},
+                f.{self.CAMPO_IMP_TOTAL},
+                f.{self.CAMPO_IMP_NETO},
+                f.{self.CAMPO_IMP_IVA},
+                f.{self.CAMPO_IMP_EXENTO},
+                c.{self.CAMPO_CLI_NOM},
+                c.{self.CAMPO_CLI_CUIT},
+                c.{self.CAMPO_CLI_IVA},
+                f.{self.CAMPO_CAE},
+                f.{self.CAMPO_CAE_VTO},
+                NULL, NULL, NULL, NULL
+            FROM {self.TABLE_FACTURAS} f
+            LEFT JOIN {self.TABLE_CLIENTES} c
+                ON f.{self.CAMPO_COD_CLI} = c.{self.CAMPO_CLI_COD}
+            WHERE f.{self.CAMPO_TIPO} = ?
+              AND f.{self.CAMPO_PV} = ?
+              AND f.{self.CAMPO_NRO} = ?
+        """
+        resultados = self._ejecutar_query_facturas(sql, (tipo.upper(), punto_venta, nro),
+                                                    include_cae=True, include_asoc=True)
+        return resultados[0] if resultados else None
+
+    def guardar_asoc(self, id_nc: int, asoc_tipo: str, asoc_pv: int, asoc_nro: int, asoc_cae: str = ""):
+        """
+        Persiste el comprobante asociado (factura original) en la NC/ND dentro de Factusol.
+        """
+        sql = f"""
+            UPDATE {self.TABLE_FACTURAS}
+            SET {self.CAMPO_ASOC_TIPO} = ?,
+                {self.CAMPO_ASOC_SER}  = ?,
+                {self.CAMPO_ASOC_NRO}  = ?,
+                {self.CAMPO_ASOC_CAE}  = ?
+            WHERE {self.CAMPO_ID} = ?
+        """
+        cur = self._cursor()
+        try:
+            cur.execute(sql, (asoc_tipo.upper(), asoc_pv, asoc_nro, asoc_cae or "", id_nc))
+            log.info("Asoc guardada: NC/ND %d → %s %04d-%08d", id_nc, asoc_tipo, asoc_pv, asoc_nro)
+        except Exception as e:
+            raise FactusolDBError(f"Error guardando comprobante asociado: {e}") from e
+        finally:
+            cur.close()
 
     def guardar_cae(self, id_factura: int, cae: str, cae_fecha_vto: str):
         """
@@ -318,7 +416,9 @@ class FactusolDB:
     # Helpers
     # ──────────────────────────────────────────────────────────────────────────
 
-    def _ejecutar_query_facturas(self, sql: str, params=None, include_cae: bool = False) -> List[FacturaFactusol]:
+    def _ejecutar_query_facturas(self, sql: str, params=None,
+                                  include_cae: bool = False,
+                                  include_asoc: bool = False) -> List[FacturaFactusol]:
         """Ejecuta una query y retorna lista de FacturaFactusol."""
         cur = self._cursor()
         try:
@@ -326,7 +426,7 @@ class FactusolDB:
             rows = cur.fetchall()
             resultado = []
             for row in rows:
-                fac = self._row_to_factura(row, include_cae)
+                fac = self._row_to_factura(row, include_cae, include_asoc)
                 if fac:
                     resultado.append(fac)
             return resultado
@@ -335,31 +435,60 @@ class FactusolDB:
         finally:
             cur.close()
 
-    def _row_to_factura(self, row, include_cae: bool = False) -> Optional[FacturaFactusol]:
+    def _row_to_factura(self, row, include_cae: bool = False,
+                        include_asoc: bool = False) -> Optional[FacturaFactusol]:
         """Convierte una fila de BD en un objeto FacturaFactusol."""
         try:
-            if include_cae:
-                (id_fac, tipo, pv, nro, fecha, cod_cli,
-                 total, neto, iva, exento,
-                 nombre, cuit, cond_iva, cae, cae_vto) = row
-            else:
-                (id_fac, tipo, pv, nro, fecha, cod_cli,
-                 total, neto, iva, exento,
-                 nombre, cuit, cond_iva) = row
-                cae = None
-                cae_vto = None
+            # 13 campos base + 2 si include_cae + 4 si include_asoc
+            idx = 0
+            r = list(row)
 
-            # Normalizar valores
-            tipo  = (tipo or "").strip().upper()
-            cuit  = (cuit or "").replace("-", "").strip()
-            pv    = int(pv or 0)
-            nro   = int(nro or 0)
+            id_fac   = r[idx]; idx += 1
+            tipo     = r[idx]; idx += 1
+            pv       = r[idx]; idx += 1
+            nro      = r[idx]; idx += 1
+            fecha    = r[idx]; idx += 1
+            cod_cli  = r[idx]; idx += 1
+            total    = r[idx]; idx += 1
+            neto     = r[idx]; idx += 1
+            iva      = r[idx]; idx += 1
+            exento   = r[idx]; idx += 1
+            nombre   = r[idx]; idx += 1
+            cuit     = r[idx]; idx += 1
+            cond_iva = r[idx]; idx += 1
+
+            if include_cae:
+                cae     = r[idx]; idx += 1
+                cae_vto = r[idx]; idx += 1
+            else:
+                cae = cae_vto = None
+
+            if include_asoc:
+                asoc_tipo = r[idx]; idx += 1
+                asoc_ser  = r[idx]; idx += 1
+                asoc_nro  = r[idx]; idx += 1
+                asoc_cae  = r[idx]; idx += 1
+            else:
+                asoc_tipo = asoc_ser = asoc_nro = asoc_cae = None
+
+            # Normalizar
+            tipo = (tipo or "").strip().upper()
+            cuit = (cuit or "").replace("-", "").strip()
+            pv   = int(pv or 0)
+            nro  = int(nro or 0)
 
             if isinstance(fecha, str):
                 try:
                     fecha = datetime.datetime.strptime(fecha, "%m/%d/%Y").date()
                 except ValueError:
                     fecha = datetime.date.today()
+            elif fecha is None:
+                fecha = datetime.date.today()
+
+            asoc_tipo_str = (asoc_tipo or "").strip().upper() or None
+            asoc_pv_int   = int(asoc_ser) if asoc_ser else None
+            asoc_nro_int  = int(asoc_nro) if asoc_nro else None
+            asoc_cae_str  = (asoc_cae or "").strip() or None
 
             return FacturaFactusol(
                 id_factura=int(id_fac),
@@ -378,6 +507,10 @@ class FactusolDB:
                 cae=cae,
                 cae_fecha_vto=cae_vto,
                 estado_cae="APROBADO" if cae else "PENDIENTE",
+                asoc_tipo=asoc_tipo_str,
+                asoc_pv=asoc_pv_int,
+                asoc_nro=asoc_nro_int,
+                asoc_cae=asoc_cae_str,
             )
         except Exception as e:
             log.warning("Error convirtiendo fila a FacturaFactusol: %s | Row: %s", e, row)

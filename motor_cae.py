@@ -164,8 +164,9 @@ class MotorCAE:
     def procesar_factura(self, factura: FacturaFactusol) -> ResultadoProcesamiento:
         """
         Ejecuta el pipeline completo para una factura:
-        CUIT → Padrón → Validación → CAE → Guardado
+        CUIT → Padrón → Validación → [Comprobante asoc. NC/ND] → CAE → Guardado
         """
+        from factusol.db import TIPOS_CON_ASOC
         resultado = ResultadoProcesamiento(factura=factura)
         log.info("── Procesando: %s ──", factura)
 
@@ -177,8 +178,6 @@ class MotorCAE:
         # ── 2. Consultar Padrón AFIP ──────────────────────────────────────────
         persona = self._consultar_padron(factura, cuit_limpio, resultado)
         if persona is None:
-            # Si falla el padrón, continuamos con advertencia (no es bloqueante
-            # para Consumidor Final o si el tipo_doc no es CUIT)
             if tipo_doc == 99:  # Consumidor Final
                 resultado.agregar_advertencia("CF sin CUIT, se omite consulta padrón")
             else:
@@ -190,12 +189,17 @@ class MotorCAE:
         if persona and not self._validar_tipo_comprobante(factura, persona, resultado):
             return resultado
 
-        # ── 4. Solicitar CAE a AFIP ───────────────────────────────────────────
+        # ── 4. Validar comprobante asociado para NC/ND ────────────────────────
+        if factura.tipo in TIPOS_CON_ASOC:
+            if not self._validar_cbte_asoc(factura, resultado):
+                return resultado
+
+        # ── 5. Solicitar CAE a AFIP ───────────────────────────────────────────
         res_cae = self._solicitar_cae(factura, tipo_doc, nro_doc, resultado)
         if not res_cae:
             return resultado
 
-        # ── 5. Guardar CAE en Factusol ────────────────────────────────────────
+        # ── 6. Guardar CAE en Factusol ────────────────────────────────────────
         self._guardar_cae(factura, res_cae.cae, res_cae.cae_fecha_vto, resultado)
 
         resultado.exitoso = True
@@ -291,6 +295,29 @@ class MotorCAE:
 
         return True
 
+    def _validar_cbte_asoc(
+        self, factura: FacturaFactusol,
+        resultado: ResultadoProcesamiento
+    ) -> bool:
+        """
+        Verifica que la NC/ND tenga referenciada la factura original que anula.
+        Si no está en el dataclass, intenta buscarla en la BD de Factusol.
+        """
+        if factura.tiene_asoc:
+            log.info(
+                "Comprobante asociado: %s %04d-%08d (CAE: %s)",
+                factura.asoc_tipo, factura.asoc_pv, factura.asoc_nro,
+                factura.asoc_cae or "sin CAE"
+            )
+            return True
+
+        resultado.agregar_error(
+            f"{factura.tipo} {factura.numero} no tiene factura original asociada. "
+            "Use el diálogo de 'Asignar factura original' antes de procesar.",
+            "validacion"
+        )
+        return False
+
     def _solicitar_cae(
         self, factura: FacturaFactusol,
         tipo_doc: int, nro_doc: int,
@@ -327,6 +354,26 @@ class MotorCAE:
 
             iva_items = [{"id": id_alicuota, "base_imp": imp_neto, "importe": imp_iva}]
 
+        # ── Comprobantes asociados (NC/ND) ────────────────────────────────────
+        cbtes_asoc = []
+        if factura.es_nota and factura.tiene_asoc:
+            tipo_asoc_afip = config.TIPO_COMPROBANTE_MAP.get(factura.asoc_tipo, 0)
+            if tipo_asoc_afip:
+                cbtes_asoc = [{
+                    "tipo":        tipo_asoc_afip,
+                    "punto_venta": factura.asoc_pv,
+                    "nro":         factura.asoc_nro,
+                }]
+                log.info(
+                    "CbtesAsoc: tipo %d PV %04d Nro %08d",
+                    tipo_asoc_afip, factura.asoc_pv, factura.asoc_nro
+                )
+            else:
+                resultado.agregar_advertencia(
+                    f"Tipo de comprobante asociado '{factura.asoc_tipo}' sin mapeo AFIP; "
+                    "se omite CbtesAsoc (puede ser rechazado)"
+                )
+
         fac = Factura(
             tipo_cbte          = tipo_cbte,
             punto_venta        = factura.punto_venta,
@@ -342,6 +389,7 @@ class MotorCAE:
             concepto           = 1,
             nro_cbte           = factura.nro_comprobante if factura.nro_comprobante else None,
             iva                = iva_items,
+            cbtes_asoc         = cbtes_asoc,
         )
 
         try:

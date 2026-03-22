@@ -224,6 +224,13 @@ class AppARCA(tk.Tk):
             command=self._procesar_todas
         ).pack(side=tk.LEFT, padx=4)
 
+        tk.Button(
+            actions, text="🔗  Factura original (NC/ND)",
+            bg="#6f42c1", fg=CLR_WHITE, relief=tk.FLAT,
+            cursor="hand2", font=("Segoe UI", 10),
+            command=self._asignar_factura_original
+        ).pack(side=tk.LEFT, padx=8)
+
         self._lbl_cargadas = tk.Label(
             actions, text="", bg=CLR_BG, fg=CLR_GRAY, font=("Segoe UI", 9)
         )
@@ -519,6 +526,34 @@ class AppARCA(tk.Tk):
         n = len(facturas)
         self._lbl_cargadas.config(text=f"{titulo} — {n} factura(s) cargadas")
         self._status(f"{n} factura(s) cargadas" + (f" — {titulo}" if titulo else ""))
+
+    def _asignar_factura_original(self):
+        """
+        Abre un diálogo para asignar la factura original (que se anula)
+        a la NC/ND seleccionada en la tabla.
+        """
+        selected = self._tree.selection()
+        if not selected or len(selected) != 1:
+            messagebox.showwarning("Selección", "Seleccione una sola NC/ND para asignar la factura original")
+            return
+        iid = selected[0]
+        nc = self._facturas_map.get(iid)
+        if nc is None:
+            return
+        if nc.tipo not in ("NCA", "NCB", "NCC", "NDA", "NDB", "NDC"):
+            messagebox.showinfo("No aplica", f"'{nc.tipo}' no es NC ni ND. Solo aplica para NCA/NCB/NCC/NDA/NDB/NDC")
+            return
+        DialogAsociarFactura(self, nc, self._get_mdb(), self._on_asoc_guardada)
+
+    def _on_asoc_guardada(self, nc: "FacturaFactusol"):
+        """Callback: se actualizó la asoc de una NC/ND → refrescar fila."""
+        for iid, f in self._facturas_map.items():
+            if f.id_factura == nc.id_factura:
+                vals = list(self._tree.item(iid, "values"))
+                if nc.tiene_asoc:
+                    vals[8] = f"Pendiente — Anula {nc.asoc_tipo} {nc.asoc_pv:04d}-{nc.asoc_nro:08d}"
+                self._tree.item(iid, values=vals)
+                break
 
     def _procesar_seleccionadas(self):
         selected = self._tree.selection()
@@ -816,4 +851,188 @@ class AppARCA(tk.Tk):
                 return
             if self._monitor:
                 self._monitor.detener()
+        self.destroy()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Diálogo: Asignar factura original a NC/ND
+# ──────────────────────────────────────────────────────────────────────────────
+
+class DialogAsociarFactura(tk.Toplevel):
+    """
+    Diálogo modal para seleccionar la factura original que anula una NC/ND.
+
+    Permite:
+      1. Ingresar Tipo + PV + Nro manualmente y buscar en Factusol
+      2. Ver los datos de la factura encontrada
+      3. Confirmar → guarda la asoc en Factusol y notifica a la app principal
+    """
+
+    def __init__(self, parent: AppARCA, nc: "FacturaFactusol", mdb_path: str, callback):
+        super().__init__(parent)
+        self.parent   = parent
+        self.nc       = nc
+        self.mdb_path = mdb_path
+        self.callback = callback
+        self._factura_original = None
+
+        self.title(f"Factura original para {nc.tipo} {nc.numero}")
+        self.geometry("600x420")
+        self.resizable(False, False)
+        self.configure(bg=CLR_BG)
+        self.grab_set()   # Modal
+        self.focus_set()
+
+        self._build()
+
+        # Prellenar si ya tiene asoc
+        if nc.tiene_asoc:
+            self._var_tipo.set(nc.asoc_tipo)
+            self._var_pv.set(f"{nc.asoc_pv:04d}")
+            self._var_nro.set(str(nc.asoc_nro))
+
+    def _build(self):
+        tk.Label(
+            self,
+            text=f"Asignar factura original a: {self.nc.tipo} {self.nc.numero}",
+            bg=CLR_ACCENT, fg=CLR_WHITE,
+            font=("Segoe UI", 11, "bold")
+        ).pack(fill=tk.X, pady=(0, 12), ipady=8, padx=0)
+
+        form = tk.Frame(self, bg=CLR_BG)
+        form.pack(fill=tk.X, padx=20)
+
+        tk.Label(form, text="Tipo de comprobante:", bg=CLR_BG, fg=CLR_WHITE,
+                 font=("Segoe UI", 10)).grid(row=0, column=0, sticky=tk.W, pady=6)
+        tipos_orig = ["FA", "FB", "FC", "FM"]
+        self._var_tipo = tk.StringVar(value="FA")
+        ttk.Combobox(form, textvariable=self._var_tipo, values=tipos_orig,
+                     width=7, state="readonly", font=("Segoe UI", 10)
+                     ).grid(row=0, column=1, sticky=tk.W, padx=8)
+
+        tk.Label(form, text="Punto de Venta:", bg=CLR_BG, fg=CLR_WHITE,
+                 font=("Segoe UI", 10)).grid(row=1, column=0, sticky=tk.W, pady=6)
+        self._var_pv = tk.StringVar(value="0001")
+        tk.Entry(form, textvariable=self._var_pv, width=7,
+                 bg=CLR_PANEL, fg=CLR_WHITE, insertbackground=CLR_WHITE,
+                 relief=tk.FLAT, font=("Segoe UI", 10)
+                 ).grid(row=1, column=1, sticky=tk.W, padx=8)
+
+        tk.Label(form, text="Número:", bg=CLR_BG, fg=CLR_WHITE,
+                 font=("Segoe UI", 10)).grid(row=2, column=0, sticky=tk.W, pady=6)
+        self._var_nro = tk.StringVar()
+        tk.Entry(form, textvariable=self._var_nro, width=12,
+                 bg=CLR_PANEL, fg=CLR_WHITE, insertbackground=CLR_WHITE,
+                 relief=tk.FLAT, font=("Segoe UI", 10)
+                 ).grid(row=2, column=1, sticky=tk.W, padx=8)
+
+        tk.Button(
+            form, text="🔍 Buscar",
+            bg=CLR_ACCENT, fg=CLR_WHITE, relief=tk.FLAT,
+            cursor="hand2", font=("Segoe UI", 10, "bold"),
+            command=self._buscar
+        ).grid(row=2, column=2, padx=10)
+
+        # Panel de resultado de la búsqueda
+        self._panel_resultado = tk.LabelFrame(
+            self, text=" Factura encontrada ", bg=CLR_BG, fg=CLR_HEADER,
+            font=("Segoe UI", 10, "bold"), padx=10, pady=8
+        )
+        self._panel_resultado.pack(fill=tk.X, padx=20, pady=12)
+
+        self._lbl_resultado = tk.Label(
+            self._panel_resultado,
+            text="Ingrese los datos y presione Buscar",
+            bg=CLR_BG, fg=CLR_GRAY, font=("Segoe UI", 10),
+            justify=tk.LEFT, wraplength=520
+        )
+        self._lbl_resultado.pack(anchor=tk.W)
+
+        # Botones OK / Cancelar
+        btns = tk.Frame(self, bg=CLR_BG)
+        btns.pack(pady=10)
+
+        self._btn_ok = tk.Button(
+            btns, text="✓  Confirmar y guardar",
+            bg="#28a745", fg=CLR_WHITE, relief=tk.FLAT,
+            cursor="hand2", font=("Segoe UI", 11, "bold"),
+            width=22, command=self._confirmar,
+            state=tk.DISABLED
+        )
+        self._btn_ok.pack(side=tk.LEFT, padx=10)
+
+        tk.Button(
+            btns, text="Cancelar",
+            bg=CLR_PANEL, fg=CLR_WHITE, relief=tk.FLAT,
+            cursor="hand2", font=("Segoe UI", 11),
+            width=12, command=self.destroy
+        ).pack(side=tk.LEFT, padx=4)
+
+    def _buscar(self):
+        tipo = self._var_tipo.get().strip().upper()
+        try:
+            pv  = int(self._var_pv.get().strip())
+            nro = int(self._var_nro.get().strip())
+        except ValueError:
+            messagebox.showerror("Error", "PV y Número deben ser numéricos", parent=self)
+            return
+
+        import threading
+        threading.Thread(
+            target=self._thr_buscar, args=(tipo, pv, nro), daemon=True
+        ).start()
+
+    def _thr_buscar(self, tipo, pv, nro):
+        from factusol.db import FactusolDB, FactusolDBError
+        try:
+            with FactusolDB(self.mdb_path) as db:
+                f = db.buscar_factura_original(tipo, pv, nro)
+            self.after(0, lambda: self._mostrar_resultado(f))
+        except FactusolDBError as e:
+            self.after(0, lambda: messagebox.showerror("Error BD", str(e), parent=self))
+
+    def _mostrar_resultado(self, factura):
+        if factura is None:
+            self._factura_original = None
+            self._lbl_resultado.config(
+                text="No se encontró la factura en Factusol.",
+                fg=CLR_RED
+            )
+            self._btn_ok.config(state=tk.DISABLED)
+            return
+
+        self._factura_original = factura
+        cae_str = factura.cae or "Sin CAE"
+        texto = (
+            f"{factura.tipo}  {factura.numero}\n"
+            f"Fecha: {factura.fecha.strftime('%d/%m/%Y') if factura.fecha else '-'}\n"
+            f"Cliente: {factura.nombre_receptor}  CUIT: {factura.cuit_receptor}\n"
+            f"Total: ${factura.imp_total:,.2f}   CAE: {cae_str}"
+        )
+        self._lbl_resultado.config(text=texto, fg=CLR_GREEN)
+        self._btn_ok.config(state=tk.NORMAL)
+
+    def _confirmar(self):
+        if self._factura_original is None:
+            return
+        orig = self._factura_original
+        from factusol.db import FactusolDB, FactusolDBError
+        try:
+            with FactusolDB(self.mdb_path) as db:
+                db.guardar_asoc(
+                    self.nc.id_factura,
+                    orig.tipo, orig.punto_venta, orig.nro_comprobante,
+                    orig.cae or ""
+                )
+        except FactusolDBError as e:
+            messagebox.showerror("Error", f"No se pudo guardar la asoc: {e}", parent=self)
+            return
+
+        # Actualizar el objeto en memoria
+        self.nc.asoc_tipo = orig.tipo
+        self.nc.asoc_pv   = orig.punto_venta
+        self.nc.asoc_nro  = orig.nro_comprobante
+        self.nc.asoc_cae  = orig.cae or ""
+
+        self.callback(self.nc)
         self.destroy()
