@@ -95,6 +95,11 @@ def validate_invoice(
             "message": "Esta factura ya fue validada en ARCA",
         }
 
+    # Mapear tipo de comprobante a nombre legible
+    cbte_nombres = {1: "Factura A", 2: "ND A", 3: "NC A", 6: "Factura B", 7: "ND B",
+                    8: "NC B", 11: "Factura C", 12: "ND C", 13: "NC C"}
+    cbte_nombre = cbte_nombres.get(tipo_comprobante, f"Tipo {tipo_comprobante}")
+
     # Validar en ARCA
     try:
         result = arca_service.validate_invoice(
@@ -105,7 +110,15 @@ def validate_invoice(
             tipo_comprobante=tipo_comprobante,
         )
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error en ARCA: {str(e)}")
+        err_str = str(e)
+        # Enriquecer error 10008 con contexto
+        if "10008" in err_str:
+            err_str += (
+                f"\n\nDiagnostico: PV {pv_config.punto_venta} con {cbte_nombre} (tipo {tipo_comprobante})."
+                f" Verifique en AFIP que el PV {pv_config.punto_venta} este habilitado para {cbte_nombre}."
+                f" IVACLI cliente={raw_ivacli} -> {cbte_nombre}."
+            )
+        raise HTTPException(status_code=502, detail=f"Error en ARCA: {err_str}")
 
     # Guardar log
     cae_log = CAELog(
