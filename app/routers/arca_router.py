@@ -74,7 +74,9 @@ def validate_invoice(
     from app.config import get_config
     config = get_config()
     cond_emisor = config.get("empresa", {}).get("condicion_iva", "Responsable Inscripto")
-    cond_cliente_iva = str(detail.get("cliente", {}).get("IVACLI", "4") or "4")  # default Consumidor Final
+    # IVACLI: 0=RI, 1=Mono, 3=Exento, 4=CF.  OJO: 0 es falsy en Python!
+    raw_ivacli = detail.get("cliente", {}).get("IVACLI")
+    cond_cliente_iva = str(raw_ivacli if raw_ivacli is not None else 4)
     tipo_comprobante = determine_tipo_comprobante(cond_cliente_iva, cond_emisor)
 
     # Verificar que no esté ya validada (con el tipo calculado)
