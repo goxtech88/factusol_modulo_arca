@@ -69,7 +69,7 @@ def validate_invoice(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}") 
 
-    # Determinar tipo de comprobante automáticamente según condición IVA del cliente
+    # Determinar tipo de comprobante
     from app.services.arca_service import determine_tipo_comprobante
     from app.config import get_config
     config = get_config()
@@ -77,7 +77,13 @@ def validate_invoice(
     # IVACLI: 0=RI, 1=Mono, 3=Exento, 4=CF.  OJO: 0 es falsy en Python!
     raw_ivacli = detail.get("cliente", {}).get("IVACLI")
     cond_cliente_iva = str(raw_ivacli if raw_ivacli is not None else 4)
-    tipo_comprobante = determine_tipo_comprobante(cond_cliente_iva, cond_emisor)
+
+    # Si el PV tiene tipo_comprobante fijo (!=0), usarlo; sino calcular automáticamente
+    if pv_config.tipo_comprobante and pv_config.tipo_comprobante != 0:
+        tipo_comprobante = pv_config.tipo_comprobante
+    else:
+        tipo_comprobante = determine_tipo_comprobante(cond_cliente_iva, cond_emisor)
+
 
     # Verificar que no esté ya validada (con el tipo calculado)
     existing = db.query(CAELog).filter(

@@ -91,6 +91,15 @@ const AdminComponent = {
                     <label>Serie Factusol (TIPFAC)</label>
                     <input type="number" class="pv-serie" value="${pv ? pv.serie_factusol : ''}" min="1" max="9" placeholder="1">
                 </div>
+                <div class="form-group">
+                    <label>Tipo Comprobante</label>
+                    <select class="pv-tipo-cbte">
+                        <option value="0" ${!pv || pv.tipo_comprobante == 0 ? 'selected' : ''}>Auto (segun IVA)</option>
+                        <option value="1" ${pv && pv.tipo_comprobante == 1 ? 'selected' : ''}>Factura A</option>
+                        <option value="6" ${pv && pv.tipo_comprobante == 6 ? 'selected' : ''}>Factura B</option>
+                        <option value="11" ${pv && pv.tipo_comprobante == 11 ? 'selected' : ''}>Factura C</option>
+                    </select>
+                </div>
             </div>
             ${pv && pv.id ? `<input type="hidden" class="pv-id" value="${pv.id}">` : ''}
         `;
@@ -136,6 +145,7 @@ const AdminComponent = {
                         nombre: item.querySelector('.pv-nombre').value,
                         punto_venta: parseInt(item.querySelector('.pv-punto-venta').value),
                         serie_factusol: parseInt(item.querySelector('.pv-serie').value),
+                        tipo_comprobante: parseInt(item.querySelector('.pv-tipo-cbte').value) || 0,
                     };
 
                     if (pvId) {
@@ -166,6 +176,7 @@ const AdminComponent = {
                         nombre: item.querySelector('.pv-nombre').value,
                         punto_venta: parseInt(item.querySelector('.pv-punto-venta').value),
                         serie_factusol: parseInt(item.querySelector('.pv-serie').value),
+                        tipo_comprobante: parseInt(item.querySelector('.pv-tipo-cbte').value) || 0,
                     });
                 }
 
