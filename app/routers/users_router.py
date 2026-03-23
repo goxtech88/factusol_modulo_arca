@@ -1,5 +1,6 @@
 """
 Router de administración de usuarios (solo admin).
+Requiere licencia válida para funcionar.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,8 +10,19 @@ from typing import Optional
 from app.database import get_db
 from app.auth import hash_password, require_admin
 from app.models.user import User, UserPuntoVenta
+from app.services import license_service
 
-router = APIRouter(prefix="/api/users", tags=["users"])
+
+def _require_license():
+    """Verifica que la licencia sea válida antes de operar."""
+    if not license_service.is_licensed():
+        raise HTTPException(
+            status_code=403,
+            detail="Licencia no válida. Ingrese una clave de licencia válida en Configuración.",
+        )
+
+
+router = APIRouter(prefix="/api/users", tags=["users"], dependencies=[Depends(_require_license)])
 
 
 # --- Schemas ---

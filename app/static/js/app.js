@@ -64,8 +64,21 @@ const App = {
         });
 
         this.loadEmpresaName();
+        this._checkLicense();
         this.navigate('dashboard');
         if (typeof lucide !== 'undefined') lucide.createIcons();
+    },
+
+    async _checkLicense() {
+        try {
+            const config = await API.get('/api/config');
+            this._licensed = config.license?.valid || false;
+            const usersNav = document.querySelector('.nav-item[data-page="users"]');
+            if (usersNav && !this._licensed) {
+                usersNav.classList.add('nav-locked');
+                usersNav.title = 'Licencia requerida';
+            }
+        } catch { this._licensed = false; }
     },
 
     navigate(page) {

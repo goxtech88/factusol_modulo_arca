@@ -42,6 +42,18 @@ const ConfigComponent = {
             } catch (err) { App.toast(err.message, 'error'); }
         });
 
+        document.getElementById('config-license-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const result = await API.put('/api/config/license', {
+                    key: document.getElementById('cfg-license-key').value,
+                });
+                App.toast(result.message, result.valid ? 'success' : 'error');
+                this._updateLicenseBar(result.valid);
+                if (result.valid) App._checkLicense();
+            } catch (err) { App.toast(err.message, 'error'); }
+        });
+
         document.getElementById('btn-test-db').addEventListener('click', async () => {
             const el = document.getElementById('db-test-result');
             el.classList.remove('hidden', 'success', 'error');
@@ -106,6 +118,10 @@ const ConfigComponent = {
             document.getElementById('cfg-environment').value = config.arca?.environment || 'development';
             document.getElementById('cfg-cert-path').value = config.arca?.cert_path || '';
             document.getElementById('cfg-key-path').value = config.arca?.key_path || '';
+
+            // Licencia
+            document.getElementById('cfg-license-key').value = config.license_key || '';
+            this._updateLicenseBar(config.license?.valid);
         } catch (err) {
             App.toast(err.message, 'error');
         }
@@ -132,5 +148,18 @@ const ConfigComponent = {
         } finally {
             if (btn) { btn.disabled = false; btn.innerHTML = iconFolder; }
         }
+    },
+
+    _updateLicenseBar(valid) {
+        const bar = document.getElementById('license-status-bar');
+        if (!bar) return;
+        if (valid) {
+            bar.className = 'license-bar license-valid';
+            bar.innerHTML = '<i data-lucide="check-circle"></i> Licencia activa';
+        } else {
+            bar.className = 'license-bar license-invalid';
+            bar.innerHTML = '<i data-lucide="alert-triangle"></i> Sin licencia — Panel de Usuarios bloqueado';
+        }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     },
 };

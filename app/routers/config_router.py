@@ -33,6 +33,8 @@ class ArcaConfig(BaseModel):
 def get_configuration(_admin: User = Depends(require_admin)):
     """Obtiene la configuración actual."""
     config = get_config()
+    from app.services import license_service
+    lic_status = license_service.get_license_status()
     # No exponer secret_key
     safe = {
         "empresa": config.get("empresa", {}),
@@ -45,6 +47,8 @@ def get_configuration(_admin: User = Depends(require_admin)):
             "host": config.get("app", {}).get("host", "0.0.0.0"),
             "port": config.get("app", {}).get("port", 8000),
         },
+        "license": lic_status,
+        "license_key": config.get("license", {}).get("key", ""),
     }
     return safe
 
@@ -74,6 +78,19 @@ def update_arca(data: ArcaConfig, _admin: User = Depends(require_admin)):
         config["arca"][key] = val
     save_config(config)
     return {"message": "Configuración de ARCA actualizada"}
+
+
+@router.put("/license")
+def update_license(data: dict, _admin: User = Depends(require_admin)):
+    """Guarda la clave de licencia."""
+    config = get_config()
+    if "license" not in config:
+        config["license"] = {}
+    config["license"]["key"] = data.get("key", "").strip()
+    save_config(config)
+    from app.services import license_service
+    status = license_service.get_license_status()
+    return {"message": status["message"], "valid": status["valid"]}
 
 
 @router.get("/browse-dialog")
