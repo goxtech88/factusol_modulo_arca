@@ -12,6 +12,7 @@ const ConfigComponent = {
                     domicilio: document.getElementById('cfg-domicilio').value,
                     inicio_actividades: document.getElementById('cfg-inicio-actividades').value,
                     condicion_iva: document.getElementById('cfg-condicion-iva').value,
+                    concepto_facturacion: parseInt(document.getElementById('cfg-concepto').value) || 1,
                 });
                 App.toast('Configuración de empresa guardada', 'success');
                 App.loadEmpresaName();
@@ -96,6 +97,7 @@ const ConfigComponent = {
             document.getElementById('cfg-domicilio').value = config.empresa?.domicilio || '';
             document.getElementById('cfg-inicio-actividades').value = config.empresa?.inicio_actividades || '';
             document.getElementById('cfg-condicion-iva').value = config.empresa?.condicion_iva || 'Responsable Inscripto';
+            document.getElementById('cfg-concepto').value = String(config.empresa?.concepto_facturacion || 1);
 
             // Factusol
             document.getElementById('cfg-db-path').value = config.factusol?.db_path || '';

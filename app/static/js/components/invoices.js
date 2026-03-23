@@ -335,20 +335,28 @@ const InvoicesComponent = {
         const panel = document.getElementById('padron-panel');
         if (panel) {
             panel.classList.remove('hidden');
-            panel.innerHTML = `<div class="padron-loading"><i data-lucide="loader-2" class="spin-icon"></i><span>Consultando Padrón ARCA para CUIT ${cuit}...</span></div>`;
+            panel.innerHTML = `<div class="padron-loading"><i data-lucide="loader-2" class="spin-icon"></i><span>Consultando Padron ARCA para CUIT ${cuit}...</span></div>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
+
+        this._logClear();
+        this._logLine(`Consultando padron ARCA para CUIT ${cuit}...`, 'info');
+        this._logLine(`Autenticando con WSAA (ws_sr_padron_a4)...`, 'info');
+
         try {
             const data = await API.get(`/api/arca/padron/${cuit}`);
             this._padronCache[cuit] = data;
+            this._logLine(`Padron OK: ${data.razon_social || data.apellido || ''} - ${data.estado_cuit || 'N/D'}`, 'ok');
             this._renderPadronPanel(data, nombreActual);
         } catch (err) {
+            this._logLine(`ERROR: ${err.message}`, 'error');
             if (panel) { panel.innerHTML = `<div class="padron-error"><i data-lucide="alert-triangle"></i><span>Error: ${err.message}</span></div>`; if (typeof lucide !== 'undefined') lucide.createIcons(); }
-            App.toast(`Padrón ARCA: ${err.message}`, 'error');
+            App.toast(`Padron ARCA: ${err.message}`, 'error');
         } finally {
             if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="search"></i> Consultar ARCA'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
         }
     },
+
 
     _renderPadronPanel(data, nombreActual) {
         const panel = document.getElementById('padron-panel');
@@ -389,6 +397,31 @@ const InvoicesComponent = {
         return `${cuit.slice(0,2)}-${cuit.slice(2,10)}-${cuit.slice(10)}`;
     },
 
+    // ── Mini-terminal helpers ─────────────────────────────────────────────
+    _logClear() {
+        const log = document.getElementById('arca-log');
+        const lines = document.getElementById('arca-log-lines');
+        if (log) { log.classList.remove('hidden'); }
+        if (lines) { lines.innerHTML = ''; }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    },
+
+    _logLine(text, type = 'info') {
+        const lines = document.getElementById('arca-log-lines');
+        if (!lines) return;
+        const now = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const line = document.createElement('div');
+        line.className = `arca-log-line log-${type}`;
+        line.innerHTML = `<span class="log-time">${now}</span><span>${text}</span>`;
+        lines.appendChild(line);
+        lines.scrollTop = lines.scrollHeight;
+    },
+
+    _logHide() {
+        const log = document.getElementById('arca-log');
+        if (log) log.classList.add('hidden');
+    },
+
     // ── Validar en ARCA ───────────────────────────────────────────────────
     async validateInvoice(tipfac, codfac) {
         if (!this.currentPv) {
@@ -401,25 +434,31 @@ const InvoicesComponent = {
             `Esta accion solicitara un CAE a AFIP.`
         )) return;
 
-        // Toast de progreso
-        App.toast('Solicitando CAE a ARCA...', 'info');
+        this._logClear();
+        this._logLine(`Iniciando validacion factura ${tipfac}-${codfac}...`, 'info');
+        this._logLine(`PV: ${this.currentPv.punto_venta} | Autenticando con WSAA...`, 'info');
 
         try {
             const result = await API.post(`/api/arca/validate/${tipfac}/${codfac}?pv_id=${this.currentPv.id}`);
 
             if (result.status === 'ok') {
+                this._logLine(`CAE obtenido: ${result.cae}`, 'ok');
                 App.toast(`CAE obtenido: ${result.cae}`, 'success');
             } else if (result.status === 'already_validated') {
+                this._logLine(`Factura ya validada. CAE: ${result.cae}`, 'warn');
                 App.toast(`Factura ya validada. CAE: ${result.cae}`, 'info');
             } else {
+                this._logLine(result.message || 'Respuesta inesperada', 'warn');
                 App.toast(result.message || 'Respuesta inesperada de ARCA', 'warning');
             }
 
-            this.closeModal();
-            this.refresh();
+            setTimeout(() => {
+                this.closeModal();
+                this.refresh();
+            }, 2000);
         } catch (err) {
-            // Mostrar error detallado y claro
             const msg = err.message || 'Error desconocido';
+            this._logLine(`ERROR: ${msg}`, 'error');
             App.toast(`Error ARCA: ${msg}`, 'error');
             console.error('[ARCA] Error en validateInvoice:', msg);
         }
@@ -427,8 +466,10 @@ const InvoicesComponent = {
 
 
     closeModal() {
+        this._logHide();
         document.getElementById('invoice-modal').classList.add('hidden');
     },
+
 
     formatDate(d) {
         if (!d) return '-';

@@ -282,11 +282,15 @@ def build_voucher_data(
         doc_tipo = 99  # Sin identificar (consumidor final)
         doc_nro = "0"
 
-    return {
+    # Concepto de facturación (1=Productos, 2=Servicios, 3=Ambos)
+    config = get_config()
+    concepto = int(config.get("empresa", {}).get("concepto_facturacion", 1))
+
+    result = {
         "tipo_cbte": tipo_comprobante,
         "punto_vta": punto_venta,
         "fecha_cbte": fecha_str,
-        "concepto": 1,          # 1=Productos, 2=Servicios, 3=Productos y Servicios
+        "concepto": concepto,
         "tipo_doc": doc_tipo,
         "nro_doc": int(doc_nro),
         "imp_total": imp_total,
@@ -299,6 +303,15 @@ def build_voucher_data(
         "moneda_ctz": 1,
         "iva": iva_array,
     }
+
+    # Si concepto = 2 o 3 (Servicios), ARCA exige fechas de servicio y vto pago
+    if concepto in (2, 3):
+        result["fch_serv_desde"] = fecha_str
+        result["fch_serv_hasta"] = fecha_str
+        result["fch_vto_pago"] = fecha_str
+
+    return result
+
 
 
 def validate_invoice(
@@ -337,6 +350,9 @@ def validate_invoice(
         fecha_cbte=data["fecha_cbte"],
         moneda_id=data["moneda_id"],
         moneda_ctz=data["moneda_ctz"],
+        fecha_serv_desde=data.get("fch_serv_desde"),
+        fecha_serv_hasta=data.get("fch_serv_hasta"),
+        fecha_vto_pago=data.get("fch_vto_pago"),
     )
 
     # Agregar alícuotas de IVA

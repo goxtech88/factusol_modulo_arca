@@ -2205,4 +2205,63 @@ mark.fb-highlight {
     animation: spin 1s linear infinite;
 }
 
+/* === Mini-Terminal ARCA Log === */
+.arca-log {
+    background: #1a1a2e;
+    border-top: 1px solid #2d2d44;
+    padding: 6px 10px;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.arca-log-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #6c7086;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.arca-log-header [data-lucide] {
+    width: 10px;
+    height: 10px;
+    color: #6c7086;
+}
+
+.arca-log-lines {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.arca-log-line {
+    display: flex;
+    gap: 6px;
+    color: #a6adc8;
+}
+
+.arca-log-line .log-time {
+    color: #585b70;
+    flex-shrink: 0;
+}
+
+.arca-log-line.log-ok {
+    color: #a6e3a1;
+}
+
+.arca-log-line.log-error {
+    color: #f38ba8;
+}
+
+.arca-log-line.log-info {
+    color: #89b4fa;
+}
+
+.arca-log-line.log-warn {
+    color: #fab387;
+}
 

@@ -242,7 +242,14 @@
                                 <button class="btn-icon modal-close"><i data-lucide="x"></i></button>
                             </div>
                             <div class="modal-body" id="modal-invoice-body"></div>
+                            <div id="arca-log" class="arca-log hidden">
+                                <div class="arca-log-header">
+                                    <i data-lucide="terminal"></i> <span>Log ARCA</span>
+                                </div>
+                                <div id="arca-log-lines" class="arca-log-lines"></div>
+                            </div>
                             <div class="modal-footer" id="modal-invoice-footer"></div>
+
                         </div>
                     </div>
 
@@ -362,6 +369,14 @@
                                             <option value="Responsable Inscripto">Responsable Inscripto</option>
                                             <option value="Monotributista">Monotributista</option>
                                             <option value="Exento">Exento</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Concepto Facturacion</label>
+                                        <select id="cfg-concepto" class="select-styled">
+                                            <option value="1">Productos</option>
+                                            <option value="2">Servicios</option>
+                                            <option value="3">Productos y Servicios</option>
                                         </select>
                                     </div>
                                     <button type="submit" class="btn btn-primary">
