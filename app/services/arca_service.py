@@ -378,8 +378,8 @@ def validate_invoice(
         nro_doc=data["nro_doc"],
         tipo_cbte=data["tipo_cbte"],
         punto_vta=data["punto_vta"],
-        cbte_desde=next_cbte,
-        cbte_hasta=next_cbte,
+        cbt_desde=next_cbte,
+        cbt_hasta=next_cbte,
         imp_total=data["imp_total"],
         imp_tot_conc=data["imp_tot_conc"],
         imp_neto=data["imp_neto"],
@@ -391,8 +391,9 @@ def validate_invoice(
         moneda_ctz=data["moneda_ctz"],
         fecha_serv_desde=data.get("fch_serv_desde"),
         fecha_serv_hasta=data.get("fch_serv_hasta"),
-        fecha_vto_pago=data.get("fch_vto_pago"),
+        fecha_venc_pago=data.get("fch_vto_pago"),
     )
+
 
     # Agregar alícuotas de IVA
     for iva_item in data.get("iva", []):
