@@ -1355,3 +1355,302 @@ mark.fb-highlight {
     flex-shrink: 0;
     stroke: #1a6896;
 }
+
+/* ============================================================
+   === Panel Consulta Padrón ARCA ===
+   ============================================================ */
+
+/* Botón especial "Consultar ARCA" */
+.btn-padron {
+    background: linear-gradient(135deg, #1565C0, #0D47A1);
+    color: white;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    height: 28px;
+}
+
+.btn-padron:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0D47A1, #0a3580);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(13, 71, 161, 0.35);
+}
+
+.btn-padron:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-padron [data-lucide] {
+    width: 13px;
+    height: 13px;
+}
+
+/* Bloque del cliente en el modal */
+.invoice-cliente-block {
+    margin: 10px 0;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.invoice-cliente-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 12px;
+    background: #F7F7F8;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.invoice-cliente-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sec);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.invoice-cliente-title [data-lucide] {
+    width: 13px;
+    height: 13px;
+    stroke: var(--crimson);
+}
+
+.padron-no-cuit {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.padron-no-cuit [data-lucide] {
+    width: 12px;
+    height: 12px;
+    stroke: var(--warning);
+}
+
+.invoice-cliente-block .invoice-header-grid {
+    padding: 10px 12px;
+}
+
+/* Panel resultado del padrón */
+.padron-panel {
+    margin: 10px 0;
+    animation: fadeIn 0.25s ease;
+}
+
+.padron-loading, .padron-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    font-size: 11px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+}
+
+.padron-loading {
+    color: var(--info);
+    background: var(--info-bg);
+    border-color: #b3d9f5;
+}
+
+.padron-loading [data-lucide] {
+    width: 14px;
+    height: 14px;
+    stroke: var(--info);
+}
+
+.padron-error {
+    color: var(--danger);
+    background: var(--danger-bg);
+    border-color: #f5c6c6;
+}
+
+.padron-error [data-lucide] {
+    width: 14px;
+    height: 14px;
+    stroke: var(--danger);
+}
+
+/* Card de resultado */
+.padron-result {
+    border: 1.5px solid #b3d9f5;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #fafcff;
+}
+
+.padron-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #1565C0, #0D47A1);
+    color: white;
+}
+
+.padron-result-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.padron-result-title [data-lucide] {
+    width: 14px;
+    height: 14px;
+    stroke: white;
+}
+
+.padron-estado {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.04em;
+}
+
+.padron-estado-activo {
+    background: rgba(255, 255, 255, 0.2);
+    color: #90EE90;
+    border: 1px solid rgba(144, 238, 144, 0.5);
+}
+
+.padron-estado-inactivo {
+    background: rgba(255, 255, 255, 0.15);
+    color: #FFB3B3;
+    border: 1px solid rgba(255, 179, 179, 0.5);
+}
+
+.padron-estado-nd {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Grid de datos del padrón */
+.padron-data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 0;
+}
+
+.padron-field {
+    padding: 8px 12px;
+    border-bottom: 1px solid #e8eff8;
+    border-right: 1px solid #e8eff8;
+}
+
+.padron-field:nth-child(even) {
+    border-right: none;
+}
+
+.padron-field-wide {
+    grid-column: 1 / -1;
+    border-right: none;
+}
+
+.padron-field label {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: #1565C0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 2px;
+}
+
+.padron-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.padron-nombre.padron-diff {
+    color: var(--warning);
+}
+
+.padron-diff-badge {
+    font-size: 9px;
+    font-weight: 700;
+    background: var(--warning-bg);
+    color: var(--warning);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid rgba(230, 81, 0, 0.25);
+    letter-spacing: 0.02em;
+}
+
+/* Alerta de diferencia */
+.padron-diff-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--warning-bg);
+    border-top: 1px solid rgba(230, 81, 0, 0.2);
+    font-size: 11px;
+    color: var(--warning);
+    line-height: 1.4;
+}
+
+.padron-diff-alert [data-lucide] {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    stroke: var(--warning);
+    margin-top: 1px;
+}
+
+.padron-diff-alert strong {
+    font-weight: 700;
+}
+
+/* Nota informativa al pie del panel */
+.padron-footer-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #F0F4FB;
+    border-top: 1px solid #e8eff8;
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.padron-footer-note [data-lucide] {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    stroke: var(--text-muted);
+}
+
+/* Spin utility (también usada en loading-state) */
+.spin-icon {
+    animation: spin 1s linear infinite;
+}
+
+

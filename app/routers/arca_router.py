@@ -215,3 +215,23 @@ def get_last_voucher(
 def server_status(current_user: User = Depends(get_current_user)):
     """Verifica el estado del servidor de ARCA."""
     return arca_service.get_server_status()
+
+
+@router.get("/padron/{cuit}")
+def consultar_padron(
+    cuit: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Consulta el Padrón ARCA (Alcance 4) para obtener datos fiscales de un CUIT.
+
+    Retorna razón social, tipo persona, condición IVA y domicilio fiscal.
+    Útil para actualizar los datos de un cliente en Factusol desde la UI.
+    """
+    try:
+        data = arca_service.consultar_padron(cuit)
+        return data
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error al consultar padrón ARCA: {str(e)}")
