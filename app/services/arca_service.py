@@ -462,11 +462,8 @@ def generate_afip_qr(
     """
     Genera la imagen QR estándar AFIP para comprobante electrónico.
 
-    URL del QR:
-      https://www.afip.gob.ar/fe/qr/?p=<base64(json)>
-
-    Retorna la ruta relativa dentro de static/qr/   ej: "qr/8-4093.png"
-    Si no se puede generar (qrcode no instalado), retorna "".
+    Guarda el QR en carpeta ARCA_QR junto a la base de datos de Factusol.
+    Retorna la ruta absoluta del archivo QR (para IMGFAC en Factusol).
     """
     try:
         import qrcode
@@ -502,11 +499,25 @@ def generate_afip_qr(
         qr.make(fit=True)
         img = qr.make_image(fill_color="black", back_color="white")
 
+        # Guardar en carpeta ARCA_QR junto a la DB de Factusol
+        config = get_config()
+        db_path = config.get("factusol", {}).get("db_path", "")
+        if db_path:
+            qr_dir = Path(db_path).parent / "ARCA_QR"
+        else:
+            qr_dir = QR_DIR  # fallback a static/qr/
+
+        qr_dir.mkdir(exist_ok=True)
+
         filename = f"{tipfac}-{codfac}.png"
-        out_path = QR_DIR / filename
+        out_path = qr_dir / filename
         img.save(str(out_path))
 
-        return f"qr/{filename}"   # ruta relativa dentro de static/
+        # También guardar copia en static/qr/ para el módulo web
+        static_qr = QR_DIR / filename
+        img.save(str(static_qr))
+
+        return str(out_path.resolve())   # Ruta ABSOLUTA para Factusol
 
     except ImportError:
         return ""
@@ -514,6 +525,7 @@ def generate_afip_qr(
         # No romper el flujo de validación si el QR falla
         print(f"⚠️ Error generando QR AFIP: {e}")
         return ""
+
 
 
 

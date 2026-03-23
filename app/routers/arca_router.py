@@ -177,18 +177,26 @@ def validate_invoice(
     )
 
     # ── Grabar datos CAE en F_FAC de Factusol ────────────────────────────
+    # Formatear nro comprobante como Factusol: "A-0002-00006486"
+    _letra_map = {1: "A", 6: "B", 11: "C", 2: "NDA", 3: "NCA", 7: "NDB", 8: "NCB"}
+    _letra = _letra_map.get(tipo_comprobante, "X")
+    _pv_str = str(pv_config.punto_venta).zfill(4)
+    _cbte_str = str(result.get("voucher_number", 0)).zfill(8)
+    _pedfac = f"{_letra}-{_pv_str}-{_cbte_str}"
+
     try:
         factusol_service.write_cae_to_factura(
             tipfac=tipfac,
             codfac=codfac,
             cae=result.get("CAE", ""),
-            voucher_number=result.get("voucher_number", 0),
+            voucher_number=_pedfac,
             cae_vto=result.get("CAEFchVto", ""),
             qr_img_path=qr_path,
         )
     except Exception as _write_err:
         # No falla la respuesta si el write-back a Access falla
         print(f"⚠️ No se pudo grabar CAE en Factusol F_FAC: {_write_err}")
+
 
     return {
         "status": "ok",
