@@ -260,14 +260,18 @@ def write_cae_to_factura(
     voucher_number: int,
     cae_vto: str,
     qr_img_path: str = "",
+    barcode: str = "",
 ) -> bool:
     """
     Graba los datos del CAE AFIP de vuelta en F_FAC de Factusol:
 
       BNOFAC  = Número de CAE  (ej: "12345678901234")
-      PEDFAC  = Número de comprobante ARCA  (ej: 42)
+      PEDFAC  = Número de comprobante ARCA  (ej: "B-0002-00006486")
+      BIBFAC  = Número de comprobante ARCA  (duplicado para impresión)
       BNUFAC  = Vencimiento del CAE  (ej: "20240131")
-      IMGFAC  = Ruta / URL de la imagen QR   (ej: "qr\\8-4093.png")
+      IMGFAC  = Ruta imagen QR
+      AATFAC  = Código de barras AFIP (CUIT+TipoCbte+PV+CAE+VtoCae)
+      REAFAC  = Código de barras AFIP (duplicado)
 
     Retorna True si se actualizó correctamente.
     """
@@ -276,13 +280,18 @@ def write_cae_to_factura(
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE F_FAC
-            SET BNOFAC = ?, PEDFAC = ?, BNUFAC = ?, IMGFAC = ?
+            SET BNOFAC = ?, PEDFAC = ?, BIBFAC = ?,
+                BNUFAC = ?, IMGFAC = ?,
+                AATFAC = ?, REAFAC = ?
             WHERE TIPFAC = ? AND CODFAC = ?
         """, [
-            str(cae)[:50],          # BNOFAC  (Text)
-            str(voucher_number),     # PEDFAC  (Text/Num)
-            str(cae_vto)[:20],       # BNUFAC  (Text)
-            str(qr_img_path)[:255],  # IMGFAC  (Text / Memo)
+            str(cae)[:50],               # BNOFAC  — CAE
+            str(voucher_number),          # PEDFAC  — Nro Cbte formateado
+            str(voucher_number),          # BIBFAC  — Nro Cbte (impresión)
+            str(cae_vto)[:20],            # BNUFAC  — Vto CAE
+            str(qr_img_path)[:255],       # IMGFAC  — Ruta QR
+            str(barcode)[:60],            # AATFAC  — Código de barras
+            str(barcode)[:60],            # REAFAC  — Código de barras
             tipfac,
             codfac,
         ])
@@ -293,3 +302,4 @@ def write_cae_to_factura(
         raise
     finally:
         conn.close()
+

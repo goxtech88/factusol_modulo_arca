@@ -53,16 +53,16 @@ async def lifespan(app: FastAPI):
         auto_validate.start_background_task()
         print("🤖 Auto-validación ARCA activada")
 
-    print("🚀 Factusol Módulo ARCA iniciado")
+    print("🚀 Factusol Arca by Goxtech iniciado")
     yield
     # Shutdown
     auto_validate.stop_background_task()
-    print("👋 Factusol Módulo ARCA detenido")
+    print("👋 Factusol Arca by Goxtech detenido")
 
 
 app = FastAPI(
-    title="Factusol Módulo ARCA",
-    description="Módulo web de facturación electrónica ARCA para Factusol",
+    title="Factusol Arca by Goxtech",
+    description="Módulo de facturación electrónica ARCA para Factusol",
     version="1.0.0",
     lifespan=lifespan,
 )

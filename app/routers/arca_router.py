@@ -186,6 +186,12 @@ def validate_invoice(
     _cbte_str = str(result.get("voucher_number", 0)).zfill(8)
     _pedfac = f"{_letra}-{_pv_str}-{_cbte_str}"
 
+    # Código de barras AFIP: CUIT(11) + TipoCbte(3) + PV(5) + CAE(14) + VtoCae(8)
+    from app.config import get_config as _gc
+    _cuit_bc = str(_gc().get("empresa", {}).get("cuit", "")).replace("-", "").strip().zfill(11)
+    _vto_bc = str(result.get("CAEFchVto", "")).replace("-", "")[:8]
+    _barcode = f"{_cuit_bc}{str(tipo_comprobante).zfill(3)}{str(pv_config.punto_venta).zfill(5)}{str(result.get('CAE', '')).zfill(14)}{_vto_bc}"
+
     try:
         factusol_service.write_cae_to_factura(
             tipfac=tipfac,
@@ -194,6 +200,7 @@ def validate_invoice(
             voucher_number=_pedfac,
             cae_vto=result.get("CAEFchVto", ""),
             qr_img_path=qr_path,
+            barcode=_barcode,
         )
     except Exception as _write_err:
         # No falla la respuesta si el write-back a Access falla

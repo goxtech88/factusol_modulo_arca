@@ -54,7 +54,7 @@ def main():
         port = 8765
         empresa = ""
 
-    title = f"ARCA - {empresa}" if empresa else "Factusol Módulo ARCA"
+    title = f"Factusol Arca by Goxtech - {empresa}" if empresa else "Factusol Arca by Goxtech"
 
     # URL local (siempre 127.0.0.1 para acceso)
     local_host = "127.0.0.1" if host == "0.0.0.0" else host

@@ -267,6 +267,11 @@ def _validate_single_sync(
     _letra = _letra_map.get(tipo_comprobante, "X")
     _pedfac = f"{_letra}-{str(pv_config.punto_venta).zfill(4)}-{str(result.get('voucher_number', 0)).zfill(8)}"
 
+    # Código de barras AFIP
+    _cuit_bc = str(config.get("empresa", {}).get("cuit", "")).replace("-", "").strip().zfill(11)
+    _vto_bc = str(result.get("CAEFchVto", "")).replace("-", "")[:8]
+    _barcode = f"{_cuit_bc}{str(tipo_comprobante).zfill(3)}{str(pv_config.punto_venta).zfill(5)}{str(result.get('CAE', '')).zfill(14)}{_vto_bc}"
+
     try:
         factusol_service.write_cae_to_factura(
             tipfac=tipfac, codfac=codfac,
@@ -274,6 +279,7 @@ def _validate_single_sync(
             voucher_number=_pedfac,
             cae_vto=result.get("CAEFchVto", ""),
             qr_img_path=qr_path,
+            barcode=_barcode,
         )
     except Exception:
         pass
