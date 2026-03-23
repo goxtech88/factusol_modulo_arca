@@ -130,30 +130,72 @@
 
                     <!-- Invoices -->
                     <section id="section-invoices" class="section hidden">
-                        <div class="toolbar">
+                        <!-- Toolbar superior -->
+                        <div class="toolbar invoices-toolbar">
                             <div class="toolbar-left">
                                 <label>Punto de Venta:</label>
                                 <select id="invoice-pv-select" class="select-styled"></select>
+                            </div>
+                            <div class="toolbar-center">
+                                <!-- Filtros rápidos de fecha -->
+                                <div class="date-filter-group">
+                                    <button class="date-filter-btn active" data-filter="all"
+                                        onclick="InvoicesComponent.setDateFilter('all')">Todas</button>
+                                    <button class="date-filter-btn" data-filter="today"
+                                        onclick="InvoicesComponent.setDateFilter('today')">Hoy</button>
+                                    <button class="date-filter-btn" data-filter="yesterday"
+                                        onclick="InvoicesComponent.setDateFilter('yesterday')">Ayer</button>
+                                    <button class="date-filter-btn" data-filter="last7"
+                                        onclick="InvoicesComponent.setDateFilter('last7')">Últ. 7 días</button>
+                                </div>
                             </div>
                             <div class="toolbar-right">
                                 <div class="input-group search-group">
                                     <i data-lucide="search"></i>
                                     <input type="text" id="invoice-search" placeholder="Buscar factura...">
                                 </div>
+                                <button id="btn-refresh-invoices" class="btn btn-secondary btn-refresh"
+                                    title="Actualizar desde Factusol"
+                                    onclick="InvoicesComponent.refresh()">
+                                    <i data-lucide="refresh-cw" class="refresh-icon"></i>
+                                    Actualizar
+                                </button>
                             </div>
                         </div>
+
+                        <!-- Badge contador + card tabla -->
                         <div class="card">
+                            <div class="table-toolbar">
+                                <span class="table-count">
+                                    <span id="invoice-count-badge">0</span> facturas
+                                </span>
+                            </div>
                             <div class="table-container">
                                 <table id="invoices-table">
                                     <thead>
                                         <tr>
-                                            <th>Nro</th>
-                                            <th>Fecha</th>
-                                            <th>Cliente</th>
-                                            <th>Total</th>
-                                            <th>Estado</th>
-                                            <th>CAE</th>
-                                            <th>Acciones</th>
+                                            <th id="th-CODFAC" class="sortable-th sort-active"
+                                                onclick="InvoicesComponent.sortBy('CODFAC')">
+                                                Nro<span class="sort-arrow"> ↓</span>
+                                            </th>
+                                            <th id="th-FECFAC" class="sortable-th"
+                                                onclick="InvoicesComponent.sortBy('FECFAC')">
+                                                Fecha<span class="sort-arrow"> ⇅</span>
+                                            </th>
+                                            <th id="th-CNOFAC" class="sortable-th"
+                                                onclick="InvoicesComponent.sortBy('CNOFAC')">
+                                                Cliente<span class="sort-arrow"> ⇅</span>
+                                            </th>
+                                            <th id="th-TOTFAC" class="sortable-th"
+                                                onclick="InvoicesComponent.sortBy('TOTFAC')">
+                                                Total<span class="sort-arrow"> ⇅</span>
+                                            </th>
+                                            <th id="th-ESTFAC" class="sortable-th"
+                                                onclick="InvoicesComponent.sortBy('ESTFAC')">
+                                                Estado<span class="sort-arrow"> ⇅</span>
+                                            </th>
+                                            <th id="th-_cae">CAE</th>
+                                            <th id="th-_actions"></th>
                                         </tr>
                                     </thead>
                                     <tbody id="invoices-tbody"></tbody>
@@ -161,7 +203,7 @@
                             </div>
                             <div id="invoices-empty" class="empty-state hidden">
                                 <i data-lucide="inbox"></i>
-                                <p>No se encontraron facturas</p>
+                                <p>No se encontraron facturas para este filtro</p>
                             </div>
                             <div id="invoices-loading" class="loading-state hidden">
                                 <i data-lucide="loader-2"></i>
@@ -169,6 +211,7 @@
                             </div>
                         </div>
                     </section>
+
 
                     <!-- Invoice Detail Modal -->
                     <div id="invoice-modal" class="modal hidden">

@@ -13,21 +13,22 @@ router = APIRouter(prefix="/api/factusol", tags=["factusol"])
 def list_invoices(
     serie: int = Query(..., description="Serie/TIPFAC de Factusol"),
     search: str = Query("", description="Buscar por nombre de cliente o nro"),
+    date_filter: str = Query("all", description="Filtro fecha: all|today|yesterday|last7"),
     current_user: User = Depends(get_current_user),
 ):
     """Lista facturas de una serie. El usuario solo puede ver las series asignadas."""
-    # Verificar que el usuario tiene acceso a esta serie
     allowed_series = [pv.serie_factusol for pv in current_user.puntos_venta]
     if current_user.role != "admin" and serie not in allowed_series:
         raise HTTPException(status_code=403, detail="No tiene acceso a esta serie")
 
     try:
-        invoices = factusol_service.get_invoices(serie, search=search)
+        invoices = factusol_service.get_invoices(serie, search=search, date_filter=date_filter)
         return {"invoices": invoices, "total": len(invoices)}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}")
+
 
 
 @router.get("/invoices/{tipfac}/{codfac}")

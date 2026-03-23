@@ -597,6 +597,240 @@ tbody tr {
     font-weight: 600;
 }
 
+/* Toolbar con 3 zonas para la sección de facturas */
+.invoices-toolbar {
+    justify-content: space-between;
+    flex-wrap: nowrap;
+}
+
+.toolbar-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+/* === Date filter buttons === */
+.date-filter-group {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: var(--bg-panel);
+}
+
+.date-filter-btn {
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    border-right: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-sec);
+    cursor: pointer;
+    transition: var(--transition);
+    height: 28px;
+    white-space: nowrap;
+}
+
+.date-filter-btn:last-child {
+    border-right: none;
+}
+
+.date-filter-btn:hover {
+    background: #F0F0F0;
+    color: var(--text-main);
+}
+
+.date-filter-btn.active {
+    background: var(--crimson);
+    color: white;
+}
+
+/* === Botón Actualizar === */
+.btn-refresh {
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.btn-refresh .refresh-icon {
+    width: 13px;
+    height: 13px;
+    transition: transform 0.4s ease;
+}
+
+.btn-refresh.spinning .refresh-icon {
+    animation: spin 0.7s linear infinite;
+}
+
+/* === Table toolbar (badge contador) === */
+.table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 4px 8px 4px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 0;
+}
+
+.table-count {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.table-count #invoice-count-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--crimson);
+}
+
+/* === Sortable column headers === */
+.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.sortable-th:hover {
+    background: #E0E0E0;
+}
+
+.sortable-th.sort-active {
+    background: #E8E8E8;
+    color: var(--crimson);
+}
+
+.sort-arrow {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-left: 2px;
+}
+
+.sortable-th.sort-active .sort-arrow {
+    color: var(--crimson);
+    font-weight: 700;
+}
+
+/* === Tabla facturas extras === */
+.td-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.td-cliente {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.td-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    white-space: nowrap;
+}
+
+/* Fila con CAE ya validado */
+.row-validated td {
+    background: rgba(46, 125, 50, 0.04) !important;
+}
+
+.row-validated:hover td {
+    background: var(--sel-row) !important;
+}
+
+/* Badge CAE compacto en tabla */
+.cae-mini {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.badge-light {
+    background: #ECECEC;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+/* === Bloque CAE validado en modal === */
+.cae-validated-block {
+    margin-top: 14px;
+    padding: 10px 14px;
+    background: var(--success-bg);
+    border: 1px solid rgba(46, 125, 50, 0.25);
+    border-radius: var(--radius);
+}
+
+.cae-badge {
+    font-size: 11px;
+    padding: 5px 12px;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.cae-badge [data-lucide] {
+    width: 14px;
+    height: 14px;
+}
+
+.cae-meta {
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: 10px;
+}
+
+/* === Invoice field grid === */
+.invoice-header-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.invoice-field label {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-sec);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+}
+
+.invoice-field {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.invoice-lines-table {
+    overflow-x: auto;
+    margin: 10px 0;
+}
+
+.invoice-lines-table table {
+    font-size: 11px;
+}
+
+.invoice-total {
+    text-align: right;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--crimson);
+    padding: 8px 4px 2px;
+    border-top: 1px solid var(--border-light);
+}
+
+
+
 /* === Select === */
 .select-styled {
     padding: 6px 10px;

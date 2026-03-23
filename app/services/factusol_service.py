@@ -24,20 +24,49 @@ def _get_connection(readonly: bool = True):
     return pyodbc.connect(conn_str)
 
 
-def get_invoices(tipfac: int, search: str = "", limit: int = 100, offset: int = 0) -> list[dict]:
+def get_invoices(
+    tipfac: int,
+    search: str = "",
+    date_filter: str = "all",  # all | today | yesterday | last7
+) -> list[dict]:
     """
     Obtiene facturas de Factusol filtradas por serie (TIPFAC).
+    date_filter admite: 'all', 'today', 'yesterday', 'last7'
     """
+    from datetime import date, timedelta
+
+    today = date.today()
+
+    # Calcular rango de fechas
+    fecha_desde = None
+    fecha_hasta = None
+    if date_filter == "today":
+        fecha_desde = today
+        fecha_hasta = today
+    elif date_filter == "yesterday":
+        fecha_desde = today - timedelta(days=1)
+        fecha_hasta = today - timedelta(days=1)
+    elif date_filter == "last7":
+        fecha_desde = today - timedelta(days=6)
+        fecha_hasta = today
+
     conn = _get_connection()
     try:
         cursor = conn.cursor()
         query = """
             SELECT f.TIPFAC, f.CODFAC, f.FECFAC, f.CLIFAC, f.CNOFAC,
-                   f.TOTFAC, f.ESTFAC, f.ALMFAC, f.PEDFAC
+                   f.TOTFAC, f.ESTFAC, f.ALMFAC, f.PEDFAC, f.CNIFAC,
+                   f.BNOFAC, f.BNUFAC
             FROM F_FAC f
             WHERE f.TIPFAC = ?
         """
-        params = [tipfac]
+        params: list = [tipfac]
+
+        if fecha_desde:
+            # Access ODBC acepta datetime.date directamente via pyodbc
+            query += " AND f.FECFAC >= ? AND f.FECFAC < ?"
+            params.append(fecha_desde)
+            params.append(fecha_hasta + timedelta(days=1))  # hasta fin del dia
 
         if search:
             query += " AND (f.CNOFAC LIKE ? OR CStr(f.CODFAC) LIKE ?)"

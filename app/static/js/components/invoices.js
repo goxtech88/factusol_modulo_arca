@@ -1,22 +1,40 @@
 /**
- * Invoices Component - View, validate and consult padron for Factusol invoices.
+ * Invoices Component
+ * - Filtros de fecha: Todos / Hoy / Ayer / Últimos 7 días
+ * - Botón Actualizar (refresh desde Factusol)
+ * - Ordenamiento por columna (click en header)
+ * - Modal de detalle + Consulta Padrón ARCA
  */
 const InvoicesComponent = {
     currentPv: null,
-    _padronCache: {},    // cuit → data del padrón
+    _padronCache: {},
+    _allInvoices: [],       // datos cacheados del último fetch
+    _caeStatuses: {},       // caché de status CAE por "TIPFAC-CODFAC"
+    _sortCol: 'CODFAC',
+    _sortAsc: false,
+    _dateFilter: 'all',     // all | today | yesterday | last7
+
+    // ── Columnas ordenables ──────────────────────────────────────────────
+    COLS: [
+        { key: 'CODFAC',   label: 'Nro',     sortable: true  },
+        { key: 'FECFAC',   label: 'Fecha',   sortable: true  },
+        { key: 'CNOFAC',   label: 'Cliente', sortable: true  },
+        { key: 'TOTFAC',   label: 'Total',   sortable: true  },
+        { key: 'ESTFAC',   label: 'Estado',  sortable: true  },
+        { key: '_cae',     label: 'CAE',     sortable: false },
+        { key: '_actions', label: '',        sortable: false },
+    ],
 
     init() {
-        const select = document.getElementById('invoice-pv-select');
-        select.addEventListener('change', () => this.loadInvoices());
+        document.getElementById('invoice-pv-select')
+            .addEventListener('change', () => this.loadInvoices());
 
-        document.getElementById('invoice-search').addEventListener('input',
-            App.debounce(() => this.loadInvoices(), 400)
-        );
+        document.getElementById('invoice-search')
+            .addEventListener('input', App.debounce(() => this.loadInvoices(), 400));
 
         // Modal close
-        document.querySelectorAll('#invoice-modal .modal-close, #invoice-modal .modal-overlay').forEach(el => {
-            el.addEventListener('click', () => this.closeModal());
-        });
+        document.querySelectorAll('#invoice-modal .modal-close, #invoice-modal .modal-overlay')
+            .forEach(el => el.addEventListener('click', () => this.closeModal()));
     },
 
     loadPuntosVenta() {
@@ -24,7 +42,10 @@ const InvoicesComponent = {
         const pvs = Auth.getPuntosVenta();
         select.innerHTML = pvs.length === 0
             ? '<option value="">Sin puntos de venta</option>'
-            : pvs.map(pv => `<option value="${pv.id}" data-serie="${pv.serie_factusol}">${pv.nombre} (Serie ${pv.serie_factusol} → PV ${pv.punto_venta})</option>`).join('');
+            : pvs.map(pv =>
+                `<option value="${pv.id}" data-serie="${pv.serie_factusol}">
+                    ${pv.nombre} (Serie ${pv.serie_factusol} → PV ${pv.punto_venta})
+                </option>`).join('');
 
         if (pvs.length > 0) {
             this.currentPv = pvs[0];
@@ -32,71 +53,181 @@ const InvoicesComponent = {
         }
     },
 
-    async loadInvoices() {
+    // ── Cambiar filtro de fecha ──────────────────────────────────────────
+    setDateFilter(filter) {
+        this._dateFilter = filter;
+        // Actualizar botones activos
+        document.querySelectorAll('.date-filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+        this.loadInvoices();
+    },
+
+    // ── Refresh manual ───────────────────────────────────────────────────
+    refresh() {
+        this._caeStatuses = {};   // limpiar caché de CAE
+        this.loadInvoices(true);
+    },
+
+    // ── Fetch de facturas ────────────────────────────────────────────────
+    async loadInvoices(forceRefresh = false) {
         const select = document.getElementById('invoice-pv-select');
         const selectedOpt = select.options[select.selectedIndex];
         if (!selectedOpt) return;
 
         const serie = selectedOpt.dataset.serie;
         const search = document.getElementById('invoice-search').value.trim();
-
         const pvs = Auth.getPuntosVenta();
         this.currentPv = pvs.find(pv => pv.id == select.value);
+
+        // Mostrar spinner en botón refresh
+        const btnRefresh = document.getElementById('btn-refresh-invoices');
+        if (btnRefresh) {
+            btnRefresh.classList.add('spinning');
+            btnRefresh.disabled = true;
+        }
 
         document.getElementById('invoices-tbody').innerHTML = '';
         document.getElementById('invoices-empty').classList.add('hidden');
         document.getElementById('invoices-loading').classList.remove('hidden');
 
         try {
-            const data = await API.get(`/api/factusol/invoices?serie=${serie}&search=${encodeURIComponent(search)}`);
-            document.getElementById('invoices-loading').classList.add('hidden');
+            const url = `/api/factusol/invoices?serie=${serie}`
+                + `&search=${encodeURIComponent(search)}`
+                + `&date_filter=${this._dateFilter}`;
 
-            if (data.invoices.length === 0) {
+            const data = await API.get(url);
+            this._allInvoices = data.invoices || [];
+
+            document.getElementById('invoices-loading').classList.add('hidden');
+            this._updateCounter(this._allInvoices.length);
+
+            if (this._allInvoices.length === 0) {
                 document.getElementById('invoices-empty').classList.remove('hidden');
                 return;
             }
 
-            // Check CAE status (solo primeras 50 para no saturar)
-            const caeStatuses = {};
-            for (const inv of data.invoices.slice(0, 50)) {
-                try {
-                    const st = await API.get(`/api/arca/status/${inv.TIPFAC}/${inv.CODFAC}`);
-                    if (st.validated) caeStatuses[`${inv.TIPFAC}-${inv.CODFAC}`] = st;
-                } catch {}
+            // Verificar estado CAE (sólo los que no tienen cached)
+            for (const inv of this._allInvoices.slice(0, 50)) {
+                const key = `${inv.TIPFAC}-${inv.CODFAC}`;
+                if (forceRefresh || !this._caeStatuses[key]) {
+                    try {
+                        const st = await API.get(`/api/arca/status/${inv.TIPFAC}/${inv.CODFAC}`);
+                        this._caeStatuses[key] = st;
+                    } catch { this._caeStatuses[key] = { validated: false }; }
+                }
             }
 
-            const tbody = document.getElementById('invoices-tbody');
-            tbody.innerHTML = data.invoices.map(inv => {
-                const key = `${inv.TIPFAC}-${inv.CODFAC}`;
-                const cae = caeStatuses[key];
-                const estado = inv.ESTFAC === 0 ? 'Pendiente' : inv.ESTFAC === 1 ? 'Cobrada' : 'Anulada';
-                const estadoClass = inv.ESTFAC === 0 ? 'warning' : inv.ESTFAC === 1 ? 'success' : 'danger';
-                const fecha = InvoicesComponent.formatDate(inv.FECFAC);
-
-                return `<tr>
-                    <td><strong>${inv.TIPFAC}-${inv.CODFAC}</strong></td>
-                    <td>${fecha}</td>
-                    <td>${inv.CNOFAC || '-'}</td>
-                    <td>$ ${(inv.TOTFAC || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
-                    <td><span class="badge badge-${estadoClass}">${estado}</span></td>
-                    <td>${cae ? `<span class="badge badge-success">${cae.cae}</span>` : '<span class="badge badge-info">Pendiente</span>'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-secondary" onclick="InvoicesComponent.viewDetail(${inv.TIPFAC}, ${inv.CODFAC})">
-                            <i data-lucide="eye"></i>
-                        </button>
-                        ${!cae ? `<button class="btn btn-sm btn-success" onclick="InvoicesComponent.validateInvoice(${inv.TIPFAC}, ${inv.CODFAC})">
-                            <i data-lucide="check-check"></i> CAE
-                        </button>` : ''}
-                    </td>
-                </tr>`;
-            }).join('');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            this._renderTable();
         } catch (err) {
             document.getElementById('invoices-loading').classList.add('hidden');
             App.toast(err.message, 'error');
+        } finally {
+            if (btnRefresh) {
+                btnRefresh.classList.remove('spinning');
+                btnRefresh.disabled = false;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
         }
     },
 
+    _updateCounter(count) {
+        const el = document.getElementById('invoice-count-badge');
+        if (el) el.textContent = count;
+    },
+
+    // ── Sort ─────────────────────────────────────────────────────────────
+    sortBy(col) {
+        if (this._sortCol === col) {
+            this._sortAsc = !this._sortAsc;
+        } else {
+            this._sortCol = col;
+            this._sortAsc = col !== 'CODFAC';  // numérico: desc por defecto
+        }
+        this._renderTable();
+    },
+
+    _sortedInvoices() {
+        const col = this._sortCol;
+        const asc = this._sortAsc;
+        return [...this._allInvoices].sort((a, b) => {
+            let va = a[col] ?? '';
+            let vb = b[col] ?? '';
+            // Fechas
+            if (col === 'FECFAC') {
+                va = va ? new Date(va).getTime() : 0;
+                vb = vb ? new Date(vb).getTime() : 0;
+            }
+            // Numéricos
+            if (col === 'CODFAC' || col === 'TOTFAC' || col === 'ESTFAC') {
+                va = Number(va) || 0;
+                vb = Number(vb) || 0;
+            }
+            if (va < vb) return asc ? -1 : 1;
+            if (va > vb) return asc ? 1 : -1;
+            return 0;
+        });
+    },
+
+    // ── Render tabla ─────────────────────────────────────────────────────
+    _renderTable() {
+        // Actualizar indicadores en headers
+        this.COLS.forEach(c => {
+            const th = document.getElementById(`th-${c.key}`);
+            if (!th || !c.sortable) return;
+            th.classList.toggle('sort-active', this._sortCol === c.key);
+            const arrow = th.querySelector('.sort-arrow');
+            if (arrow) {
+                arrow.textContent = this._sortCol === c.key
+                    ? (this._sortAsc ? ' ↑' : ' ↓')
+                    : ' ⇅';
+            }
+        });
+
+        const sorted = this._sortedInvoices();
+        const tbody = document.getElementById('invoices-tbody');
+        tbody.innerHTML = sorted.map(inv => {
+            const key = `${inv.TIPFAC}-${inv.CODFAC}`;
+            const cae = this._caeStatuses[key];
+            const validated = cae?.validated;
+
+            const estadoMap = { 0: ['Pendiente', 'warning'], 2: ['Cobrada', 'success'], 4: ['Anulada', 'danger'] };
+            const [estadoLabel, estadoClass] = estadoMap[inv.ESTFAC] ?? ['Pendiente', 'info'];
+            const fecha = this.formatDate(inv.FECFAC);
+            const hasCaeLocal = inv.BNOFAC && String(inv.BNOFAC).length > 3;
+
+            return `<tr class="${validated || hasCaeLocal ? 'row-validated' : ''}">
+                <td><strong>${inv.TIPFAC}-${inv.CODFAC}</strong></td>
+                <td>${fecha}</td>
+                <td class="td-cliente">${inv.CNOFAC || '-'}</td>
+                <td class="td-num">$ ${(inv.TOTFAC || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
+                <td><span class="badge badge-${estadoClass}">${estadoLabel}</span></td>
+                <td>
+                    ${validated
+                        ? `<span class="badge badge-success cae-mini" title="CAE: ${cae.cae}">✓ CAE</span>`
+                        : hasCaeLocal
+                            ? `<span class="badge badge-success cae-mini" title="CAE: ${inv.BNOFAC}">✓ CAE</span>`
+                            : `<span class="badge badge-light">Pendiente</span>`}
+                </td>
+                <td class="td-actions">
+                    <button class="btn btn-sm btn-secondary" title="Ver detalle"
+                        onclick="InvoicesComponent.viewDetail(${inv.TIPFAC}, ${inv.CODFAC})">
+                        <i data-lucide="eye"></i>
+                    </button>
+                    ${!validated && !hasCaeLocal
+                        ? `<button class="btn btn-sm btn-success" title="Validar en ARCA"
+                               onclick="InvoicesComponent.validateInvoice(${inv.TIPFAC}, ${inv.CODFAC})">
+                               <i data-lucide="check-check"></i> CAE
+                           </button>`
+                        : ''}
+                </td>
+            </tr>`;
+        }).join('');
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    },
+
+    // ── Modal detalle ─────────────────────────────────────────────────────
     async viewDetail(tipfac, codfac) {
         try {
             const data = await API.get(`/api/factusol/invoices/${tipfac}/${codfac}`);
@@ -106,23 +237,23 @@ const InvoicesComponent = {
 
             document.getElementById('modal-invoice-title').textContent = `Factura ${h.TIPFAC}-${h.CODFAC}`;
 
-            // ── Header info ──
             let html = `<div class="invoice-header-grid">
                 <div class="invoice-field"><label>Nro</label>${h.TIPFAC}-${h.CODFAC}</div>
                 <div class="invoice-field"><label>Fecha</label>${fecha}</div>
                 <div class="invoice-field"><label>Cliente</label>${h.CNOFAC || '-'}</div>
-                <div class="invoice-field"><label>Código Cliente</label>${h.CLIFAC || '-'}</div>
+                <div class="invoice-field"><label>Código</label>${h.CLIFAC || '-'}</div>
             </div>`;
 
-            // ── Datos del cliente ──
             if (data.cliente) {
                 html += `<div class="invoice-cliente-block">
                     <div class="invoice-cliente-header">
                         <span class="invoice-cliente-title"><i data-lucide="user"></i> Datos del Cliente en Factusol</span>
-                        ${cuit ? `<button class="btn btn-sm btn-padron" id="btn-consultar-padron"
-                            onclick="InvoicesComponent.consultarPadron('${cuit}', '${h.CNOFAC || ''}')">
-                            <i data-lucide="search"></i> Consultar ARCA
-                        </button>` : '<span class="padron-no-cuit"><i data-lucide="alert-circle"></i> Sin CUIT registrado</span>'}
+                        ${cuit
+                            ? `<button class="btn btn-sm btn-padron" id="btn-consultar-padron"
+                                onclick="InvoicesComponent.consultarPadron('${cuit}', '${(h.CNOFAC||'').replace(/'/g,"\\'")}')">
+                                <i data-lucide="search"></i> Consultar ARCA
+                              </button>`
+                            : `<span class="padron-no-cuit"><i data-lucide="alert-circle"></i> Sin CUIT</span>`}
                     </div>
                     <div class="invoice-header-grid">
                         <div class="invoice-field"><label>CUIT/DNI</label>${cuit || '-'}</div>
@@ -133,32 +264,37 @@ const InvoicesComponent = {
                 </div>`;
             }
 
-            // Placeholder del panel de padrón (se llena vía consultarPadron)
             html += `<div id="padron-panel" class="padron-panel hidden"></div>`;
 
-            // ── Líneas ──
+            // Líneas
             html += `<div class="invoice-lines-table"><table><thead><tr>
                 <th>Pos</th><th>Artículo</th><th>Descripción</th><th>Cant</th><th>Precio</th><th>IVA%</th><th>Total</th>
             </tr></thead><tbody>`;
-
             for (const l of data.lines) {
                 html += `<tr>
-                    <td>${l.POSLFA}</td>
-                    <td>${l.ARTLFA || ''}</td>
-                    <td>${l.DESLFA || ''}</td>
+                    <td>${l.POSLFA}</td><td>${l.ARTLFA || ''}</td><td>${l.DESLFA || ''}</td>
                     <td>${l.CANLFA || 0}</td>
                     <td>$ ${(l.PRELFA || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                     <td>${l.PIVLFA || 0}%</td>
                     <td>$ ${(l.TOTLFA || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                 </tr>`;
             }
-
             html += `</tbody></table></div>`;
             html += `<div class="invoice-total">Total: $ ${(h.TOTFAC || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>`;
 
-            // ── CAE status ──
+            // CAE ya grabado en Factusol
+            if (h.BNOFAC && String(h.BNOFAC).length > 3) {
+                html += `<div class="cae-validated-block">
+                    <div class="badge badge-success cae-badge">
+                        <i data-lucide="check-circle"></i> CAE: ${h.BNOFAC} | Vto: ${h.BNUFAC || '-'}
+                    </div>
+                    <p class="cae-meta">Grabado en Factusol (PEDFAC: ${h.PEDFAC || '-'})</p>
+                </div>`;
+            }
+
+            // CAE en el log local
             const caeStatus = await API.get(`/api/arca/status/${tipfac}/${codfac}`).catch(() => ({ validated: false }));
-            if (caeStatus.validated) {
+            if (caeStatus.validated && !(h.BNOFAC && String(h.BNOFAC).length > 3)) {
                 html += `<div class="cae-validated-block">
                     <div class="badge badge-success cae-badge">
                         <i data-lucide="check-circle"></i> CAE: ${caeStatus.cae} | Vto: ${caeStatus.cae_vto}
@@ -169,9 +305,9 @@ const InvoicesComponent = {
 
             document.getElementById('modal-invoice-body').innerHTML = html;
 
-            // ── Footer ──
             const footer = document.getElementById('modal-invoice-footer');
-            if (!caeStatus.validated && this.currentPv) {
+            const yaValidada = caeStatus.validated || (h.BNOFAC && String(h.BNOFAC).length > 3);
+            if (!yaValidada && this.currentPv) {
                 footer.innerHTML = `
                     <button class="btn btn-secondary modal-close">Cerrar</button>
                     <button class="btn btn-success" onclick="InvoicesComponent.validateInvoice(${tipfac}, ${codfac})">
@@ -180,15 +316,11 @@ const InvoicesComponent = {
             } else {
                 footer.innerHTML = '<button class="btn btn-secondary modal-close">Cerrar</button>';
             }
-
-            footer.querySelectorAll('.modal-close').forEach(el => {
-                el.addEventListener('click', () => this.closeModal());
-            });
+            footer.querySelectorAll('.modal-close').forEach(el => el.addEventListener('click', () => this.closeModal()));
 
             document.getElementById('invoice-modal').classList.remove('hidden');
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            // Si ya tenemos datos en caché, mostrarlos directamente
             if (cuit && this._padronCache[cuit]) {
                 this._renderPadronPanel(this._padronCache[cuit]);
             }
@@ -197,124 +329,59 @@ const InvoicesComponent = {
         }
     },
 
+    // ── Padrón ARCA ───────────────────────────────────────────────────────
     async consultarPadron(cuit, nombreActual) {
         const btn = document.getElementById('btn-consultar-padron');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Consultando...';
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Consultando...'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
         const panel = document.getElementById('padron-panel');
         if (panel) {
             panel.classList.remove('hidden');
-            panel.innerHTML = `<div class="padron-loading">
-                <i data-lucide="loader-2" class="spin-icon"></i>
-                <span>Consultando Padrón ARCA para CUIT ${cuit}...</span>
-            </div>`;
+            panel.innerHTML = `<div class="padron-loading"><i data-lucide="loader-2" class="spin-icon"></i><span>Consultando Padrón ARCA para CUIT ${cuit}...</span></div>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
-
         try {
             const data = await API.get(`/api/arca/padron/${cuit}`);
             this._padronCache[cuit] = data;
             this._renderPadronPanel(data, nombreActual);
         } catch (err) {
-            if (panel) {
-                panel.innerHTML = `<div class="padron-error">
-                    <i data-lucide="alert-triangle"></i>
-                    <span>Error al consultar padrón: ${err.message}</span>
-                </div>`;
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-            App.toast(`No se pudo consultar el padrón ARCA: ${err.message}`, 'error');
+            if (panel) { panel.innerHTML = `<div class="padron-error"><i data-lucide="alert-triangle"></i><span>Error: ${err.message}</span></div>`; if (typeof lucide !== 'undefined') lucide.createIcons(); }
+            App.toast(`Padrón ARCA: ${err.message}`, 'error');
         } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i data-lucide="search"></i> Consultar ARCA';
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="search"></i> Consultar ARCA'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
         }
     },
 
     _renderPadronPanel(data, nombreActual) {
         const panel = document.getElementById('padron-panel');
         if (!panel) return;
-
         panel.classList.remove('hidden');
-
-        // Determinar estado visual del CUIT
-        const estadoClass = data.estado_cuit === 'ACTIVO' ? 'padron-estado-activo'
-            : data.estado_cuit === 'INACTIVO' ? 'padron-estado-inactivo'
-            : 'padron-estado-nd';
-
-        // Armar nombre completo para persona física
-        const nombreCompleto = data.tipo_persona === 'FISICA'
-            ? `${data.apellido || ''} ${data.nombre || ''}`.trim()
-            : data.razon_social || '';
-
+        const estadoClass = data.estado_cuit === 'ACTIVO' ? 'padron-estado-activo' : data.estado_cuit === 'INACTIVO' ? 'padron-estado-inactivo' : 'padron-estado-nd';
+        const nombreCompleto = data.tipo_persona === 'FISICA' ? `${data.apellido || ''} ${data.nombre || ''}`.trim() : data.razon_social || '';
         const dom = data.domicilio_fiscal || {};
         const domStr = [dom.calle, dom.numero, dom.piso, dom.depto].filter(Boolean).join(' ');
         const locStr = [dom.localidad, dom.provincia, dom.cp].filter(Boolean).join(' · ');
+        const hasDiff = nombreActual && nombreCompleto && nombreActual.trim().toLowerCase() !== nombreCompleto.toLowerCase();
 
-        // Detectar diferencias con lo que hay en Factusol
-        const factNombre = (nombreActual || '').trim().toLowerCase();
-        const arcaNombre = nombreCompleto.toLowerCase();
-        const hasDiff = factNombre && arcaNombre && factNombre !== arcaNombre;
-
-        panel.innerHTML = `
-            <div class="padron-result">
-                <div class="padron-result-header">
-                    <div class="padron-result-title">
-                        <i data-lucide="shield-check"></i>
-                        <span>Datos en el Padrón ARCA</span>
-                    </div>
-                    <span class="padron-estado ${estadoClass}">
-                        ${data.estado_cuit || 'N/D'}
-                    </span>
-                </div>
-
-                <div class="padron-data-grid">
-                    <div class="padron-field">
-                        <label>CUIT</label>
-                        <span class="padron-value">${this._formatCuit(data.cuit)}</span>
-                    </div>
-                    <div class="padron-field">
-                        <label>Tipo Persona</label>
-                        <span class="padron-value">${data.tipo_persona || '-'}</span>
-                    </div>
-                    <div class="padron-field padron-field-wide">
-                        <label>Razón Social / Nombre</label>
-                        <span class="padron-value padron-nombre ${hasDiff ? 'padron-diff' : ''}">
-                            ${nombreCompleto || data.razon_social || '-'}
-                            ${hasDiff ? '<span class="padron-diff-badge" title="Difiere del nombre en Factusol">≠ Factusol</span>' : ''}
-                        </span>
-                    </div>
-                    <div class="padron-field padron-field-wide">
-                        <label>Condición IVA</label>
-                        <span class="padron-value">${data.condicion_iva || '-'}</span>
-                    </div>
-                    ${domStr ? `<div class="padron-field padron-field-wide">
-                        <label>Domicilio Fiscal</label>
-                        <span class="padron-value">${domStr}</span>
-                    </div>` : ''}
-                    ${locStr ? `<div class="padron-field padron-field-wide">
-                        <label>Localidad · CP</label>
-                        <span class="padron-value">${locStr}</span>
-                    </div>` : ''}
-                </div>
-
-                ${hasDiff ? `<div class="padron-diff-alert">
-                    <i data-lucide="alert-circle"></i>
-                    <span>El nombre en Factusol (<strong>${nombreActual}</strong>) difiere del Padrón ARCA (<strong>${nombreCompleto}</strong>). Revisar en Factusol.</span>
-                </div>` : ''}
-
-                <div class="padron-footer-note">
-                    <i data-lucide="info"></i>
-                    Datos obtenidos en tiempo real del Padrón ARCA. La actualización en Factusol debe realizarse manualmente.
-                </div>
-            </div>`;
-
+        panel.innerHTML = `<div class="padron-result">
+            <div class="padron-result-header">
+                <div class="padron-result-title"><i data-lucide="shield-check"></i><span>Datos en el Padrón ARCA</span></div>
+                <span class="padron-estado ${estadoClass}">${data.estado_cuit || 'N/D'}</span>
+            </div>
+            <div class="padron-data-grid">
+                <div class="padron-field"><label>CUIT</label><span class="padron-value">${this._formatCuit(data.cuit)}</span></div>
+                <div class="padron-field"><label>Tipo Persona</label><span class="padron-value">${data.tipo_persona || '-'}</span></div>
+                <div class="padron-field padron-field-wide"><label>Razón Social / Nombre</label>
+                    <span class="padron-value padron-nombre ${hasDiff ? 'padron-diff' : ''}">
+                        ${nombreCompleto || data.razon_social || '-'}
+                        ${hasDiff ? '<span class="padron-diff-badge" title="Difiere del nombre en Factusol">≠ Factusol</span>' : ''}
+                    </span></div>
+                <div class="padron-field padron-field-wide"><label>Condición IVA</label><span class="padron-value">${data.condicion_iva || '-'}</span></div>
+                ${domStr ? `<div class="padron-field padron-field-wide"><label>Domicilio Fiscal</label><span class="padron-value">${domStr}</span></div>` : ''}
+                ${locStr ? `<div class="padron-field padron-field-wide"><label>Localidad · CP</label><span class="padron-value">${locStr}</span></div>` : ''}
+            </div>
+            ${hasDiff ? `<div class="padron-diff-alert"><i data-lucide="alert-circle"></i><span>El nombre en Factusol (<strong>${nombreActual}</strong>) difiere del Padrón (<strong>${nombreCompleto}</strong>).</span></div>` : ''}
+            <div class="padron-footer-note"><i data-lucide="info"></i>Datos en tiempo real del Padrón ARCA. Actualizar en Factusol manualmente.</div>
+        </div>`;
         if (typeof lucide !== 'undefined') lucide.createIcons();
     },
 
@@ -323,22 +390,15 @@ const InvoicesComponent = {
         return `${cuit.slice(0,2)}-${cuit.slice(2,10)}-${cuit.slice(10)}`;
     },
 
+    // ── Validar en ARCA ───────────────────────────────────────────────────
     async validateInvoice(tipfac, codfac) {
-        if (!this.currentPv) {
-            App.toast('No tiene un punto de venta seleccionado', 'error');
-            return;
-        }
-
-        if (!confirm(`¿Validar factura ${tipfac}-${codfac} en ARCA?\nPunto de Venta: ${this.currentPv.punto_venta}\nTipo: ${DashboardComponent.tipoComprobante(this.currentPv.tipo_comprobante)}`)) {
-            return;
-        }
-
+        if (!this.currentPv) { App.toast('No tiene un punto de venta seleccionado', 'error'); return; }
+        if (!confirm(`¿Validar factura ${tipfac}-${codfac} en ARCA?\nPunto de Venta: ${this.currentPv.punto_venta}`)) return;
         try {
             const result = await API.post(`/api/arca/validate/${tipfac}/${codfac}?pv_id=${this.currentPv.id}`);
             App.toast(result.message, result.status === 'ok' || result.status === 'already_validated' ? 'success' : 'info');
-
             this.closeModal();
-            this.loadInvoices();
+            this.refresh();
         } catch (err) {
             App.toast(`Error: ${err.message}`, 'error');
         }
