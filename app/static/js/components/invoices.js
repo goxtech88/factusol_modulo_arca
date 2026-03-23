@@ -391,17 +391,40 @@ const InvoicesComponent = {
 
     // ── Validar en ARCA ───────────────────────────────────────────────────
     async validateInvoice(tipfac, codfac) {
-        if (!this.currentPv) { App.toast('No tiene un punto de venta seleccionado', 'error'); return; }
-        if (!confirm(`¿Validar factura ${tipfac}-${codfac} en ARCA?\nPunto de Venta: ${this.currentPv.punto_venta}`)) return;
+        if (!this.currentPv) {
+            App.toast('No tiene un punto de venta seleccionado', 'error');
+            return;
+        }
+        if (!confirm(
+            `Validar factura ${tipfac}-${codfac} en ARCA?\n` +
+            `Punto de Venta: ${this.currentPv.punto_venta}\n` +
+            `Esta accion solicitara un CAE a AFIP.`
+        )) return;
+
+        // Toast de progreso
+        App.toast('Solicitando CAE a ARCA...', 'info');
+
         try {
             const result = await API.post(`/api/arca/validate/${tipfac}/${codfac}?pv_id=${this.currentPv.id}`);
-            App.toast(result.message, result.status === 'ok' || result.status === 'already_validated' ? 'success' : 'info');
+
+            if (result.status === 'ok') {
+                App.toast(`CAE obtenido: ${result.cae}`, 'success');
+            } else if (result.status === 'already_validated') {
+                App.toast(`Factura ya validada. CAE: ${result.cae}`, 'info');
+            } else {
+                App.toast(result.message || 'Respuesta inesperada de ARCA', 'warning');
+            }
+
             this.closeModal();
             this.refresh();
         } catch (err) {
-            App.toast(`Error: ${err.message}`, 'error');
+            // Mostrar error detallado y claro
+            const msg = err.message || 'Error desconocido';
+            App.toast(`Error ARCA: ${msg}`, 'error');
+            console.error('[ARCA] Error en validateInvoice:', msg);
         }
     },
+
 
     closeModal() {
         document.getElementById('invoice-modal').classList.add('hidden');

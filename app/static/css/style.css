@@ -1039,6 +1039,27 @@ tbody tr {
     flex-shrink: 0;
 }
 
+.toast-msg {
+    flex: 1;
+    line-height: 1.3;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 2px;
+    opacity: 0.5;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
 .toast-success {
     border-left-color: var(--success);
     color: var(--success);
@@ -1047,12 +1068,21 @@ tbody tr {
 .toast-error {
     border-left-color: var(--danger);
     color: var(--danger);
+    background: var(--danger-bg);
+}
+
+.toast-warning {
+    border-left-color: var(--warning);
+    color: var(--warning);
+    background: var(--warning-bg);
 }
 
 .toast-info {
     border-left-color: var(--info);
     color: var(--info);
 }
+
+
 
 /* === Config Grid === */
 .config-grid {

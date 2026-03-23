@@ -137,17 +137,34 @@ const App = {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        const iconMap = { success: 'check-circle', error: 'alert-circle', info: 'info' };
+
+        const iconMap = {
+            success: 'check-circle',
+            error: 'alert-circle',
+            warning: 'alert-triangle',
+            info: 'info',
+        };
         const iconName = iconMap[type] || 'info';
-        toast.innerHTML = `<i data-lucide="${iconName}"></i> ${message}`;
+
+        // Duracion segun tipo
+        const durationMap = { error: 8000, warning: 6000, success: 4000, info: 4000 };
+        const duration = durationMap[type] || 4000;
+
+        toast.innerHTML = `
+            <i data-lucide="${iconName}"></i>
+            <span class="toast-msg">${message}</span>
+            <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+        `;
         container.appendChild(toast);
         if (typeof lucide !== 'undefined') lucide.createIcons();
+
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateX(50px)';
             setTimeout(() => toast.remove(), 300);
-        }, 4000);
+        }, duration);
     },
+
 
     debounce(fn, ms) {
         let timer;
