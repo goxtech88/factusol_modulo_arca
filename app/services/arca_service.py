@@ -397,7 +397,7 @@ def validate_invoice(
     # Agregar alícuotas de IVA
     for iva_item in data.get("iva", []):
         wsfe.AgregarIva(
-            id=iva_item["Id"],
+            iva_id=iva_item["Id"],
             base_imp=iva_item["BaseImp"],
             importe=iva_item["Importe"],
         )
