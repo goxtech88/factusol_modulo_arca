@@ -40,17 +40,27 @@ def verify_license(cuit: str, license_key: str) -> bool:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Uso: python license_gen.py <CUIT>")
-        print("Ejemplo: python license_gen.py 20-12345678-9")
+    print("\n" + "=" * 44)
+    print("  Factusol ARCA Sync — Generador de Licencias")
+    print("=" * 44)
+
+    if len(sys.argv) >= 2:
+        cuit = sys.argv[1]
+    else:
+        cuit = input("\n  Ingrese CUIT del cliente: ").strip()
+
+    if not cuit:
+        print("  ❌ CUIT vacío")
+        input("\n  Presione Enter para salir...")
         sys.exit(1)
 
-    cuit = sys.argv[1]
-    key = generate_license(cuit)
-    cuit_clean = cuit.replace("-", "").replace(" ", "").strip()
-    print(f"\n{'='*40}")
-    print(f"  Factusol ARCA Sync — Licencia")
-    print(f"{'='*40}")
-    print(f"  CUIT:     {cuit}")
-    print(f"  Licencia: {key}")
-    print(f"{'='*40}\n")
+    try:
+        key = generate_license(cuit)
+        cuit_clean = cuit.replace("-", "").replace(" ", "").strip()
+        print(f"\n  CUIT:     {cuit}")
+        print(f"  Licencia: {key}")
+        print("\n" + "=" * 44)
+    except Exception as e:
+        print(f"  ❌ Error: {e}")
+
+    input("\n  Presione Enter para salir...")
