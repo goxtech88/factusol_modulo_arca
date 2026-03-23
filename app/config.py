@@ -1,14 +1,32 @@
 """
 Configuración del sistema.
-Lee/escribe config.json en la raíz del proyecto.
+Lee/escribe config.json en el directorio de trabajo actual (CWD).
+Esto permite múltiples instancias: cada carpeta = una empresa.
 """
 import json
 import os
+import sys
 from pathlib import Path
 
-# Directorio raíz del proyecto
-BASE_DIR = Path(__file__).resolve().parent.parent
-CONFIG_FILE = BASE_DIR / "config.json"
+
+def _get_data_dir() -> Path:
+    """
+    Directorio de datos de la instancia.
+    - En producción (exe): directorio de trabajo actual (CWD)
+    - En desarrollo: raíz del proyecto
+    """
+    if getattr(sys, "frozen", False):
+        # Empaquetado con PyInstaller — usa CWD
+        return Path.cwd()
+    else:
+        # Desarrollo — raíz del proyecto
+        return Path(__file__).resolve().parent.parent
+
+
+# Directorio base de esta instancia
+DATA_DIR = _get_data_dir()
+BASE_DIR = Path(__file__).resolve().parent.parent  # siempre el código fuente
+CONFIG_FILE = DATA_DIR / "config.json"
 
 DEFAULT_CONFIG = {
     "empresa": {
@@ -29,8 +47,8 @@ DEFAULT_CONFIG = {
     },
     "app": {
         "secret_key": "cambiar-por-una-clave-segura",
-        "host": "0.0.0.0",
-        "port": 8000,
+        "host": "127.0.0.1",
+        "port": 8765,
     },
 }
 

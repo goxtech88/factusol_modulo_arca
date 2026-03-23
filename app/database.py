@@ -1,11 +1,12 @@
 """
 Base de datos SQLite para datos de la app (usuarios, logs de CAE).
+La DB se crea en DATA_DIR para soportar multi-instancia.
 """
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from app.config import get_config, BASE_DIR
+from app.config import DATA_DIR
 
-DATABASE_PATH = BASE_DIR / "app_data.db"
+DATABASE_PATH = DATA_DIR / "app_data.db"
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
