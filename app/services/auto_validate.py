@@ -1,10 +1,11 @@
 """
 Auto-validación de facturas en ARCA.
-Background task que cada N segundos busca facturas sin CAE y las valida automáticamente.
+Background task que cada N segundos busca facturas de HOY sin CAE y las valida.
 """
 import asyncio
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, date
 
 from app.config import get_config, save_config, load_config
 from app.database import SessionLocal
@@ -46,7 +47,7 @@ def get_status() -> dict:
         "interval_seconds": interval,
         "last_run": _last_run,
         "last_result": _last_result,
-        "log": _log_lines[-20:],  # últimas 20 líneas
+        "log": _log_lines[-20:],
     }
 
 
@@ -78,9 +79,13 @@ def set_interval(seconds: int) -> dict:
     return get_status()
 
 
+# ── Background loop ──────────────────────────────────────────────────────────
+
 async def _auto_validate_loop():
     """Loop principal de auto-validación."""
     global _running, _last_run, _last_result
+
+    _add_log("Loop de auto-validación iniciado", "info")
 
     while True:
         config = get_config()
@@ -94,10 +99,11 @@ async def _auto_validate_loop():
         interval = av_config.get("interval_seconds", 60)
 
         try:
-            count = await _validate_pending()
+            count = await asyncio.to_thread(_validate_pending_sync)
             _last_run = datetime.now().strftime("%H:%M:%S")
             if count > 0:
                 _last_result = f"{count} factura(s) validada(s)"
+                _add_log(f"Ciclo completado: {count} validada(s)", "success")
             else:
                 _last_result = "Sin pendientes"
         except Exception as e:
@@ -107,28 +113,49 @@ async def _auto_validate_loop():
         await asyncio.sleep(interval)
 
 
-async def _validate_pending() -> int:
-    """Busca facturas sin CAE y las valida. Retorna cantidad validada."""
+# ── Sync validation (runs in thread) ─────────────────────────────────────────
+
+def _is_today(fecfac) -> bool:
+    """Verifica si la fecha de la factura es hoy."""
+    today = date.today()
+    if hasattr(fecfac, "date"):
+        return fecfac.date() == today
+    if hasattr(fecfac, "year"):
+        return fecfac == today
+    # String format: "2026-03-23" o "20260323"
+    s = str(fecfac or "").replace("-", "").strip()[:8]
+    if len(s) == 8:
+        try:
+            return s == today.strftime("%Y%m%d")
+        except Exception:
+            pass
+    return False
+
+
+def _validate_pending_sync() -> int:
+    """Busca facturas de HOY sin CAE y las valida (sync)."""
     db = SessionLocal()
     validated = 0
 
     try:
-        # Buscar todos los PV configurados
         pvs = db.query(UserPuntoVenta).all()
         if not pvs:
             return 0
 
         for pv_config in pvs:
             tipfac = pv_config.serie_factusol
-
-            # Obtener facturas de esta serie
             invoices = factusol_service.get_invoices(tipfac)
 
             for inv in invoices:
                 codfac = inv.get("CODFAC")
-                bnofac = str(inv.get("BNOFAC", "") or "").strip()
+                fecfac = inv.get("FECFAC")
+
+                # Solo facturas de HOY
+                if not _is_today(fecfac):
+                    continue
 
                 # Ya tiene CAE en Factusol?
+                bnofac = str(inv.get("BNOFAC", "") or "").strip()
                 if bnofac and len(bnofac) > 3:
                     continue
 
@@ -142,9 +169,7 @@ async def _validate_pending() -> int:
 
                 # ── Validar ──
                 try:
-                    result = await _validate_single(
-                        tipfac, codfac, pv_config, db
-                    )
+                    result = _validate_single_sync(tipfac, codfac, pv_config, db)
                     if result:
                         validated += 1
                         _add_log(
@@ -154,8 +179,8 @@ async def _validate_pending() -> int:
                 except Exception as e:
                     _add_log(f"Error {tipfac}-{codfac}: {str(e)[:80]}", "error")
 
-                # Pequeña pausa entre facturas para no saturar AFIP
-                await asyncio.sleep(2)
+                # Pausa entre facturas para no saturar AFIP
+                time.sleep(2)
 
     finally:
         db.close()
@@ -163,21 +188,19 @@ async def _validate_pending() -> int:
     return validated
 
 
-async def _validate_single(
+def _validate_single_sync(
     tipfac: int, codfac: int, pv_config: UserPuntoVenta, db
 ) -> dict | None:
-    """Valida una factura individual. Retorna resultado o None."""
-    from app.config import get_config as _get_config
+    """Valida una factura individual (sync)."""
 
     detail = factusol_service.get_invoice_detail(tipfac, codfac)
     if not detail:
         return None
 
-    config = _get_config()
+    config = get_config()
     cond_emisor = config.get("empresa", {}).get("condicion_iva", "Responsable Inscripto")
     cfecli = detail.get("cliente", {}).get("CFECLI", 0) or 0
 
-    # Tipo comprobante: fijo del PV o auto por CFECLI
     if pv_config.tipo_comprobante and pv_config.tipo_comprobante != 0:
         tipo_comprobante = pv_config.tipo_comprobante
     else:
@@ -185,7 +208,6 @@ async def _validate_single(
 
     _add_log(f"Validando {tipfac}-{codfac} (tipo {tipo_comprobante}, PV {pv_config.punto_venta})...")
 
-    # Validar en ARCA
     result = arca_service.validate_invoice(
         invoice_header=detail["header"],
         invoice_lines=detail["lines"],
@@ -223,8 +245,7 @@ async def _validate_single(
     elif isinstance(_fecha_raw, str) and len(_fecha_raw) >= 8:
         _fecha_str = _fecha_raw[:10]
     else:
-        from datetime import datetime as _dt
-        _fecha_str = _dt.now().strftime("%Y-%m-%d")
+        _fecha_str = datetime.now().strftime("%Y-%m-%d")
 
     qr_path = arca_service.generate_afip_qr(
         cuit_emisor=_cuit,
@@ -263,20 +284,24 @@ async def _validate_single(
     }
 
 
+# ── Task management ──────────────────────────────────────────────────────────
+
 def start_background_task():
-    """Inicia el task en background si no existe."""
+    """Inicia el task en background."""
     global _task
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
     except RuntimeError:
-        return  # No hay loop, se iniciará después
+        return  # No hay loop corriendo, se iniciará en el lifespan
     if _task is None or _task.done():
         _task = loop.create_task(_auto_validate_loop())
+        logger.info("🤖 Background task de auto-validación creado")
 
 
 def stop_background_task():
     """Para el task."""
-    global _task
+    global _task, _running
+    _running = False
     if _task and not _task.done():
         _task.cancel()
         _task = None

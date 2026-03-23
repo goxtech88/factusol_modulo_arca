@@ -374,7 +374,7 @@ def auto_validate_status(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/auto-validate/toggle")
-def auto_validate_toggle(
+async def auto_validate_toggle(
     enabled: bool,
     current_user: User = Depends(get_current_user),
 ):
