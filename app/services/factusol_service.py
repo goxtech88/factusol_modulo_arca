@@ -159,22 +159,58 @@ def get_invoice_detail(tipfac: int, codfac: int) -> Optional[dict]:
         conn.close()
 
 
-def get_customers(search: str = "", limit: int = 50) -> list[dict]:
-    """Obtiene lista de clientes."""
+def get_customers(search: str = "", limit: int = 200) -> list[dict]:
+    """Obtiene lista de clientes con datos fiscales."""
     conn = _get_connection()
     try:
         cursor = conn.cursor()
-        query = "SELECT CODCLI, NOFCLI, DOMCLI, POBCLI, NIFCLI, TELCLI FROM F_CLI"
+        query = """SELECT CODCLI, NOFCLI, DOMCLI, POBCLI, CPOCLI, PROCLI,
+                          NIFCLI, TELCLI, IVACLI, CFECLI, EMACLI
+                   FROM F_CLI"""
         params = []
         if search:
-            query += " WHERE NOFCLI LIKE ? OR NIFCLI LIKE ?"
-            params = [f"%{search}%", f"%{search}%"]
+            query += " WHERE NOFCLI LIKE ? OR NIFCLI LIKE ? OR CODCLI LIKE ?"
+            params = [f"%{search}%", f"%{search}%", f"%{search}%"]
         query += " ORDER BY NOFCLI"
         cursor.execute(query, params)
         columns = [desc[0] for desc in cursor.description]
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
     finally:
         conn.close()
+
+
+def update_customer_fiscal(codcli: int, data: dict) -> bool:
+    """Actualiza datos fiscales del cliente en F_CLI."""
+    conn = _get_connection()
+    try:
+        cursor = conn.cursor()
+        sets = []
+        params = []
+        field_map = {
+            "NOFCLI": str, "DOMCLI": str, "POBCLI": str, "CPOCLI": str,
+            "PROCLI": str, "NIFCLI": str, "CFECLI": int, "IVACLI": int,
+        }
+        for field, cast in field_map.items():
+            if field in data and data[field] is not None:
+                sets.append(f"{field} = ?")
+                params.append(cast(data[field]))
+
+        if not sets:
+            return False
+
+        params.append(codcli)
+        cursor.execute(
+            f"UPDATE F_CLI SET {', '.join(sets)} WHERE CODCLI = ?",
+            params,
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
 
 
 def get_articles(search: str = "", limit: int = 50) -> list[dict]:

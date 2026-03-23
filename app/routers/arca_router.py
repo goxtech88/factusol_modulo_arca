@@ -137,6 +137,8 @@ def validate_invoice(
         cae=result.get("CAE", ""),
         cae_vto=result.get("CAEFchVto", ""),
         imp_total=detail["header"].get("TOTFAC"),
+        imp_neto=sum(float(detail["header"].get(f"BAS{i}FAC") or 0) for i in range(1, 5)),
+        imp_iva=sum(float(detail["header"].get(f"IIVA{i}FAC") or 0) for i in range(1, 5)),
         cliente_nombre=detail["header"].get("CNOFAC"),
         cliente_doc=detail.get("cliente", {}).get("NIFCLI") if detail.get("cliente") else None,
     )
@@ -244,11 +246,11 @@ def list_cae_logs(
 ):
     """Lista los CAE emitidos por el usuario actual."""
     if current_user.role == "admin":
-        logs = db.query(CAELog).order_by(CAELog.created_at.desc()).limit(100).all()
+        logs = db.query(CAELog).order_by(CAELog.created_at.desc()).limit(500).all()
     else:
         logs = db.query(CAELog).filter(
             CAELog.user_id == current_user.id
-        ).order_by(CAELog.created_at.desc()).limit(100).all()
+        ).order_by(CAELog.created_at.desc()).limit(500).all()
 
     return [
         {
@@ -261,7 +263,10 @@ def list_cae_logs(
             "cae": l.cae,
             "cae_vto": l.cae_vto,
             "imp_total": l.imp_total,
+            "imp_neto": l.imp_neto,
+            "imp_iva": l.imp_iva,
             "cliente_nombre": l.cliente_nombre,
+            "cliente_doc": l.cliente_doc,
             "created_at": l.created_at.isoformat() if l.created_at else None,
         }
         for l in logs

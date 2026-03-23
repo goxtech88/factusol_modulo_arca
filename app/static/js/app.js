@@ -80,6 +80,7 @@ const App = {
         const titles = {
             dashboard: 'Dashboard',
             invoices: 'Facturas',
+            customers: 'Clientes',
             'cae-logs': 'CAE Emitidos',
             users: 'Usuarios',
             config: 'Configuración',
@@ -104,6 +105,9 @@ const App = {
                 break;
             case 'invoices':
                 InvoicesComponent.loadPuntosVenta();
+                break;
+            case 'customers':
+                CustomersComponent.load();
                 break;
             case 'cae-logs':
                 CAELogsComponent.load();

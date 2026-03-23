@@ -64,6 +64,21 @@ def list_customers(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.put("/customers/{codcli}/fiscal")
+def update_customer_fiscal(
+    codcli: int,
+    data: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """Actualiza datos fiscales de un cliente en Factusol."""
+    try:
+        factusol_service.update_customer_fiscal(codcli, data)
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 @router.get("/articles")
 def list_articles(
     search: str = Query(""),
