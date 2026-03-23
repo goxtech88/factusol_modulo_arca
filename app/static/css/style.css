@@ -2327,3 +2327,112 @@ mark.fb-highlight {
     color: #fab387;
 }
 
+
+/* === Auto-validación Panel === */
+.auto-validate-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.auto-validate-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.auto-validate-info [data-lucide] {
+    width: 28px;
+    height: 28px;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.auto-validate-info h4 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.auto-validate-info p {
+    margin: 2px 0 0;
+    font-size: 11px;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 26px;
+    transition: all 0.3s ease;
+}
+
+.toggle-slider::before {
+    content: "";
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-color: #16a34a;
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(22px);
+}
+
+/* Auto-log mini terminal */
+.auto-log {
+    background: #1a1a2e;
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-top: 10px;
+    max-height: 120px;
+    overflow-y: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 11px;
+}
+
+.auto-log-line {
+    padding: 1px 0;
+    line-height: 1.4;
+    color: #cdd6f4;
+}
+
+.auto-log-line.log-error { color: #f38ba8; }
+.auto-log-line.log-success { color: #a6e3a1; }
+.auto-log-line.log-info { color: #89b4fa; }
+
+.auto-log-time {
+    color: #6c7086;
+    margin-right: 6px;
+}
+
+.text-success { color: var(--success) !important; }
+.text-muted { color: var(--text-muted) !important; }

@@ -63,7 +63,84 @@ const DashboardComponent = {
 
         // Cargar monitor ARCA
         this.loadMonitor();
+
+        // Cargar panel de auto-validación
+        this.loadAutoValidate();
     },
+
+    // ── Auto-validación ─────────────────────────────────────────────────
+    _autoTimer: null,
+
+    async loadAutoValidate() {
+        const container = document.getElementById('auto-validate-panel');
+        if (!container) return;
+
+        try {
+            const status = await API.get('/api/arca/auto-validate/status');
+            this._renderAutoValidate(container, status);
+
+            // Polling cada 10s si está activo
+            if (this._autoTimer) clearInterval(this._autoTimer);
+            if (status.enabled) {
+                this._autoTimer = setInterval(async () => {
+                    try {
+                        const s = await API.get('/api/arca/auto-validate/status');
+                        this._renderAutoValidate(container, s);
+                    } catch { /* ignore */ }
+                }, 10000);
+            }
+        } catch {
+            container.innerHTML = '<p style="color:var(--text-muted)">Auto-validación no disponible</p>';
+        }
+    },
+
+    _renderAutoValidate(container, status) {
+        const isOn = status.enabled;
+        const logLines = (status.log || []).slice(-8);
+
+        let logsHtml = '';
+        if (logLines.length > 0) {
+            logsHtml = `<div class="auto-log">` +
+                logLines.map(l => {
+                    const cls = l.level === 'error' ? 'log-error' : l.level === 'success' ? 'log-success' : 'log-info';
+                    return `<div class="auto-log-line ${cls}"><span class="auto-log-time">${l.time}</span> ${l.msg}</div>`;
+                }).join('') +
+            `</div>`;
+        }
+
+        container.innerHTML = `
+            <div class="auto-validate-header">
+                <div class="auto-validate-info">
+                    <i data-lucide="${isOn ? 'bot' : 'bot-off'}"></i>
+                    <div>
+                        <h4>Auto-validación CAE</h4>
+                        <p class="${isOn ? 'text-success' : 'text-muted'}">
+                            ${isOn ? `Activo — cada ${status.interval_seconds}s` : 'Desactivado'}
+                            ${status.last_run ? ` · Último: ${status.last_run}` : ''}
+                            ${status.last_result ? ` · ${status.last_result}` : ''}
+                        </p>
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" ${isOn ? 'checked' : ''} onchange="DashboardComponent.toggleAutoValidate(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            ${logsHtml}
+        `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    },
+
+    async toggleAutoValidate(enabled) {
+        try {
+            await API.post(`/api/arca/auto-validate/toggle?enabled=${enabled}`);
+            App.toast(enabled ? 'Auto-validación activada' : 'Auto-validación desactivada', 'success');
+            this.loadAutoValidate();
+        } catch (err) {
+            App.toast(err.message, 'error');
+        }
+    },
+
 
     // ── Monitor de servidores ARCA ────────────────────────────────────────
     async loadMonitor() {

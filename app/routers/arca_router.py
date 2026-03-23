@@ -362,3 +362,36 @@ def consultar_padron(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Error al consultar padrón ARCA: {str(e)}")
+
+
+# ── Auto-validación ──────────────────────────────────────────────────────────
+
+@router.get("/auto-validate/status")
+def auto_validate_status(current_user: User = Depends(get_current_user)):
+    """Estado del auto-validador."""
+    from app.services import auto_validate
+    return auto_validate.get_status()
+
+
+@router.post("/auto-validate/toggle")
+def auto_validate_toggle(
+    enabled: bool,
+    current_user: User = Depends(get_current_user),
+):
+    """Activa/desactiva la auto-validación."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    from app.services import auto_validate
+    return auto_validate.toggle(enabled)
+
+
+@router.post("/auto-validate/interval")
+def auto_validate_interval(
+    seconds: int,
+    current_user: User = Depends(get_current_user),
+):
+    """Cambia el intervalo de chequeo (30-600 segundos)."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    from app.services import auto_validate
+    return auto_validate.set_interval(seconds)

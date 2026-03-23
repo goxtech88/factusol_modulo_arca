@@ -45,9 +45,18 @@ async def lifespan(app: FastAPI):
     # Startup
     init_db()
     _create_default_admin()
+
+    # Iniciar auto-validador si está habilitado
+    from app.services import auto_validate
+    from app.config import get_config
+    if get_config().get("auto_validate", {}).get("enabled", False):
+        auto_validate.start_background_task()
+        print("🤖 Auto-validación ARCA activada")
+
     print("🚀 Factusol Módulo ARCA iniciado")
     yield
     # Shutdown
+    auto_validate.stop_background_task()
     print("👋 Factusol Módulo ARCA detenido")
 
 
