@@ -354,11 +354,22 @@ def validate_invoice(
 
     Retorna: {"CAE": str, "CAEFchVto": str, "voucher_number": int}
     """
+    import logging
+    log = logging.getLogger("arca_service")
+
     wsfe = _create_wsfe_instance()
     data = build_voucher_data(invoice_header, invoice_lines, cliente, punto_venta, tipo_comprobante)
 
-    # Obtener próximo número de comprobante
-    next_cbte = get_last_voucher_number(punto_venta, tipo_comprobante) + 1
+    # Obtener próximo número de comprobante (reusar misma instancia)
+    last = wsfe.CompUltimoAutorizado(tipo_comprobante, punto_venta)
+    if wsfe.Excepcion:
+        raise ValueError(f"Error al consultar último comprobante: {wsfe.Excepcion}")
+    next_cbte = int(last or 0) + 1
+
+    log.info(f"[ARCA] PV={punto_venta} TipoCbte={tipo_comprobante} UltCbte={last} NextCbte={next_cbte}")
+    log.info(f"[ARCA] ImpTotal={data['imp_total']} Neto={data['imp_neto']} IVA={data['imp_iva']} "
+             f"DocTipo={data['tipo_doc']} DocNro={data['nro_doc']} Concepto={data['concepto']}")
+    log.info(f"[ARCA] IVA array: {data.get('iva', [])}")
 
     # Armar comprobante en WSFEv1
     wsfe.CrearFactura(
@@ -394,10 +405,20 @@ def validate_invoice(
     # Solicitar CAE
     wsfe.CAESolicitar()
 
+    log.info(f"[ARCA] Resultado={wsfe.Resultado} CAE={wsfe.CAE} Vto={wsfe.Vencimiento}")
+    if wsfe.Obs:
+        log.warning(f"[ARCA] Observaciones: {wsfe.Obs}")
+    if wsfe.ErrMsg:
+        log.error(f"[ARCA] ErrMsg: {wsfe.ErrMsg}")
+
     if wsfe.Excepcion:
         raise ValueError(f"Error WSFE al solicitar CAE: {wsfe.Excepcion}")
     if wsfe.ErrMsg:
         raise ValueError(f"Error AFIP: {wsfe.ErrMsg}")
+
+    # Si fue rechazado sin ErrMsg pero con observaciones
+    if wsfe.Resultado == "R" and not wsfe.CAE:
+        raise ValueError(f"Rechazado por AFIP: {wsfe.Obs or 'Sin detalle'}")
 
     return {
         "CAE": wsfe.CAE,
@@ -406,6 +427,7 @@ def validate_invoice(
         "resultado": wsfe.Resultado,
         "obs": wsfe.Obs,
     }
+
 
 
 def get_voucher_info(punto_venta: int, tipo_comprobante: int, voucher_number: int) -> dict:

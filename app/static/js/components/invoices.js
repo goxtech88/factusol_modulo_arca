@@ -236,12 +236,33 @@ const InvoicesComponent = {
 
             document.getElementById('modal-invoice-title').textContent = `Factura ${h.TIPFAC}-${h.CODFAC}`;
 
+            // Condicion IVA del cliente
+            const ivaMap = { 0: 'Resp. Inscripto', 1: 'Monotributista', 3: 'Exento', 4: 'Consumidor Final' };
+            const condIva = data.cliente ? (ivaMap[data.cliente.IVACLI] || `Tipo ${data.cliente.IVACLI}`) : '-';
+
             let html = `<div class="invoice-header-grid">
                 <div class="invoice-field"><label>Nro</label>${h.TIPFAC}-${h.CODFAC}</div>
                 <div class="invoice-field"><label>Fecha</label>${fecha}</div>
                 <div class="invoice-field"><label>Cliente</label>${h.CNOFAC || '-'}</div>
-                <div class="invoice-field"><label>Código</label>${h.CLIFAC || '-'}</div>
+                <div class="invoice-field"><label>Cod. Cliente</label>${h.CLIFAC || '-'}</div>
+                <div class="invoice-field"><label>Cond. IVA</label>${condIva}</div>
+                <div class="invoice-field"><label>Estado</label>${h.ESTFAC == 1 ? 'Cobrada' : 'Pendiente'}</div>
             </div>`;
+
+            // ── CAE ya grabado en Factusol ──
+            const hasCaeFactusol = h.BNOFAC && String(h.BNOFAC).trim().length > 3;
+            if (hasCaeFactusol) {
+                html += `<div class="cae-factusol-block">
+                    <div class="cae-factusol-header">
+                        <i data-lucide="shield-check"></i> <strong>Comprobante Validado en ARCA</strong>
+                    </div>
+                    <div class="invoice-header-grid">
+                        <div class="invoice-field"><label>CAE</label><strong>${h.BNOFAC}</strong></div>
+                        <div class="invoice-field"><label>Vto CAE</label>${h.BNUFAC || '-'}</div>
+                        <div class="invoice-field"><label>Nro Cbte ARCA</label>${h.PEDFAC || '-'}</div>
+                    </div>
+                </div>`;
+            }
 
             if (data.cliente) {
                 html += `<div class="invoice-cliente-block">
@@ -249,9 +270,8 @@ const InvoicesComponent = {
                         <span class="invoice-cliente-title"><i data-lucide="user"></i> Datos del Cliente en Factusol</span>
                         ${cuit
                             ? `<button class="btn btn-sm btn-padron" id="btn-consultar-padron"
-                                onclick="InvoicesComponent.consultarPadron('${cuit}', '${(h.CNOFAC||'').replace(/'/g,"\\'")}')">
-                                <i data-lucide="search"></i> Consultar ARCA
-                              </button>`
+                                onclick="InvoicesComponent.consultarPadron('${cuit}', '${(h.CNOFAC||'').replace(/'/g,"\\'")}')">`
+                                + `<i data-lucide="search"></i> Consultar ARCA</button>`
                             : `<span class="padron-no-cuit"><i data-lucide="alert-circle"></i> Sin CUIT</span>`}
                     </div>
                     <div class="invoice-header-grid">
@@ -267,7 +287,7 @@ const InvoicesComponent = {
 
             // Líneas
             html += `<div class="invoice-lines-table"><table><thead><tr>
-                <th>Pos</th><th>Artículo</th><th>Descripción</th><th>Cant</th><th>Precio</th><th>IVA%</th><th>Total</th>
+                <th>Pos</th><th>Articulo</th><th>Descripcion</th><th>Cant</th><th>Precio</th><th>IVA%</th><th>Total</th>
             </tr></thead><tbody>`;
             for (const l of data.lines) {
                 html += `<tr>
@@ -279,33 +299,50 @@ const InvoicesComponent = {
                 </tr>`;
             }
             html += `</tbody></table></div>`;
-            html += `<div class="invoice-total">Total: $ ${(h.TOTFAC || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>`;
 
-            // CAE ya grabado en Factusol
-            if (h.BNOFAC && String(h.BNOFAC).length > 3) {
-                html += `<div class="cae-validated-block">
-                    <div class="badge badge-success cae-badge">
-                        <i data-lucide="check-circle"></i> CAE: ${h.BNOFAC} | Vto: ${h.BNUFAC || '-'}
+            // ── Subtotales fiscales ──
+            html += `<div class="invoice-totals-grid">`;
+            for (let i = 1; i <= 3; i++) {
+                const base = parseFloat(h[`BAS${i}FAC`] || 0);
+                const iiva = parseFloat(h[`IIVA${i}FAC`] || 0);
+                const piva = parseFloat(h[`PIVA${i}FAC`] || 0);
+                if (base > 0) {
+                    html += `<div class="invoice-total-row">
+                        <span>Base IVA ${piva}%</span>
+                        <span>$ ${base.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <p class="cae-meta">Grabado en Factusol (PEDFAC: ${h.PEDFAC || '-'})</p>
-                </div>`;
+                    <div class="invoice-total-row">
+                        <span>IVA ${piva}%</span>
+                        <span>$ ${iiva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                    </div>`;
+                }
             }
+            html += `<div class="invoice-total-row invoice-total-final">
+                <span>Total</span>
+                <span>$ ${parseFloat(h.TOTFAC || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+            </div>`;
+            html += `</div>`;
 
-            // CAE en el log local
+            // CAE en log local (si no hay en Factusol)
             const caeStatus = await API.get(`/api/arca/status/${tipfac}/${codfac}`).catch(() => ({ validated: false }));
-            if (caeStatus.validated && !(h.BNOFAC && String(h.BNOFAC).length > 3)) {
-                html += `<div class="cae-validated-block">
-                    <div class="badge badge-success cae-badge">
-                        <i data-lucide="check-circle"></i> CAE: ${caeStatus.cae} | Vto: ${caeStatus.cae_vto}
+            if (caeStatus.validated && !hasCaeFactusol) {
+                html += `<div class="cae-factusol-block">
+                    <div class="cae-factusol-header">
+                        <i data-lucide="shield-check"></i> <strong>Comprobante Validado en ARCA</strong>
                     </div>
-                    <p class="cae-meta">Cbte ARCA #${caeStatus.voucher_number} — PV ${caeStatus.punto_venta}</p>
+                    <div class="invoice-header-grid">
+                        <div class="invoice-field"><label>CAE</label><strong>${caeStatus.cae}</strong></div>
+                        <div class="invoice-field"><label>Vto CAE</label>${caeStatus.cae_vto}</div>
+                        <div class="invoice-field"><label>Nro Cbte ARCA</label>#${caeStatus.voucher_number} — PV ${caeStatus.punto_venta}</div>
+                    </div>
                 </div>`;
             }
 
             document.getElementById('modal-invoice-body').innerHTML = html;
 
             const footer = document.getElementById('modal-invoice-footer');
-            const yaValidada = caeStatus.validated || (h.BNOFAC && String(h.BNOFAC).length > 3);
+            const yaValidada = caeStatus.validated || hasCaeFactusol;
+
             if (!yaValidada && this.currentPv) {
                 footer.innerHTML = `
                     <button class="btn btn-secondary modal-close">Cerrar</button>
