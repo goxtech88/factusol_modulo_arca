@@ -18,6 +18,8 @@ from app.routers import auth_router, users_router, factusol_router, arca_router,
 
 
 STATIC_DIR = Path(__file__).parent / "static"
+QR_DIR = STATIC_DIR / "qr"
+QR_DIR.mkdir(exist_ok=True)
 
 
 def _create_default_admin():

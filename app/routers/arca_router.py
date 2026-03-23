@@ -122,6 +122,53 @@ def validate_invoice(
     db.add(cae_log)
     db.commit()
 
+    # ── Generar QR AFIP ──────────────────────────────────────────────────
+    from app.config import get_config
+    _cfg = get_config()
+    _cuit = str(_cfg.get("empresa", {}).get("cuit", "")).replace("-", "").strip()
+
+    _voucher_data = arca_service.build_voucher_data(
+        detail["header"], detail["lines"], detail["cliente"],
+        pv_config.punto_venta, tipo_comprobante,
+    )
+    _fecha_raw = detail["header"].get("FECFAC", "")
+    from datetime import datetime as _dt
+    if hasattr(_fecha_raw, "strftime"):
+        _fecha_str = _fecha_raw.strftime("%Y-%m-%d")
+    elif isinstance(_fecha_raw, str) and len(_fecha_raw) >= 8:
+        _fecha_str = _fecha_raw[:10]
+    else:
+        _fecha_str = _dt.now().strftime("%Y-%m-%d")
+
+    qr_path = arca_service.generate_afip_qr(
+        cuit_emisor=_cuit,
+        punto_venta=pv_config.punto_venta,
+        voucher_number=result.get("voucher_number", 0),
+        fecha_cbte=_fecha_str,
+        tipo_comprobante=tipo_comprobante,
+        tipo_doc_receptor=_voucher_data["tipo_doc"],
+        nro_doc_receptor=_voucher_data["nro_doc"],
+        imp_total=_voucher_data["imp_total"],
+        cae=result.get("CAE", ""),
+        cae_vto=result.get("CAEFchVto", ""),
+        tipfac=tipfac,
+        codfac=codfac,
+    )
+
+    # ── Grabar datos CAE en F_FAC de Factusol ────────────────────────────
+    try:
+        factusol_service.write_cae_to_factura(
+            tipfac=tipfac,
+            codfac=codfac,
+            cae=result.get("CAE", ""),
+            voucher_number=result.get("voucher_number", 0),
+            cae_vto=result.get("CAEFchVto", ""),
+            qr_img_path=qr_path,
+        )
+    except Exception as _write_err:
+        # No falla la respuesta si el write-back a Access falla
+        print(f"⚠️ No se pudo grabar CAE en Factusol F_FAC: {_write_err}")
+
     return {
         "status": "ok",
         "cae": result.get("CAE"),
@@ -129,8 +176,10 @@ def validate_invoice(
         "voucher_number": result.get("voucher_number"),
         "tipo_comprobante": tipo_comprobante,
         "resultado": result.get("resultado"),
+        "qr_path": qr_path,
         "message": "Factura validada exitosamente en ARCA",
     }
+
 
 
 @router.get("/status/{tipfac}/{codfac}")

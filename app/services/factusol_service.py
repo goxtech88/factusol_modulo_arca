@@ -6,19 +6,22 @@ from typing import Optional
 from app.config import get_config
 
 
-def _get_connection():
+def _get_connection(readonly: bool = True):
     """Crea una conexión ODBC a la base de datos Factusol."""
     config = get_config()
     db_path = config["factusol"]["db_path"]
     if not db_path:
         raise ValueError("No se ha configurado la ruta a la base de datos Factusol. Ir a Configuración.")
 
+    # Mode=Share Deny None: permite abrir aunque Factusol esté corriendo.
+    # En modo escritura NO usamos readonly=True en pyodbc, éste es solo informativo.
     conn_str = (
         r"DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};"
         f"DBQ={db_path};"
+        r"Mode=Share Deny None;"
         r"ExtendedAnsiSQL=1;"
     )
-    return pyodbc.connect(conn_str, readonly=True)
+    return pyodbc.connect(conn_str)
 
 
 def get_invoices(tipfac: int, search: str = "", limit: int = 100, offset: int = 0) -> list[dict]:
@@ -53,19 +56,22 @@ def get_invoices(tipfac: int, search: str = "", limit: int = 100, offset: int = 
 
 def get_invoice_detail(tipfac: int, codfac: int) -> Optional[dict]:
     """
-    Obtiene el detalle completo de una factura: header + líneas.
+    Obtiene el detalle completo de una factura: header + líneas + cliente.
+    Solo selecciona campos que existen en F_FAC y F_LFA según el schema real.
     """
     conn = _get_connection()
     try:
         cursor = conn.cursor()
 
-        # Header
+        # Header — solo campos confirmados en schema Factusol
         cursor.execute("""
             SELECT f.TIPFAC, f.CODFAC, f.FECFAC, f.CLIFAC, f.CNOFAC,
-                   f.TOTFAC, f.ESTFAC, f.ALMFAC, f.PEDFAC, f.BENFAC,
-                   f.NET1FAC, f.NET2FAC, f.NET3FAC,
-                   f.IVA1FAC, f.IVA2FAC, f.IVA3FAC,
-                   f.PIV1FAC, f.PIV2FAC, f.PIV3FAC
+                   f.TOTFAC, f.ESTFAC, f.ALMFAC, f.PEDFAC, f.CNIFAC,
+                   f.NET1FAC, f.NET2FAC, f.NET3FAC, f.NET4FAC,
+                   f.BAS1FAC, f.BAS2FAC, f.BAS3FAC, f.BAS4FAC,
+                   f.IIVA1FAC, f.IIVA2FAC, f.IIVA3FAC,
+                   f.PIVA1FAC, f.PIVA2FAC, f.PIVA3FAC,
+                   f.BNOFAC, f.BNUFAC, f.IMGFAC
             FROM F_FAC f
             WHERE f.TIPFAC = ? AND f.CODFAC = ?
         """, [tipfac, codfac])
@@ -77,11 +83,11 @@ def get_invoice_detail(tipfac: int, codfac: int) -> Optional[dict]:
 
         header = dict(zip(header_cols, header_row))
 
-        # Líneas
+        # Líneas — solo campos que existen en F_LFA
         cursor.execute("""
             SELECT l.POSLFA, l.ARTLFA, l.DESLFA, l.CANLFA, l.PRELFA,
                    l.TOTLFA, l.PIVLFA, l.DT1LFA, l.DT2LFA, l.DT3LFA,
-                   l.BASLFA, l.IVALFA
+                   l.IVALFA
             FROM F_LFA l
             WHERE l.TIPLFA = ? AND l.CODLFA = ?
             ORDER BY l.POSLFA
@@ -95,7 +101,7 @@ def get_invoice_detail(tipfac: int, codfac: int) -> Optional[dict]:
         if header.get("CLIFAC"):
             cursor.execute("""
                 SELECT c.CODCLI, c.NOFCLI, c.DOMCLI, c.POBCLI,
-                       c.CPOCLI, c.PROCLI, c.NIFCLI, c.TELCLI
+                       c.CPOCLI, c.PROCLI, c.NIFCLI, c.TELCLI, c.IVACLI
                 FROM F_CLI c
                 WHERE c.CODCLI = ?
             """, [header["CLIFAC"]])
@@ -154,13 +160,10 @@ def test_connection() -> dict:
     try:
         conn = _get_connection()
         cursor = conn.cursor()
-        # Contar facturas
         cursor.execute("SELECT COUNT(*) FROM F_FAC")
         total_fac = cursor.fetchone()[0]
-        # Contar clientes
         cursor.execute("SELECT COUNT(*) FROM F_CLI")
         total_cli = cursor.fetchone()[0]
-        # Contar artículos
         cursor.execute("SELECT COUNT(*) FROM F_ART")
         total_art = cursor.fetchone()[0]
         conn.close()
@@ -172,3 +175,45 @@ def test_connection() -> dict:
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+def write_cae_to_factura(
+    tipfac: int,
+    codfac: int,
+    cae: str,
+    voucher_number: int,
+    cae_vto: str,
+    qr_img_path: str = "",
+) -> bool:
+    """
+    Graba los datos del CAE AFIP de vuelta en F_FAC de Factusol:
+
+      BNOFAC  = Número de CAE  (ej: "12345678901234")
+      PEDFAC  = Número de comprobante ARCA  (ej: 42)
+      BNUFAC  = Vencimiento del CAE  (ej: "20240131")
+      IMGFAC  = Ruta / URL de la imagen QR   (ej: "qr\\8-4093.png")
+
+    Retorna True si se actualizó correctamente.
+    """
+    conn = _get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE F_FAC
+            SET BNOFAC = ?, PEDFAC = ?, BNUFAC = ?, IMGFAC = ?
+            WHERE TIPFAC = ? AND CODFAC = ?
+        """, [
+            str(cae)[:50],          # BNOFAC  (Text)
+            str(voucher_number),     # PEDFAC  (Text/Num)
+            str(cae_vto)[:20],       # BNUFAC  (Text)
+            str(qr_img_path)[:255],  # IMGFAC  (Text / Memo)
+            tipfac,
+            codfac,
+        ])
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()

@@ -11,6 +11,7 @@ Documentación:
 """
 import os
 import json
+import base64
 import hashlib
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -22,6 +23,10 @@ from app.config import get_config
 CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "cache"
 CACHE_DIR.mkdir(exist_ok=True)
 
+# Directorio donde se guardan los QR generados (servido como estático)
+QR_DIR = Path(__file__).resolve().parent.parent / "static" / "qr"
+QR_DIR.mkdir(exist_ok=True)
+
 # URLs de los WS de AFIP
 WSAA_URL_HOMO = "https://wsaahomo.afip.gov.ar/ws/services/LoginCms"
 WSAA_URL_PROD = "https://wsaa.afip.gov.ar/ws/services/LoginCms"
@@ -31,6 +36,8 @@ WSFE_URL_PROD = "https://servicios1.afip.gov.ar/wsfev1/service.asmx"
 # URLs del Padrón Alcance 4
 PADRON_A4_URL_HOMO = "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl"
 PADRON_A4_URL_PROD = "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl"
+
+
 
 
 def _get_urls() -> tuple[str, str]:
@@ -370,6 +377,78 @@ def get_voucher_info(punto_venta: int, tipo_comprobante: int, voucher_number: in
         "imp_total": wsfe.ImpTotal,
         "fecha_cbte": wsfe.FechaCbte,
     }
+
+
+def generate_afip_qr(
+    cuit_emisor: str,
+    punto_venta: int,
+    voucher_number: int,
+    fecha_cbte: str,
+    tipo_comprobante: int,
+    tipo_doc_receptor: int,
+    nro_doc_receptor: int,
+    imp_total: float,
+    cae: str,
+    cae_vto: str,
+    tipfac: int,
+    codfac: int,
+) -> str:
+    """
+    Genera la imagen QR estándar AFIP para comprobante electrónico.
+
+    URL del QR:
+      https://www.afip.gob.ar/fe/qr/?p=<base64(json)>
+
+    Retorna la ruta relativa dentro de static/qr/   ej: "qr/8-4093.png"
+    Si no se puede generar (qrcode no instalado), retorna "".
+    """
+    try:
+        import qrcode
+
+        # Payload estándar AFIP
+        payload = {
+            "ver": 1,
+            "fecha": fecha_cbte[:10] if len(fecha_cbte) >= 8 else fecha_cbte,
+            "cuit": int(cuit_emisor),
+            "ptoVta": punto_venta,
+            "tipoCmp": tipo_comprobante,
+            "nroCmp": voucher_number,
+            "importe": round(float(imp_total), 2),
+            "moneda": "PES",
+            "ctz": 1,
+            "tipoDocRec": tipo_doc_receptor,
+            "nroDocRec": nro_doc_receptor,
+            "tipoCodAut": "E",  # E = CAE
+            "codAut": int(cae),
+        }
+
+        payload_b64 = base64.b64encode(json.dumps(payload, separators=(",", ":")).encode()).decode()
+        qr_url = f"https://www.afip.gob.ar/fe/qr/?p={payload_b64}"
+
+        # Generar imagen
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=8,
+            border=2,
+        )
+        qr.add_data(qr_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        filename = f"{tipfac}-{codfac}.png"
+        out_path = QR_DIR / filename
+        img.save(str(out_path))
+
+        return f"qr/{filename}"   # ruta relativa dentro de static/
+
+    except ImportError:
+        return ""
+    except Exception as e:
+        # No romper el flujo de validación si el QR falla
+        print(f"⚠️ Error generando QR AFIP: {e}")
+        return ""
+
 
 
 def consultar_padron(cuit_consulta: str) -> dict:
