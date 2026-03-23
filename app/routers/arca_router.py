@@ -74,15 +74,15 @@ def validate_invoice(
     from app.config import get_config
     config = get_config()
     cond_emisor = config.get("empresa", {}).get("condicion_iva", "Responsable Inscripto")
-    # IVACLI: 0=RI, 1=Mono, 3=Exento, 4=CF.  OJO: 0 es falsy en Python!
-    raw_ivacli = detail.get("cliente", {}).get("IVACLI")
-    cond_cliente_iva = str(raw_ivacli if raw_ivacli is not None else 4)
+    # CFECLI: 0=no config, 1=CF, 2=RI, 3=Mono, 4=Exento
+    cfecli = detail.get("cliente", {}).get("CFECLI", 0) or 0
 
-    # Si el PV tiene tipo_comprobante fijo (!=0), usarlo; sino calcular automáticamente
+    # Si el PV tiene tipo_comprobante fijo (!=0), usarlo; sino calcular por CFECLI
     if pv_config.tipo_comprobante and pv_config.tipo_comprobante != 0:
         tipo_comprobante = pv_config.tipo_comprobante
     else:
-        tipo_comprobante = determine_tipo_comprobante(cond_cliente_iva, cond_emisor)
+        tipo_comprobante = determine_tipo_comprobante(cfecli, cond_emisor)
+
 
 
     # Verificar que no esté ya validada (con el tipo calculado)

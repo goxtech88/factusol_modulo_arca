@@ -141,7 +141,7 @@ def get_invoice_detail(tipfac: int, codfac: int) -> Optional[dict]:
         if header.get("CLIFAC"):
             cursor.execute("""
                 SELECT c.CODCLI, c.NOFCLI, c.DOMCLI, c.POBCLI,
-                       c.CPOCLI, c.PROCLI, c.NIFCLI, c.TELCLI, c.IVACLI
+                       c.CPOCLI, c.PROCLI, c.NIFCLI, c.TELCLI, c.IVACLI, c.CFECLI
                 FROM F_CLI c
                 WHERE c.CODCLI = ?
             """, [header["CLIFAC"]])

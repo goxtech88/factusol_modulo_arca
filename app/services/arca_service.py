@@ -187,33 +187,32 @@ def get_last_voucher_number(punto_venta: int, tipo_comprobante: int) -> int:
     return int(last or 0)
 
 
-def determine_tipo_comprobante(cond_iva_cliente: str, cond_iva_emisor: str = "Responsable Inscripto") -> int:
+def determine_tipo_comprobante(cfecli: int, cond_iva_emisor: str = "Responsable Inscripto") -> int:
     """
-    Determina el tipo de comprobante AFIP según la condición de IVA del cliente.
+    Determina el tipo de comprobante AFIP según CFECLI del cliente en Factusol.
 
-    Tipos principales:
+    Tipos de comprobante AFIP:
       1  = Factura A   (RI emite a RI)
-      6  = Factura B   (RI emite a Consumidor Final, Monotributista, Exento)
+      6  = Factura B   (RI emite a CF, Monotributo, Exento)
       11 = Factura C   (Monotributista emite a cualquiera)
 
-    Condiciones IVA en Factusol (IVACLI):
-      0 = Responsable Inscripto
-      1 = Responsable No Inscripto
-      2 = Exento
-      3 = No Responsable
-      4 = Consumidor Final
-      5 = Monotributo
+    CFECLI en Factusol (F_CLI):
+      0 = No configurado (se trata como RI → Factura A)
+      1 = Consumidor Final (DNI)    → Factura B
+      2 = Responsable Inscripto (CUIT) → Factura A
+      3 = Monotributista (CUIT)     → Factura B
+      4 = Exento (CUIT)             → Factura B
     """
-    # Normalizar
-    cond = str(cond_iva_cliente).strip()
-
     if cond_iva_emisor == "Monotributista":
         return 11  # Factura C
 
-    if cond in ("0", "Responsable Inscripto"):
-        return 1   # Factura A
+    cfecli = int(cfecli or 0)
+
+    if cfecli in (0, 2):
+        return 1   # Factura A (RI o no configurado)
     else:
-        return 6   # Factura B (consumidor final, monotributo, exento, etc.)
+        return 6   # Factura B (CF, Mono, Exento)
+
 
 
 def build_voucher_data(
