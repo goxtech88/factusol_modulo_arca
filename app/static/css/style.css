@@ -610,43 +610,44 @@ tbody tr {
     flex: 1;
 }
 
-/* === Date filter buttons === */
-.date-filter-group {
+/* === DateSegmenter (pill-toggle presets) === */
+/* Ref: export_estetica_ux_ui.md §6.DateSegmenter */
+.date-segmenter {
     display: inline-flex;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-    background: var(--bg-panel);
+    gap: 4px;
+    align-items: center;
 }
 
-.date-filter-btn {
-    padding: 5px 12px;
+.date-pill {
+    padding: 4px 14px;
     font-size: 11px;
     font-weight: 600;
     font-family: inherit;
-    border: none;
-    border-right: 1px solid var(--border);
-    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #ECECEC;
     color: var(--text-sec);
     cursor: pointer;
     transition: var(--transition);
-    height: 28px;
+    height: 26px;
+    line-height: 1;
     white-space: nowrap;
+    letter-spacing: 0.02em;
 }
 
-.date-filter-btn:last-child {
-    border-right: none;
-}
-
-.date-filter-btn:hover {
-    background: #F0F0F0;
+.date-pill:hover {
+    border-color: var(--crimson);
     color: var(--text-main);
+    background: #E4E4E4;
 }
 
-.date-filter-btn.active {
+.date-pill.active {
     background: var(--crimson);
     color: white;
+    border-color: var(--crimson);
 }
+
+
 
 /* === Botón Actualizar === */
 .btn-refresh {

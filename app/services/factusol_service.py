@@ -49,6 +49,17 @@ def get_invoices(
     elif date_filter == "last7":
         fecha_desde = today - timedelta(days=6)
         fecha_hasta = today
+    elif date_filter == "this_month":
+        fecha_desde = today.replace(day=1)
+        fecha_hasta = today
+    elif date_filter == "last_month":
+        first_this = today.replace(day=1)
+        last_prev = first_this - timedelta(days=1)
+        fecha_desde = last_prev.replace(day=1)
+        fecha_hasta = last_prev
+    elif date_filter == "this_year":
+        fecha_desde = today.replace(month=1, day=1)
+        fecha_hasta = today
 
     conn = _get_connection()
     try:

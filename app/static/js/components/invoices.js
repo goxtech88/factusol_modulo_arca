@@ -56,8 +56,7 @@ const InvoicesComponent = {
     // ── Cambiar filtro de fecha ──────────────────────────────────────────
     setDateFilter(filter) {
         this._dateFilter = filter;
-        // Actualizar botones activos
-        document.querySelectorAll('.date-filter-btn').forEach(btn => {
+        document.querySelectorAll('.date-pill').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.filter === filter);
         });
         this.loadInvoices();
@@ -204,9 +203,9 @@ const InvoicesComponent = {
                 <td><span class="badge badge-${estadoClass}">${estadoLabel}</span></td>
                 <td>
                     ${validated
-                        ? `<span class="badge badge-success cae-mini" title="CAE: ${cae.cae}">✓ CAE</span>`
+                        ? `<span class="badge badge-success cae-mini" title="CAE: ${cae.cae}">CAE</span>`
                         : hasCaeLocal
-                            ? `<span class="badge badge-success cae-mini" title="CAE: ${inv.BNOFAC}">✓ CAE</span>`
+                            ? `<span class="badge badge-success cae-mini" title="CAE: ${inv.BNOFAC}">CAE</span>`
                             : `<span class="badge badge-light">Pendiente</span>`}
                 </td>
                 <td class="td-actions">
@@ -364,23 +363,23 @@ const InvoicesComponent = {
 
         panel.innerHTML = `<div class="padron-result">
             <div class="padron-result-header">
-                <div class="padron-result-title"><i data-lucide="shield-check"></i><span>Datos en el Padrón ARCA</span></div>
+                <div class="padron-result-title"><i data-lucide="shield-check"></i><span>Datos en el Padron ARCA</span></div>
                 <span class="padron-estado ${estadoClass}">${data.estado_cuit || 'N/D'}</span>
             </div>
             <div class="padron-data-grid">
                 <div class="padron-field"><label>CUIT</label><span class="padron-value">${this._formatCuit(data.cuit)}</span></div>
                 <div class="padron-field"><label>Tipo Persona</label><span class="padron-value">${data.tipo_persona || '-'}</span></div>
-                <div class="padron-field padron-field-wide"><label>Razón Social / Nombre</label>
+                <div class="padron-field padron-field-wide"><label>Razon Social / Nombre</label>
                     <span class="padron-value padron-nombre ${hasDiff ? 'padron-diff' : ''}">
                         ${nombreCompleto || data.razon_social || '-'}
-                        ${hasDiff ? '<span class="padron-diff-badge" title="Difiere del nombre en Factusol">≠ Factusol</span>' : ''}
+                        ${hasDiff ? '<span class="padron-diff-badge">Difiere de Factusol</span>' : ''}
                     </span></div>
-                <div class="padron-field padron-field-wide"><label>Condición IVA</label><span class="padron-value">${data.condicion_iva || '-'}</span></div>
+                <div class="padron-field padron-field-wide"><label>Condicion IVA</label><span class="padron-value">${data.condicion_iva || '-'}</span></div>
                 ${domStr ? `<div class="padron-field padron-field-wide"><label>Domicilio Fiscal</label><span class="padron-value">${domStr}</span></div>` : ''}
-                ${locStr ? `<div class="padron-field padron-field-wide"><label>Localidad · CP</label><span class="padron-value">${locStr}</span></div>` : ''}
+                ${locStr ? `<div class="padron-field padron-field-wide"><label>Localidad / CP</label><span class="padron-value">${locStr}</span></div>` : ''}
             </div>
-            ${hasDiff ? `<div class="padron-diff-alert"><i data-lucide="alert-circle"></i><span>El nombre en Factusol (<strong>${nombreActual}</strong>) difiere del Padrón (<strong>${nombreCompleto}</strong>).</span></div>` : ''}
-            <div class="padron-footer-note"><i data-lucide="info"></i>Datos en tiempo real del Padrón ARCA. Actualizar en Factusol manualmente.</div>
+            ${hasDiff ? `<div class="padron-diff-alert"><i data-lucide="alert-circle"></i><span>El nombre en Factusol (<strong>${nombreActual}</strong>) difiere del Padron (<strong>${nombreCompleto}</strong>).</span></div>` : ''}
+            <div class="padron-footer-note"><i data-lucide="info"></i>Datos en tiempo real del Padron ARCA. Actualizar en Factusol manualmente.</div>
         </div>`;
         if (typeof lucide !== 'undefined') lucide.createIcons();
     },
