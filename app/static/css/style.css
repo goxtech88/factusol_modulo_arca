@@ -996,8 +996,295 @@ tbody tr {
     animation: spin 1s linear infinite;
 }
 
+/* === Monitor ARCA === */
+.monitor-card {
+    overflow: hidden;
+}
+
+.monitor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.monitor-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-main);
+}
+
+.monitor-header h3 [data-lucide] {
+    width: 16px;
+    height: 16px;
+    color: var(--crimson);
+}
+
+.monitor-timestamp {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: right;
+    margin-bottom: 10px;
+}
+
+.monitor-loading,
+.monitor-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+.monitor-loading [data-lucide] {
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
+}
+
+.monitor-error {
+    color: var(--danger);
+    background: var(--danger-bg);
+    border-radius: var(--radius-sm);
+}
+
+.monitor-error [data-lucide] {
+    width: 16px;
+    height: 16px;
+}
+
+/* Server cards grid */
+.monitor-servers-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.monitor-server-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    background: var(--bg-app);
+    transition: var(--transition);
+}
+
+.monitor-server-card.monitor-ok {
+    border-left: 3px solid var(--success);
+}
+
+.monitor-server-card.monitor-error-status {
+    border-left: 3px solid var(--danger);
+    background: var(--danger-bg);
+}
+
+.monitor-server-icon [data-lucide] {
+    width: 20px;
+    height: 20px;
+    color: var(--text-sec);
+}
+
+.monitor-ok .monitor-server-icon [data-lucide] {
+    color: var(--success);
+}
+
+.monitor-error-status .monitor-server-icon [data-lucide] {
+    color: var(--danger);
+}
+
+.monitor-server-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.monitor-server-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-sec);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.monitor-server-status {
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.monitor-ok .monitor-server-status {
+    color: var(--success);
+}
+
+.monitor-error-status .monitor-server-status {
+    color: var(--danger);
+}
+
+.monitor-server-status [data-lucide] {
+    width: 12px;
+    height: 12px;
+}
+
+/* Puntos de venta en monitor */
+.monitor-pvs {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-light);
+}
+
+.monitor-pvs-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sec);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.monitor-pvs-title [data-lucide] {
+    width: 14px;
+    height: 14px;
+}
+
+.monitor-pvs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.monitor-pv-card {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    background: var(--bg-panel);
+}
+
+.monitor-pv-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+}
+
+.monitor-pv-header strong {
+    font-size: 11px;
+    color: var(--crimson);
+}
+
+.monitor-pv-name {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.monitor-pv-body {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.monitor-pv-field label {
+    display: block;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.monitor-pv-field span {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.monitor-pv-cbte {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: var(--success) !important;
+}
+
+.monitor-pv-cbte.text-danger {
+    color: var(--danger) !important;
+}
+
+.monitor-pv-error {
+    border-color: rgba(211, 47, 47, 0.3);
+    background: var(--danger-bg);
+}
+
+.monitor-pv-error-msg {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-light);
+    font-size: 10px;
+    color: var(--danger);
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    word-break: break-word;
+}
+
+.monitor-pv-error-msg [data-lucide] {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* Errores globales del monitor */
+.monitor-errors {
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--danger-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(211, 47, 47, 0.15);
+}
+
+.monitor-errors-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--danger);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.monitor-errors-title [data-lucide] {
+    width: 14px;
+    height: 14px;
+}
+
+.monitor-error-item {
+    font-size: 10px;
+    color: var(--danger);
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 3px;
+    word-break: break-word;
+}
+
+.monitor-error-item [data-lucide] {
+    width: 11px;
+    height: 11px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
 /* === Error === */
 .error-msg {
+
     color: var(--danger);
     font-size: 11px;
     margin-top: 10px;

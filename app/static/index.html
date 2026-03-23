@@ -122,11 +122,30 @@
                                 <p class="stat-value" id="stat-cae-count">0</p>
                             </div>
                         </div>
+
+                        <!-- Monitor ARCA -->
+                        <div class="card monitor-card" style="margin-top: 1rem">
+                            <div class="monitor-header">
+                                <h3><i data-lucide="activity"></i> Monitor de Servidores ARCA</h3>
+                                <button class="btn btn-sm btn-secondary btn-refresh" id="btn-refresh-monitor"
+                                    onclick="DashboardComponent.loadMonitor()" title="Actualizar estado">
+                                    <i data-lucide="refresh-cw" class="refresh-icon"></i> Actualizar
+                                </button>
+                            </div>
+                            <div id="monitor-content" class="monitor-content">
+                                <div class="monitor-loading">
+                                    <i data-lucide="loader-2" class="spin-icon"></i>
+                                    <span>Consultando servidores ARCA...</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="card" style="margin-top: 1rem">
                             <h3><i data-lucide="info"></i> Puntos de Venta Asignados</h3>
                             <div id="dashboard-puntos-venta" class="puntos-venta-list"></div>
                         </div>
                     </section>
+
 
                     <!-- Invoices -->
                     <section id="section-invoices" class="section hidden">

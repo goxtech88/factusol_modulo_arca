@@ -262,8 +262,57 @@ def get_last_voucher(
 
 @router.get("/server-status")
 def server_status(current_user: User = Depends(get_current_user)):
-    """Verifica el estado del servidor de ARCA."""
+    """Verifica el estado detallado de los servidores ARCA (WSFEv1 Dummy)."""
     return arca_service.get_server_status()
+
+
+@router.get("/server-monitor")
+def server_monitor(current_user: User = Depends(get_current_user)):
+    """
+    Monitor completo: estado de servidores ARCA + último comprobante
+    emitido por cada punto de venta configurado.
+    """
+    from datetime import datetime
+
+    result = {
+        "timestamp": datetime.now().isoformat(),
+        "servers": {},
+        "puntos_venta": [],
+        "errors": [],
+    }
+
+    # 1) Estado de servidores WSFEv1
+    try:
+        status = arca_service.get_server_status()
+        result["servers"] = status.get("detail", {})
+        result["wsfe_ok"] = status.get("status") == "ok"
+        if status.get("status") != "ok":
+            result["errors"].append(status.get("message", "Error desconocido WSFEv1"))
+    except Exception as e:
+        result["wsfe_ok"] = False
+        result["servers"] = {"AppServer": "N/D", "DbServer": "N/D", "AuthServer": "N/D"}
+        result["errors"].append(f"WSFEv1: {str(e)}")
+
+    # 2) Último comprobante por punto de venta del usuario
+    for pv in current_user.puntos_venta:
+        pv_info = {
+            "nombre": pv.nombre,
+            "punto_venta": pv.punto_venta,
+            "serie_factusol": pv.serie_factusol,
+            "tipo_comprobante": pv.tipo_comprobante,
+            "ultimo_cbte": None,
+            "error": None,
+        }
+        try:
+            last = arca_service.get_last_voucher_number(pv.punto_venta, pv.tipo_comprobante)
+            pv_info["ultimo_cbte"] = last
+        except Exception as e:
+            pv_info["error"] = str(e)
+            result["errors"].append(f"PV {pv.punto_venta}: {str(e)}")
+
+        result["puntos_venta"].append(pv_info)
+
+    return result
 
 
 @router.get("/padron/{cuit}")
