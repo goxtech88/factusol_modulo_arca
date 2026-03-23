@@ -1,0 +1,217 @@
+"""
+Router para validación de facturas en ARCA (AFIP).
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.auth import get_current_user
+from app.models.user import User, UserPuntoVenta
+from app.models.cae_log import CAELog
+from app.services import factusol_service, arca_service
+
+router = APIRouter(prefix="/api/arca", tags=["arca"])
+
+
+@router.post("/validate/{tipfac}/{codfac}")
+def validate_invoice(
+    tipfac: int,
+    codfac: int,
+    pv_id: int = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Valida una factura de Factusol en ARCA y obtiene el CAE.
+    pv_id: ID del punto de venta del usuario a utilizar.
+    """
+    # Buscar config de punto de venta
+    if pv_id:
+        pv_config = db.query(UserPuntoVenta).filter(
+            UserPuntoVenta.id == pv_id,
+            UserPuntoVenta.user_id == current_user.id,
+        ).first()
+    else:
+        # Buscar automáticamente por la serie
+        pv_config = db.query(UserPuntoVenta).filter(
+            UserPuntoVenta.user_id == current_user.id,
+            UserPuntoVenta.serie_factusol == tipfac,
+        ).first()
+
+    if not pv_config:
+        raise HTTPException(
+            status_code=400,
+            detail="No tiene un punto de venta configurado para esta serie",
+        )
+
+    # Verificar que no esté ya validada
+    existing = db.query(CAELog).filter(
+        CAELog.tipfac == tipfac,
+        CAELog.codfac == codfac,
+        CAELog.punto_venta == pv_config.punto_venta,
+    ).first()
+    if existing:
+        return {
+            "status": "already_validated",
+            "cae": existing.cae,
+            "cae_vto": existing.cae_vto,
+            "voucher_number": existing.voucher_number,
+            "message": "Esta factura ya fue validada en ARCA",
+        }
+
+    # Obtener datos de Factusol
+    try:
+        detail = factusol_service.get_invoice_detail(tipfac, codfac)
+        if not detail:
+            raise HTTPException(status_code=404, detail="Factura no encontrada en Factusol")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}") 
+
+    # Determinar tipo de comprobante automáticamente según condición IVA del cliente
+    from app.services.arca_service import determine_tipo_comprobante
+    from app.config import get_config
+    config = get_config()
+    cond_emisor = config.get("empresa", {}).get("condicion_iva", "Responsable Inscripto")
+    cond_cliente_iva = str(detail.get("cliente", {}).get("IVACLI", "4") or "4")  # default Consumidor Final
+    tipo_comprobante = determine_tipo_comprobante(cond_cliente_iva, cond_emisor)
+
+    # Verificar que no esté ya validada (con el tipo calculado)
+    existing = db.query(CAELog).filter(
+        CAELog.tipfac == tipfac,
+        CAELog.codfac == codfac,
+        CAELog.punto_venta == pv_config.punto_venta,
+    ).first()
+    if existing:
+        return {
+            "status": "already_validated",
+            "cae": existing.cae,
+            "cae_vto": existing.cae_vto,
+            "voucher_number": existing.voucher_number,
+            "tipo_comprobante": existing.tipo_comprobante,
+            "message": "Esta factura ya fue validada en ARCA",
+        }
+
+    # Validar en ARCA
+    try:
+        result = arca_service.validate_invoice(
+            invoice_header=detail["header"],
+            invoice_lines=detail["lines"],
+            cliente=detail["cliente"],
+            punto_venta=pv_config.punto_venta,
+            tipo_comprobante=tipo_comprobante,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error en ARCA: {str(e)}")
+
+    # Guardar log
+    cae_log = CAELog(
+        user_id=current_user.id,
+        tipfac=tipfac,
+        codfac=codfac,
+        punto_venta=pv_config.punto_venta,
+        tipo_comprobante=tipo_comprobante,
+        voucher_number=result.get("voucher_number", 0),
+        cae=result.get("CAE", ""),
+        cae_vto=result.get("CAEFchVto", ""),
+        imp_total=detail["header"].get("TOTFAC"),
+        cliente_nombre=detail["header"].get("CNOFAC"),
+        cliente_doc=detail.get("cliente", {}).get("NIFCLI") if detail.get("cliente") else None,
+    )
+    db.add(cae_log)
+    db.commit()
+
+    return {
+        "status": "ok",
+        "cae": result.get("CAE"),
+        "cae_vto": result.get("CAEFchVto"),
+        "voucher_number": result.get("voucher_number"),
+        "tipo_comprobante": tipo_comprobante,
+        "resultado": result.get("resultado"),
+        "message": "Factura validada exitosamente en ARCA",
+    }
+
+
+@router.get("/status/{tipfac}/{codfac}")
+def check_cae_status(
+    tipfac: int,
+    codfac: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Verifica si una factura ya tiene CAE asignado."""
+    log = db.query(CAELog).filter(
+        CAELog.tipfac == tipfac,
+        CAELog.codfac == codfac,
+    ).first()
+
+    if log:
+        return {
+            "validated": True,
+            "cae": log.cae,
+            "cae_vto": log.cae_vto,
+            "voucher_number": log.voucher_number,
+            "punto_venta": log.punto_venta,
+            "tipo_comprobante": log.tipo_comprobante,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        }
+    return {"validated": False}
+
+
+@router.get("/logs")
+def list_cae_logs(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Lista los CAE emitidos por el usuario actual."""
+    if current_user.role == "admin":
+        logs = db.query(CAELog).order_by(CAELog.created_at.desc()).limit(100).all()
+    else:
+        logs = db.query(CAELog).filter(
+            CAELog.user_id == current_user.id
+        ).order_by(CAELog.created_at.desc()).limit(100).all()
+
+    return [
+        {
+            "id": l.id,
+            "tipfac": l.tipfac,
+            "codfac": l.codfac,
+            "punto_venta": l.punto_venta,
+            "tipo_comprobante": l.tipo_comprobante,
+            "voucher_number": l.voucher_number,
+            "cae": l.cae,
+            "cae_vto": l.cae_vto,
+            "imp_total": l.imp_total,
+            "cliente_nombre": l.cliente_nombre,
+            "created_at": l.created_at.isoformat() if l.created_at else None,
+        }
+        for l in logs
+    ]
+
+
+@router.get("/last-voucher/{pv_id}")
+def get_last_voucher(
+    pv_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Obtiene el último número de comprobante en ARCA para un punto de venta."""
+    pv = db.query(UserPuntoVenta).filter(
+        UserPuntoVenta.id == pv_id,
+        UserPuntoVenta.user_id == current_user.id,
+    ).first()
+    if not pv:
+        raise HTTPException(status_code=404, detail="Punto de venta no encontrado")
+
+    try:
+        last = arca_service.get_last_voucher_number(pv.punto_venta, pv.tipo_comprobante)
+        return {"punto_venta": pv.punto_venta, "tipo_comprobante": pv.tipo_comprobante, "last_voucher": last}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error en ARCA: {str(e)}")
+
+
+@router.get("/server-status")
+def server_status(current_user: User = Depends(get_current_user)):
+    """Verifica el estado del servidor de ARCA."""
+    return arca_service.get_server_status()

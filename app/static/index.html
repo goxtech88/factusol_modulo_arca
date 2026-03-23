@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factusol Módulo ARCA</title>
+    <meta name="description" content="Módulo web de facturación electrónica ARCA para Factusol">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Login Page -->
+        <div id="page-login" class="page active">
+            <div class="login-container">
+                <div class="login-card">
+                    <div class="login-logo">
+                        <i data-lucide="file-text"></i>
+                    </div>
+                    <h1>Factusol ARCA</h1>
+                    <p class="login-subtitle">Facturacion Electronica</p>
+                    <form id="login-form" onsubmit="return false;">
+                        <div class="input-group">
+                            <i data-lucide="user"></i>
+                            <input type="text" id="login-username" placeholder="Usuario" required autocomplete="username">
+                        </div>
+                        <div class="input-group">
+                            <i data-lucide="lock"></i>
+                            <input type="password" id="login-password" placeholder="Contraseña" required autocomplete="current-password">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="btn-login">
+                            Ingresar
+                        </button>
+                        <div id="login-error" class="error-msg hidden"></div>
+                    </form>
+                </div>
+                <div class="login-powered-by">
+                    <img src="/static/img/logo-empresa.png" alt="Logo Empresa" class="login-empresa-logo" onerror="this.style.display='none'">
+                    <span>Powered by <strong>GoxTech S.R.L.</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Shell -->
+        <div id="page-app" class="page hidden">
+            <!-- Sidebar -->
+            <nav id="sidebar" class="sidebar">
+                <div class="sidebar-header">
+                    <img src="/static/img/logo-cliente.png" alt="Logo" class="sidebar-client-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                    <div class="sidebar-client-logo-fallback">
+                        <i data-lucide="file-text"></i>
+                    </div>
+                    <span>ARCA</span>
+                </div>
+                <ul class="sidebar-nav">
+                    <li class="nav-item active" data-page="dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                        <span>Dashboard</span>
+                    </li>
+                    <li class="nav-item" data-page="invoices">
+                        <i data-lucide="file-text"></i>
+                        <span>Facturas</span>
+                    </li>
+                    <li class="nav-item" data-page="cae-logs">
+                        <i data-lucide="clock"></i>
+                        <span>CAE Emitidos</span>
+                    </li>
+                    <li class="nav-item admin-only" data-page="users">
+                        <i data-lucide="users"></i>
+                        <span>Usuarios</span>
+                    </li>
+                    <li class="nav-item admin-only" data-page="config">
+                        <i data-lucide="settings"></i>
+                        <span>Configuracion</span>
+                    </li>
+                </ul>
+                <div class="sidebar-footer">
+                    <div class="user-info">
+                        <i data-lucide="user-circle"></i>
+                        <span id="sidebar-username">usuario</span>
+                    </div>
+                    <button class="btn-logout" id="btn-logout" title="Cerrar sesion">
+                        <i data-lucide="log-out"></i>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main id="main-content">
+                <header class="top-bar">
+                    <button id="btn-toggle-sidebar" class="btn-icon">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <h2 id="page-title">Dashboard</h2>
+                    <div class="top-bar-right">
+                        <span id="top-bar-empresa" class="empresa-badge"></span>
+                    </div>
+                </header>
+
+                <div class="content-area">
+                    <!-- Dashboard -->
+                    <section id="section-dashboard" class="section active">
+                        <div class="stats-grid">
+                            <div class="stat-card" id="stat-connection">
+                                <i data-lucide="database"></i>
+                                <h3>Factusol</h3>
+                                <p class="stat-value" id="stat-db-status">Desconectado</p>
+                            </div>
+                            <div class="stat-card" id="stat-arca">
+                                <i data-lucide="cloud"></i>
+                                <h3>ARCA</h3>
+                                <p class="stat-value" id="stat-arca-status">-</p>
+                            </div>
+                            <div class="stat-card">
+                                <i data-lucide="file-text"></i>
+                                <h3>Mis Puntos de Venta</h3>
+                                <p class="stat-value" id="stat-puntos-venta">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <i data-lucide="check-circle"></i>
+                                <h3>CAE Emitidos</h3>
+                                <p class="stat-value" id="stat-cae-count">0</p>
+                            </div>
+                        </div>
+                        <div class="card" style="margin-top: 1rem">
+                            <h3><i data-lucide="info"></i> Puntos de Venta Asignados</h3>
+                            <div id="dashboard-puntos-venta" class="puntos-venta-list"></div>
+                        </div>
+                    </section>
+
+                    <!-- Invoices -->
+                    <section id="section-invoices" class="section hidden">
+                        <div class="toolbar">
+                            <div class="toolbar-left">
+                                <label>Punto de Venta:</label>
+                                <select id="invoice-pv-select" class="select-styled"></select>
+                            </div>
+                            <div class="toolbar-right">
+                                <div class="input-group search-group">
+                                    <i data-lucide="search"></i>
+                                    <input type="text" id="invoice-search" placeholder="Buscar factura...">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="table-container">
+                                <table id="invoices-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nro</th>
+                                            <th>Fecha</th>
+                                            <th>Cliente</th>
+                                            <th>Total</th>
+                                            <th>Estado</th>
+                                            <th>CAE</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="invoices-tbody"></tbody>
+                                </table>
+                            </div>
+                            <div id="invoices-empty" class="empty-state hidden">
+                                <i data-lucide="inbox"></i>
+                                <p>No se encontraron facturas</p>
+                            </div>
+                            <div id="invoices-loading" class="loading-state hidden">
+                                <i data-lucide="loader-2"></i>
+                                <p>Cargando...</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Invoice Detail Modal -->
+                    <div id="invoice-modal" class="modal hidden">
+                        <div class="modal-overlay"></div>
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 id="modal-invoice-title">Factura</h3>
+                                <button class="btn-icon modal-close"><i data-lucide="x"></i></button>
+                            </div>
+                            <div class="modal-body" id="modal-invoice-body"></div>
+                            <div class="modal-footer" id="modal-invoice-footer"></div>
+                        </div>
+                    </div>
+
+                    <!-- CAE Logs -->
+                    <section id="section-cae-logs" class="section hidden">
+                        <div class="card">
+                            <h3><i data-lucide="clock"></i> Comprobantes Validados</h3>
+                            <div class="table-container">
+                                <table id="cae-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Serie-Nro</th>
+                                            <th>PV ARCA</th>
+                                            <th>Cbte ARCA</th>
+                                            <th>CAE</th>
+                                            <th>Vto CAE</th>
+                                            <th>Cliente</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cae-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Users Admin -->
+                    <section id="section-users" class="section hidden">
+                        <div class="toolbar">
+                            <div class="toolbar-left">
+                                <h3>Usuarios</h3>
+                            </div>
+                            <div class="toolbar-right">
+                                <button class="btn btn-primary" id="btn-new-user">
+                                    Nuevo Usuario
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div id="users-list"></div>
+                        </div>
+                    </section>
+
+                    <!-- User Form Modal -->
+                    <div id="user-modal" class="modal hidden">
+                        <div class="modal-overlay"></div>
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 id="user-modal-title">Nuevo Usuario</h3>
+                                <button class="btn-icon modal-close"><i data-lucide="x"></i></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="user-form">
+                                    <div class="form-group">
+                                        <label>Usuario</label>
+                                        <input type="text" id="user-username" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Nombre Completo</label>
+                                        <input type="text" id="user-fullname" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Contraseña</label>
+                                        <input type="password" id="user-password">
+                                        <small id="user-password-hint" class="hidden">Dejar vacio para no cambiar</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Rol</label>
+                                        <select id="user-role" class="select-styled">
+                                            <option value="user">Usuario</option>
+                                            <option value="admin">Administrador</option>
+                                        </select>
+                                    </div>
+                                    <hr>
+                                    <h4>Puntos de Venta</h4>
+                                    <div id="user-puntos-venta-list"></div>
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btn-add-pv">
+                                        Agregar Punto de Venta
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary modal-close">Cancelar</button>
+                                <button class="btn btn-primary" id="btn-save-user">
+                                    Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Config -->
+                    <section id="section-config" class="section hidden">
+                        <div class="config-grid">
+                            <div class="card">
+                                <h3><i data-lucide="building"></i> Empresa</h3>
+                                <form id="config-empresa-form">
+                                    <div class="form-group">
+                                        <label>Razon Social</label>
+                                        <input type="text" id="cfg-razon-social">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>CUIT</label>
+                                        <input type="text" id="cfg-cuit" placeholder="20123456789">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Domicilio</label>
+                                        <input type="text" id="cfg-domicilio">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Inicio de Actividades</label>
+                                        <input type="text" id="cfg-inicio-actividades" placeholder="01/01/2020">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Condicion IVA</label>
+                                        <select id="cfg-condicion-iva" class="select-styled">
+                                            <option value="Responsable Inscripto">Responsable Inscripto</option>
+                                            <option value="Monotributista">Monotributista</option>
+                                            <option value="Exento">Exento</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        Guardar
+                                    </button>
+                                </form>
+                            </div>
+                            <div class="card">
+                                <h3><i data-lucide="database"></i> Factusol</h3>
+                                <form id="config-factusol-form">
+                                    <div class="form-group">
+                                        <label>Ruta Base de Datos</label>
+                                        <div class="input-with-btn">
+                                            <input type="text" id="cfg-db-path" placeholder="C:\Factusol\Datos\empresa.mdb">
+                                            <button type="button" class="btn btn-secondary btn-browse" onclick="ConfigComponent.browseFile('cfg-db-path', 'mdb,accdb')">
+                                                <i data-lucide="folder-open"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        Guardar
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btn-test-db">
+                                        Probar Conexion
+                                    </button>
+                                    <div id="db-test-result" class="test-result hidden"></div>
+                                </form>
+                            </div>
+                            <div class="card">
+                                <h3><i data-lucide="cloud"></i> ARCA (AFIP SDK)</h3>
+                                <form id="config-arca-form">
+                                    <div class="info-note">
+                                        <i data-lucide="info"></i>
+                                        Autenticación directa con AFIP via WSAA. Requiere certificado y clave privada emitidos por AFIP.
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Entorno</label>
+                                        <select id="cfg-environment" class="select-styled">
+                                            <option value="development">Desarrollo (Testing)</option>
+                                            <option value="production">Produccion</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Ruta Certificado (.crt)</label>
+                                        <div class="input-with-btn">
+                                            <input type="text" id="cfg-cert-path" placeholder="certs/certificado.crt">
+                                            <button type="button" class="btn btn-secondary btn-browse" onclick="ConfigComponent.browseFile('cfg-cert-path', 'crt,pem')">
+                                                <i data-lucide="folder-open"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Ruta Clave (.key)</label>
+                                        <div class="input-with-btn">
+                                            <input type="text" id="cfg-key-path" placeholder="certs/clave.key">
+                                            <button type="button" class="btn btn-secondary btn-browse" onclick="ConfigComponent.browseFile('cfg-key-path', 'key,pem')">
+                                                <i data-lucide="folder-open"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">
+                                        Guardar
+                                    </button>
+                                    <button type="button" class="btn btn-secondary" id="btn-test-arca">
+                                        Probar ARCA
+                                    </button>
+                                    <div id="arca-test-result" class="test-result hidden"></div>
+                                </form>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Powered by footer -->
+                <footer class="app-powered-by">
+                    <img src="/static/img/logo-empresa.png" alt="Logo Empresa" class="app-empresa-logo" onerror="this.style.display='none'">
+                    <span>Powered by <strong>GoxTech S.R.L.</strong></span>
+                </footer>
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/components/login.js"></script>
+    <script src="/static/js/components/dashboard.js"></script>
+    <script src="/static/js/components/invoices.js"></script>
+    <script src="/static/js/components/cae-logs.js"></script>
+    <script src="/static/js/components/admin.js"></script>
+    <script src="/static/js/components/config.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
