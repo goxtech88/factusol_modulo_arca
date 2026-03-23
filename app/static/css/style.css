@@ -2436,3 +2436,34 @@ mark.fb-highlight {
 
 .text-success { color: var(--success) !important; }
 .text-muted { color: var(--text-muted) !important; }
+
+/* Toggle compact (toolbar) */
+.auto-toggle-compact {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid var(--border);
+}
+
+.auto-toggle-compact [data-lucide] {
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+}
+
+/* Toggle small */
+.toggle-sm {
+    width: 36px;
+    height: 20px;
+}
+
+.toggle-sm .toggle-slider::before {
+    height: 14px;
+    width: 14px;
+}
+
+.toggle-sm input:checked + .toggle-slider::before {
+    transform: translateX(16px);
+}

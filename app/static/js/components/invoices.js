@@ -51,7 +51,31 @@ const InvoicesComponent = {
             this.currentPv = pvs[0];
             this.loadInvoices();
         }
+
+        // Sincronizar estado del auto-validate toggle
+        this._syncAutoToggle();
     },
+
+    async _syncAutoToggle() {
+        try {
+            const status = await API.get('/api/arca/auto-validate/status');
+            const sw = document.getElementById('invoices-auto-switch');
+            if (sw) sw.checked = status.enabled;
+        } catch { /* ignore */ }
+    },
+
+    async toggleAutoValidate(enabled) {
+        try {
+            await API.post(`/api/arca/auto-validate/toggle?enabled=${enabled}`);
+            App.toast(enabled ? '🤖 Auto-validación activada' : 'Auto-validación desactivada', 'success');
+        } catch (err) {
+            App.toast(err.message, 'error');
+            // Revertir toggle
+            const sw = document.getElementById('invoices-auto-switch');
+            if (sw) sw.checked = !enabled;
+        }
+    },
+
 
     // ── Cambiar filtro de fecha ──────────────────────────────────────────
     setDateFilter(filter) {

@@ -159,6 +159,14 @@
                             <div class="toolbar-left">
                                 <label>Punto de Venta:</label>
                                 <select id="invoice-pv-select" class="select-styled"></select>
+                                <div class="auto-toggle-compact" id="invoices-auto-toggle" title="Auto-validación CAE">
+                                    <i data-lucide="bot"></i>
+                                    <label class="toggle-switch toggle-sm">
+                                        <input type="checkbox" id="invoices-auto-switch"
+                                            onchange="InvoicesComponent.toggleAutoValidate(this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
                             </div>
                             <div class="toolbar-center">
                                 <div class="date-segmenter">
