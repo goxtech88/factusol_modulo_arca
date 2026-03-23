@@ -229,6 +229,10 @@ def build_voucher_data(
     Alícuotas IVA AFIP:
       Id 3 → 0%     Id 4 → 10.5%   Id 5 → 21%
       Id 6 → 27%    Id 8 → 5%      Id 9 → 2.5%
+
+    IMPORTANTE: Los campos de IVA de las LÍNEAS (PIVLFA, BASLFA, IVALFA) son
+    poco confiables en Factusol. Usamos los campos del HEADER que son los
+    totales correctos por alícuota: BAS1-4FAC, IIVA1-4FAC, PIVA1-3FAC.
     """
     # Fecha del comprobante
     fecha = invoice_header.get("FECFAC")
@@ -239,41 +243,64 @@ def build_voucher_data(
     else:
         fecha_str = datetime.now().strftime("%Y%m%d")
 
-    # Calcular IVA agrupado por alícuota
-    iva_map: dict[float, dict] = {}
-    for line in invoice_lines:
-        piv = float(line.get("PIVLFA", 0) or 0)
-        base = float(line.get("BASLFA", 0) or 0)
-        iva_amount = float(line.get("IVALFA", 0) or 0)
-
-        if base == 0 and iva_amount == 0:
-            total_line = float(line.get("TOTLFA", 0) or 0)
-            if piv > 0:
-                base = round(total_line / (1 + piv / 100), 2)
-                iva_amount = round(total_line - base, 2)
-            else:
-                base = total_line
-
-        if piv not in iva_map:
-            iva_map[piv] = {"base": 0.0, "importe": 0.0}
-        iva_map[piv]["base"] += base
-        iva_map[piv]["importe"] += iva_amount
-
+    # ── Calcular IVA desde el HEADER (campos BASxFAC, IIVAxFAC, PIVAxFAC) ──
+    # Factusol guarda hasta 4 bases imponibles con sus IVAs en el header:
+    #   BAS1FAC/IIVA1FAC/PIVA1FAC  (alícuota 1)
+    #   BAS2FAC/IIVA2FAC  ← PIVA2FAC contiene el % de esta alícuota
+    #   BAS3FAC/IIVA3FAC  ← PIVA3FAC contiene el % de esta alícuota
+    #   BAS4FAC/IIVA4FAC  (rara vez se usa)
     pct_to_id = {0: 3, 2.5: 9, 5: 8, 10.5: 4, 21: 5, 27: 6}
 
     iva_array = []
     total_neto = 0.0
     total_iva = 0.0
-    for pct, vals in iva_map.items():
-        afip_id = pct_to_id.get(pct, 5)
-        base_imp = round(vals["base"], 2)
-        importe = round(vals["importe"], 2)
-        total_neto += base_imp
-        total_iva += importe
-        if pct > 0:
-            iva_array.append({"Id": afip_id, "BaseImp": base_imp, "Importe": importe})
 
-    imp_total = round(total_neto + total_iva, 2)
+    for i in range(1, 5):
+        base = float(invoice_header.get(f"BAS{i}FAC", 0) or 0)
+        iva_imp = float(invoice_header.get(f"IIVA{i}FAC", 0) or 0)
+        pct = float(invoice_header.get(f"PIVA{i}FAC", 0) or 0) if i <= 3 else 0
+
+        if base <= 0 and iva_imp <= 0:
+            continue
+
+        # Si no hay %, intentar calcular desde base e importe
+        if pct == 0 and base > 0 and iva_imp > 0:
+            pct = round(iva_imp / base * 100, 1)
+
+        total_neto += base
+        total_iva += iva_imp
+
+        afip_id = pct_to_id.get(pct, 5)  # default 21%
+        if pct > 0 and base > 0:
+            iva_array.append({
+                "Id": afip_id,
+                "BaseImp": round(base, 2),
+                "Importe": round(iva_imp, 2),
+            })
+
+    # Si no pudimos extraer nada del header, fallback a las líneas
+    if total_neto == 0 and total_iva == 0:
+        for line in invoice_lines:
+            piv = float(line.get("PIVLFA", 0) or 0)
+            base = float(line.get("BASLFA", 0) or 0)
+            iva_amount = float(line.get("IVALFA", 0) or 0)
+            if base == 0 and iva_amount == 0:
+                total_line = float(line.get("TOTLFA", 0) or 0)
+                if piv > 0:
+                    base = round(total_line / (1 + piv / 100), 2)
+                    iva_amount = round(total_line - base, 2)
+                else:
+                    base = total_line
+            total_neto += base
+            total_iva += iva_amount
+            if piv > 0 and base > 0:
+                afip_id = pct_to_id.get(piv, 5)
+                iva_array.append({"Id": afip_id, "BaseImp": round(base, 2), "Importe": round(iva_amount, 2)})
+
+    # ImpTotal: usar el TOTFAC del header como fuente de verdad
+    imp_total = float(invoice_header.get("TOTFAC", 0) or 0)
+    if imp_total == 0:
+        imp_total = round(total_neto + total_iva, 2)
 
     # Documento del cliente
     doc_tipo = 80   # CUIT
@@ -293,7 +320,7 @@ def build_voucher_data(
         "concepto": concepto,
         "tipo_doc": doc_tipo,
         "nro_doc": int(doc_nro),
-        "imp_total": imp_total,
+        "imp_total": round(imp_total, 2),
         "imp_tot_conc": 0,
         "imp_neto": round(total_neto, 2),
         "imp_op_ex": 0,
@@ -311,6 +338,7 @@ def build_voucher_data(
         result["fch_vto_pago"] = fecha_str
 
     return result
+
 
 
 
