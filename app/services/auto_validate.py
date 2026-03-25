@@ -133,12 +133,20 @@ def _is_today(fecfac) -> bool:
 
 
 def _validate_pending_sync() -> int:
-    """Busca facturas de HOY sin CAE y las valida (sync)."""
+    """Busca facturas de HOY sin CAE y las valida (sync).
+    Solo procesa puntos de venta de usuarios con auto_validate_enabled=True.
+    """
     db = SessionLocal()
     validated = 0
 
     try:
-        pvs = db.query(UserPuntoVenta).all()
+        # Solo PVs de usuarios activos con auto-validación habilitada
+        pvs = (
+            db.query(UserPuntoVenta)
+            .join(User)
+            .filter(User.is_active == True, User.auto_validate_enabled == True)
+            .all()
+        )
         if not pvs:
             return 0
 

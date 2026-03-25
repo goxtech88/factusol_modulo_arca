@@ -24,7 +24,9 @@ const AdminComponent = {
                     <div class="user-item-info">
                         <i data-lucide="user-circle"></i>
                         <div class="user-item-details">
-                            <h4>${u.full_name} ${!u.is_active ? '<span class="badge badge-danger">Inactivo</span>' : ''}</h4>
+                            <h4>${u.full_name} ${!u.is_active ? '<span class="badge badge-danger">Inactivo</span>' : ''}
+                                ${u.auto_validate_enabled ? '<span class="badge badge-success-subtle" title="Auto-validación activa"><i data-lucide="bot" style="width:12px;height:12px"></i> Auto</span>' : '<span class="badge badge-muted" title="Auto-validación desactivada"><i data-lucide="bot-off" style="width:12px;height:12px"></i></span>'}
+                            </h4>
                             <p>@${u.username} · ${u.role === 'admin' ? 'Admin' : 'Usuario'} · ${u.puntos_venta.length} PdV</p>
                         </div>
                     </div>
@@ -53,6 +55,13 @@ const AdminComponent = {
         document.getElementById('user-password').value = '';
         document.getElementById('user-role').value = user ? user.role : 'user';
 
+        // Auto-validación toggle
+        const autoValEnabled = user ? (user.auto_validate_enabled !== false) : true;
+        const autoValCheckbox = document.getElementById('user-auto-validate');
+        autoValCheckbox.checked = autoValEnabled;
+        this._updateAutoValidateLabel(autoValEnabled);
+        autoValCheckbox.onchange = () => this._updateAutoValidateLabel(autoValCheckbox.checked);
+
         const hint = document.getElementById('user-password-hint');
         hint.classList.toggle('hidden', !user);
 
@@ -64,6 +73,14 @@ const AdminComponent = {
         }
 
         document.getElementById('user-modal').classList.remove('hidden');
+    },
+
+    _updateAutoValidateLabel(enabled) {
+        const label = document.getElementById('user-auto-validate-label');
+        if (label) {
+            label.textContent = enabled ? 'Activado' : 'Desactivado';
+            label.className = `toggle-label ${enabled ? 'text-success' : 'text-muted'}`;
+        }
     },
 
     closeModal() {
@@ -126,7 +143,7 @@ const AdminComponent = {
         try {
             if (this.editingUserId) {
                 // Update user
-                const updateData = { full_name: fullName, role };
+                const updateData = { full_name: fullName, role, auto_validate_enabled: document.getElementById('user-auto-validate').checked };
                 if (password) updateData.password = password;
                 await API.put(`/api/users/${this.editingUserId}`, updateData);
 

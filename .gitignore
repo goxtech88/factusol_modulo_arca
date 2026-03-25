@@ -46,5 +46,12 @@ desktop.ini
 dist/
 build/
 
+# Internal tools (NO compartir — contienen secretos)
+license_gen.py
+LicenseGen.spec
+
+# Workspace
+*.code-workspace
+
 # Logs
 *.log

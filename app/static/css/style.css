@@ -569,6 +569,39 @@ tbody tr {
 .badge-warning { background: var(--warning-bg); color: var(--warning); }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .badge-info { background: var(--info-bg); color: var(--info); }
+.badge-success-subtle {
+    background: rgba(46, 125, 50, 0.10);
+    color: var(--success);
+    font-weight: 600;
+}
+.badge-success-subtle [data-lucide] { stroke: var(--success); }
+.badge-muted {
+    background: #ECECEC;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+.badge-muted [data-lucide] { stroke: var(--text-muted); }
+
+/* Auto-validate per-user toggle in user form */
+.auto-validate-toggle-group {
+    padding: 10px 12px;
+    background: rgba(46, 125, 50, 0.04);
+    border: 1px solid rgba(46, 125, 50, 0.12);
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+}
+.auto-validate-user-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 4px;
+}
+.toggle-label {
+    font-size: 11px;
+    font-weight: 700;
+}
+.text-success { color: var(--success); }
+.text-muted { color: var(--text-muted); }
 
 /* === Toolbar === */
 .toolbar {

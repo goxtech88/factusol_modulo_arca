@@ -38,6 +38,7 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     is_active: Optional[bool] = None
     password: Optional[str] = None
+    auto_validate_enabled: Optional[bool] = None
 
 class PuntoVentaCreate(BaseModel):
     nombre: str
@@ -64,6 +65,7 @@ def list_users(db: Session = Depends(get_db), _admin: User = Depends(require_adm
             "full_name": u.full_name,
             "role": u.role,
             "is_active": u.is_active,
+            "auto_validate_enabled": u.auto_validate_enabled if u.auto_validate_enabled is not None else True,
             "puntos_venta": [
                 {
                     "id": pv.id,
@@ -111,6 +113,8 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _
         user.is_active = data.is_active
     if data.password:
         user.password_hash = hash_password(data.password)
+    if data.auto_validate_enabled is not None:
+        user.auto_validate_enabled = data.auto_validate_enabled
 
     db.commit()
     return {"message": "Usuario actualizado"}

@@ -15,6 +15,7 @@ class User(Base):
     full_name = Column(String(100), nullable=False)
     role = Column(String(20), nullable=False, default="user")  # "admin" o "user"
     is_active = Column(Boolean, default=True)
+    auto_validate_enabled = Column(Boolean, default=True)  # Auto-validación CAE por usuario
 
     # Relación: un usuario puede tener varios puntos de venta asignados
     puntos_venta = relationship("UserPuntoVenta", back_populates="user", cascade="all, delete-orphan")
