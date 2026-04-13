@@ -35,6 +35,7 @@ DEFAULT_CONFIG = {
         "domicilio": "",
         "inicio_actividades": "",
         "condicion_iva": "Responsable Inscripto",
+        "concepto_facturacion": 1,
     },
     "factusol": {
         "db_path": "",
@@ -50,6 +51,7 @@ DEFAULT_CONFIG = {
         "host": "127.0.0.1",
         "port": 8765,
     },
+    # _license_cache se gestiona automáticamente por license_service.py
 }
 
 

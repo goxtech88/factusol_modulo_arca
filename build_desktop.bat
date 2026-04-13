@@ -13,31 +13,69 @@ if not exist venv\Scripts\python.exe (
     exit /b 1
 )
 
+:: ============================================================
+:: IMPORTANTE: Compilamos en un directorio LOCAL (fuera de OneDrive)
+:: para evitar errores "Acceso denegado" por bloqueo de archivos
+:: sincronizados. El resultado se copia de vuelta al finalizar.
+::
+:: Usamos "python -m PyInstaller" en vez de "pyinstaller.exe"
+:: para evitar "Fatal error in launcher" en rutas con espacios.
+:: ============================================================
+set LOCAL_BUILD=C:\temp\arca_build
+set LOCAL_DIST=%LOCAL_BUILD%\dist
+set LOCAL_WORK=%LOCAL_BUILD%\work
+set PY=venv\Scripts\python.exe
+
 :: Instalar/actualizar dependencias de build
-echo [1/4] Verificando dependencias de build...
-venv\Scripts\pip install pywebview pyinstaller --quiet 2>nul
+echo [1/5] Verificando dependencias de build...
+%PY% -m pip install pywebview pyinstaller --quiet 2>nul
 
-:: Limpiar builds anteriores
-echo [2/4] Limpiando builds anteriores...
-if exist dist\ARCA rmdir /s /q dist\ARCA
-if exist build\ARCA rmdir /s /q build\ARCA
-if exist dist\CertGen.exe del /q dist\CertGen.exe
-if exist dist\LicenseGen.exe del /q dist\LicenseGen.exe
-if exist build\CertGen rmdir /s /q build\CertGen
-if exist build\LicenseGen rmdir /s /q build\LicenseGen
+:: Limpiar directorio de build local
+echo [2/5] Preparando directorio de build local...
+if exist "%LOCAL_BUILD%" rmdir /s /q "%LOCAL_BUILD%" 2>nul
+mkdir "%LOCAL_BUILD%" 2>nul
+mkdir "%LOCAL_DIST%" 2>nul
+mkdir "%LOCAL_WORK%" 2>nul
 
-:: Build principal: ARCA.exe (carpeta)
-echo [3/4] Compilando ARCA.exe (app principal)...
-venv\Scripts\pyinstaller arca.spec --noconfirm
+:: Build principal: ARCA.exe
+echo [3/5] Compilando ARCA.exe (app principal)...
+%PY% -m PyInstaller arca.spec --noconfirm --distpath "%LOCAL_DIST%" --workpath "%LOCAL_WORK%"
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo   ERROR: Fallo la compilacion de ARCA.exe
+    echo   Revisa los errores arriba.
+    pause
+    exit /b 1
+)
 echo.
 
-:: Build herramientas (archivos unicos)
-echo [4/4] Compilando herramientas...
+:: Build herramientas
+echo [4/5] Compilando herramientas...
 echo   - CertGen.exe (generador de certificados)...
-venv\Scripts\pyinstaller CertGen.spec --noconfirm 2>nul
+%PY% -m PyInstaller CertGen.spec --noconfirm --distpath "%LOCAL_DIST%" --workpath "%LOCAL_WORK%" 2>nul
 echo   - LicenseGen.exe (generador de licencias - USO INTERNO)...
-venv\Scripts\pyinstaller LicenseGen.spec --noconfirm 2>nul
+%PY% -m PyInstaller LicenseGen.spec --noconfirm --distpath "%LOCAL_DIST%" --workpath "%LOCAL_WORK%" 2>nul
 echo.
+
+:: Copiar resultado de vuelta al proyecto
+echo [5/5] Copiando resultado a dist\...
+
+:: Limpiar dist anterior (con reintentos por si OneDrive bloquea)
+if exist dist\ARCA (
+    rmdir /s /q dist\ARCA 2>nul
+    timeout /t 2 /nobreak >nul
+    if exist dist\ARCA rmdir /s /q dist\ARCA 2>nul
+)
+if not exist dist mkdir dist 2>nul
+
+if exist "%LOCAL_DIST%\ARCA" (
+    xcopy /s /e /i /y /q "%LOCAL_DIST%\ARCA" dist\ARCA >nul
+)
+if exist "%LOCAL_DIST%\CertGen.exe" copy /y "%LOCAL_DIST%\CertGen.exe" dist\ >nul 2>nul
+if exist "%LOCAL_DIST%\LicenseGen.exe" copy /y "%LOCAL_DIST%\LicenseGen.exe" dist\ >nul 2>nul
+
+:: Limpiar directorio temporal
+rmdir /s /q "%LOCAL_BUILD%" 2>nul
 
 :: Verificar resultado
 echo ================================================

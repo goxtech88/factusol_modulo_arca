@@ -96,6 +96,7 @@ const DashboardComponent = {
 
     _renderAutoValidate(container, status) {
         const isOn = status.enabled;
+        const interval = status.interval_seconds || 60;
         const logLines = (status.log || []).slice(-8);
 
         let logsHtml = '';
@@ -108,6 +109,19 @@ const DashboardComponent = {
             `</div>`;
         }
 
+        // Opciones de intervalo
+        const intervalOptions = [
+            { value: 30,  label: '30 seg' },
+            { value: 60,  label: '1 min' },
+            { value: 120, label: '2 min' },
+            { value: 180, label: '3 min' },
+            { value: 300, label: '5 min' },
+            { value: 600, label: '10 min' },
+        ];
+        const intervalSelect = intervalOptions.map(o =>
+            `<option value="${o.value}" ${o.value === interval ? 'selected' : ''}>${o.label}</option>`
+        ).join('');
+
         container.innerHTML = `
             <div class="auto-validate-header">
                 <div class="auto-validate-info">
@@ -115,16 +129,25 @@ const DashboardComponent = {
                     <div>
                         <h4>Auto-validación CAE</h4>
                         <p class="${isOn ? 'text-success' : 'text-muted'}">
-                            ${isOn ? `Activo — cada ${status.interval_seconds}s` : 'Desactivado'}
+                            ${isOn ? `Activo — cada ${interval}s` : 'Desactivado'}
                             ${status.last_run ? ` · Último: ${status.last_run}` : ''}
                             ${status.last_result ? ` · ${status.last_result}` : ''}
                         </p>
                     </div>
                 </div>
-                <label class="toggle-switch">
-                    <input type="checkbox" ${isOn ? 'checked' : ''} onchange="DashboardComponent.toggleAutoValidate(this.checked)">
-                    <span class="toggle-slider"></span>
-                </label>
+                <div class="auto-validate-controls">
+                    <div class="auto-validate-interval ${isOn ? '' : 'hidden'}" id="auto-interval-group">
+                        <i data-lucide="timer"></i>
+                        <select class="select-styled select-sm" id="auto-interval-select"
+                            onchange="DashboardComponent.changeInterval(this.value)">
+                            ${intervalSelect}
+                        </select>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" ${isOn ? 'checked' : ''} onchange="DashboardComponent.toggleAutoValidate(this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
             </div>
             ${logsHtml}
         `;
@@ -136,6 +159,15 @@ const DashboardComponent = {
             await API.post(`/api/arca/auto-validate/toggle?enabled=${enabled}`);
             App.toast(enabled ? 'Auto-validación activada' : 'Auto-validación desactivada', 'success');
             this.loadAutoValidate();
+        } catch (err) {
+            App.toast(err.message, 'error');
+        }
+    },
+
+    async changeInterval(seconds) {
+        try {
+            await API.post(`/api/arca/auto-validate/interval?seconds=${seconds}`);
+            App.toast(`Intervalo cambiado a ${seconds} segundos`, 'success');
         } catch (err) {
             App.toast(err.message, 'error');
         }

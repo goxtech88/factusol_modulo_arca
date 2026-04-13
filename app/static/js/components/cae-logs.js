@@ -6,7 +6,11 @@ const CAELogsComponent = {
     _monthFilter: '',  // '' = todos, '2026-03' = mes específico
 
     init() {
-        // El select de mes se crea dinámicamente al cargar
+        // Setear fecha de hoy en el date picker de Cierre Z
+        const dateInput = document.getElementById('cae-cierre-date');
+        if (dateInput) {
+            dateInput.value = new Date().toISOString().slice(0, 10);
+        }
     },
 
     async load() {
@@ -144,5 +148,172 @@ const CAELogsComponent = {
 
         html += '</div>';
         summaryDiv.innerHTML = html;
+    },
+
+    // ── Informe Cierre Z ─────────────────────────────────────────────────
+    async printCierreZ() {
+        const dateInput = document.getElementById('cae-cierre-date');
+        const fecha = dateInput ? dateInput.value : '';
+        if (!fecha) {
+            App.toast('Seleccioná una fecha para el informe', 'error');
+            return;
+        }
+
+        // Filtrar logs del día seleccionado
+        const logs = this._allLogs.filter(l => {
+            if (!l.created_at) return false;
+            return l.created_at.slice(0, 10) === fecha;
+        });
+
+        if (logs.length === 0) {
+            App.toast('No hay comprobantes emitidos en la fecha seleccionada', 'error');
+            return;
+        }
+
+        // Obtener datos de empresa
+        let empresa = { razon_social: '', cuit: '', domicilio: '' };
+        try {
+            const config = await API.get('/api/config');
+            empresa = config.empresa || empresa;
+        } catch (_) {}
+
+        // Agrupar por PV
+        const byPv = {};
+        let grandTotal = 0, grandNeto = 0, grandIva = 0;
+        logs.forEach(l => {
+            const pv = l.punto_venta || '?';
+            if (!byPv[pv]) byPv[pv] = { count: 0, total: 0, neto: 0, iva: 0 };
+            byPv[pv].count++;
+            byPv[pv].total += (l.imp_total || 0);
+            byPv[pv].neto += (l.imp_neto || 0);
+            byPv[pv].iva += (l.imp_iva || 0);
+            grandTotal += (l.imp_total || 0);
+            grandNeto += (l.imp_neto || 0);
+            grandIva += (l.imp_iva || 0);
+        });
+
+        const fmt = (n) => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fechaFmt = new Date(fecha + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const ahora = new Date().toLocaleString('es-AR');
+
+        // Generar filas de la tabla
+        let rowsHtml = '';
+        logs.forEach((l, i) => {
+            const hora = l.created_at ? new Date(l.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '';
+            rowsHtml += `<tr>
+                <td style="text-align:center">${i + 1}</td>
+                <td>${hora}</td>
+                <td><strong>${l.tipfac}-${l.codfac}</strong></td>
+                <td style="text-align:center">${l.punto_venta}</td>
+                <td style="text-align:center">${l.voucher_number}</td>
+                <td style="font-size:11px">${l.cae}</td>
+                <td>${l.cliente_nombre || '-'}</td>
+                <td style="text-align:right;font-family:Consolas,monospace">$ ${fmt(l.imp_total || 0)}</td>
+            </tr>`;
+        });
+
+        // Resumen por PV
+        let pvHtml = '';
+        Object.entries(byPv).forEach(([pv, d]) => {
+            pvHtml += `<tr>
+                <td><strong>PV ${pv}</strong></td>
+                <td style="text-align:center">${d.count}</td>
+                <td style="text-align:right;font-family:Consolas,monospace">$ ${fmt(d.neto)}</td>
+                <td style="text-align:right;font-family:Consolas,monospace">$ ${fmt(d.iva)}</td>
+                <td style="text-align:right;font-family:Consolas,monospace"><strong>$ ${fmt(d.total)}</strong></td>
+            </tr>`;
+        });
+
+        // Formatear CUIT
+        const cuit = empresa.cuit || '';
+        const cuitFmt = cuit.length === 11 ? `${cuit.slice(0,2)}-${cuit.slice(2,10)}-${cuit.slice(10)}` : cuit;
+
+        const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Cierre Z — ${fecha}</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #111; padding: 20px; }
+    .header { text-align: center; margin-bottom: 16px; }
+    .header h1 { font-size: 18px; margin-bottom: 2px; }
+    .header p { font-size: 12px; color: #444; }
+    .header .fecha { font-size: 14px; font-weight: bold; margin-top: 8px; }
+    hr { border: none; border-top: 1px solid #333; margin: 12px 0; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th, td { border: 1px solid #999; padding: 4px 6px; font-size: 12px; }
+    th { background: #eee; font-weight: 700; text-align: left; }
+    .resumen th { background: #ddd; }
+    .total-row td { border-top: 2px solid #333; font-weight: 700; font-size: 13px; }
+    .footer { margin-top: 20px; font-size: 11px; color: #666; text-align: center; }
+    @media print {
+        body { padding: 0; }
+        @page { margin: 15mm 10mm; }
+    }
+</style>
+</head>
+<body>
+    <div class="header">
+        <h1>${empresa.razon_social || 'Empresa'}</h1>
+        <p>CUIT: ${cuitFmt || '-'}</p>
+        <p>${empresa.domicilio || ''}</p>
+        <hr>
+        <div class="fecha">INFORME CIERRE Z — ${fechaFmt.toUpperCase()}</div>
+    </div>
+    <hr>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:30px;text-align:center">#</th>
+                <th style="width:50px">Hora</th>
+                <th>Serie-Nro</th>
+                <th style="text-align:center">PV</th>
+                <th style="text-align:center">Cbte</th>
+                <th>CAE</th>
+                <th>Cliente</th>
+                <th style="text-align:right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+    </table>
+
+    <table class="resumen">
+        <thead>
+            <tr>
+                <th>Punto de Venta</th>
+                <th style="text-align:center">Cant.</th>
+                <th style="text-align:right">Neto Gravado</th>
+                <th style="text-align:right">IVA</th>
+                <th style="text-align:right">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${pvHtml}
+            <tr class="total-row">
+                <td><strong>TOTAL</strong></td>
+                <td style="text-align:center">${logs.length}</td>
+                <td style="text-align:right;font-family:Consolas,monospace">$ ${fmt(grandNeto)}</td>
+                <td style="text-align:right;font-family:Consolas,monospace">$ ${fmt(grandIva)}</td>
+                <td style="text-align:right;font-family:Consolas,monospace">$ ${fmt(grandTotal)}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+    <div class="footer">
+        Emitido: ${ahora} — Factusol ARCA Sync
+    </div>
+
+    <script>window.onload = function() { window.print(); }</script>
+</body>
+</html>`;
+
+        const w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
     },
 };

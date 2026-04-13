@@ -29,6 +29,10 @@
                             <i data-lucide="lock"></i>
                             <input type="password" id="login-password" placeholder="Contraseña" required autocomplete="current-password">
                         </div>
+                        <label class="remember-check" for="login-remember">
+                            <input type="checkbox" id="login-remember">
+                            <span>Recordar contraseña</span>
+                        </label>
                         <button type="submit" class="btn btn-primary btn-full" id="btn-login">
                             Ingresar
                         </button>
@@ -62,11 +66,7 @@
                         <i data-lucide="file-text"></i>
                         <span>Facturas</span>
                     </li>
-                    <li class="nav-item" data-page="customers">
-                        <i data-lucide="building-2"></i>
-                        <span>Clientes</span>
-                    </li>
-                    <li class="nav-item" data-page="cae-logs">
+<li class="nav-item" data-page="cae-logs">
                         <i data-lucide="clock"></i>
                         <span>CAE Emitidos</span>
                     </li>
@@ -164,6 +164,24 @@
                             <div class="toolbar-left">
                                 <label>Punto de Venta:</label>
                                 <select id="invoice-pv-select" class="select-styled"></select>
+                                <div class="fopfac-filter-group">
+                                    <div class="multiselect-dropdown" id="fopfac-dropdown">
+                                        <button type="button" class="multiselect-btn" id="fopfac-dropdown-btn">
+                                            <i data-lucide="filter"></i>
+                                            <span id="fopfac-dropdown-label">Formas de Pago</span>
+                                            <i data-lucide="chevron-down" class="ms-chevron"></i>
+                                        </button>
+                                        <div class="multiselect-menu hidden" id="fopfac-dropdown-menu">
+                                            <div class="multiselect-actions">
+                                                <button type="button" class="ms-action-btn" onclick="InvoicesComponent.fopfacSelectAll()">Todas</button>
+                                                <button type="button" class="ms-action-btn" onclick="InvoicesComponent.fopfacSelectNone()">Ninguna</button>
+                                            </div>
+                                            <div class="multiselect-list" id="fopfac-checkbox-list">
+                                                <!-- populated by JS -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="auto-toggle-compact" id="invoices-auto-toggle" title="Auto-validación CAE">
                                     <i data-lucide="bot"></i>
                                     <label class="toggle-switch toggle-sm">
@@ -232,6 +250,10 @@
                                                 onclick="InvoicesComponent.sortBy('ESTFAC')">
                                                 Estado<span class="sort-arrow"> ⇅</span>
                                             </th>
+                                            <th id="th-DESFPA" class="sortable-th"
+                                                onclick="InvoicesComponent.sortBy('DESFPA')">
+                                                F. Pago<span class="sort-arrow"> ⇅</span>
+                                            </th>
                                             <th id="th-_cae">CAE</th>
                                             <th id="th-_actions"></th>
                                         </tr>
@@ -271,46 +293,6 @@
                         </div>
                     </div>
 
-                    <!-- Clientes -->
-                    <section id="section-customers" class="section hidden">
-                        <div class="toolbar">
-                            <div class="toolbar-left">
-                                <div class="input-group search-group">
-                                    <i data-lucide="search"></i>
-                                    <input type="text" id="customer-search" placeholder="Buscar por nombre, CUIT o código...">
-                                </div>
-                                <span id="customers-count" class="text-muted" style="margin-left:12px"></span>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="table-container">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Cód</th>
-                                            <th>Razón Social</th>
-                                            <th>CUIT/DNI</th>
-                                            <th>Cond. Fiscal</th>
-                                            <th>Localidad</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="customers-tbody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <!-- Customer Detail Modal -->
-                        <div id="customer-modal" class="modal hidden">
-                            <div class="modal-overlay"></div>
-                            <div class="modal-container" style="max-width:540px">
-                                <div class="modal-header">
-                                    <h3 id="customer-modal-title">Cliente</h3>
-                                    <button class="modal-close" onclick="CustomersComponent.closeModal()">&times;</button>
-                                </div>
-                                <div class="modal-body" id="customer-detail-body"></div>
-                            </div>
-                        </div>
-                    </section>
 
                     <!-- CAE Logs -->
                     <section id="section-cae-logs" class="section hidden">
@@ -318,6 +300,12 @@
                             <div class="toolbar-left">
                                 <label>Período:</label>
                                 <div id="cae-month-filter"></div>
+                            </div>
+                            <div class="toolbar-right">
+                                <input type="date" id="cae-cierre-date" class="select-styled">
+                                <button class="btn btn-primary" onclick="CAELogsComponent.printCierreZ()">
+                                    <i data-lucide="printer"></i> Informe Cierre Z
+                                </button>
                             </div>
                         </div>
                         <div id="cae-summary"></div>
@@ -429,7 +417,12 @@
                                     </div>
                                     <div class="form-group">
                                         <label>CUIT</label>
-                                        <input type="text" id="cfg-cuit" placeholder="20123456789">
+                                        <div class="input-with-btn">
+                                            <input type="text" id="cfg-cuit" placeholder="20123456789">
+                                            <button type="button" id="btn-lookup-cuit" class="btn btn-sm btn-outline" title="Obtener datos desde CUIT">
+                                                <i data-lucide="search"></i> Consultar
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="form-group">
                                         <label>Domicilio</label>
@@ -461,17 +454,14 @@
                                 </form>
                             </div>
                             <div class="card">
-                                <h3><i data-lucide="key"></i> Licencia</h3>
+                                <h3><i data-lucide="award"></i> Plan / Licencia</h3>
                                 <div id="license-status-bar" class="license-bar"></div>
-                                <form id="config-license-form">
-                                    <div class="form-group">
-                                        <label>Clave de Licencia</label>
-                                        <input type="text" id="cfg-license-key" placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family:monospace;letter-spacing:2px">
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">
-                                        Activar Licencia
+                                <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+                                    <button id="btn-refresh-license" class="btn btn-secondary" onclick="ConfigComponent.refreshLicense()">
+                                        <i data-lucide="refresh-cw"></i> Verificar plan
                                     </button>
-                                </form>
+                                    <span style="font-size:12px;color:var(--text-muted)">El plan se verifica automáticamente contra el servidor de GoxTech</span>
+                                </div>
                             </div>
                             <div class="card">
                                 <h3><i data-lucide="database"></i> Factusol</h3>
@@ -534,6 +524,11 @@
                                     </button>
                                     <div id="arca-test-result" class="test-result hidden"></div>
                                 </form>
+                                <hr style="margin:12px 0;border-color:var(--border-light)">
+                                <button type="button" class="btn btn-outline" id="btn-generate-cert" onclick="ConfigComponent.generateCert()">
+                                    <i data-lucide="shield-plus"></i> Generar Certificado AFIP
+                                </button>
+                                <div id="cert-gen-result" class="hidden" style="margin-top:10px"></div>
                             </div>
                         </div>
                     </section>
@@ -557,7 +552,6 @@
     <script src="/static/js/components/login.js"></script>
     <script src="/static/js/components/dashboard.js"></script>
     <script src="/static/js/components/invoices.js"></script>
-    <script src="/static/js/components/customers.js"></script>
     <script src="/static/js/components/cae-logs.js"></script>
     <script src="/static/js/components/admin.js"></script>
     <script src="/static/js/components/config.js"></script>

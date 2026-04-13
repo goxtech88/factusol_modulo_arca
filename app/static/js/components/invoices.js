@@ -7,12 +7,14 @@
  */
 const InvoicesComponent = {
     currentPv: null,
-    _padronCache: {},
     _allInvoices: [],       // datos cacheados del último fetch
     _caeStatuses: {},       // caché de status CAE por "TIPFAC-CODFAC"
     _sortCol: 'CODFAC',
     _sortAsc: false,
     _dateFilter: 'all',     // all | today | yesterday | last7
+    _fopfacFilters: new Set(),  // códigos de formas de pago seleccionadas (vacío = todas)
+    _paymentMethods: [],        // cache de formas de pago
+    _fopfacAllSelected: true,   // si todas están tildadas
 
     // ── Columnas ordenables ──────────────────────────────────────────────
     COLS: [
@@ -21,6 +23,7 @@ const InvoicesComponent = {
         { key: 'CNOFAC',   label: 'Cliente', sortable: true  },
         { key: 'TOTFAC',   label: 'Total',   sortable: true  },
         { key: 'ESTFAC',   label: 'Estado',  sortable: true  },
+        { key: 'DESFPA',   label: 'F. Pago', sortable: true  },
         { key: '_cae',     label: 'CAE',     sortable: false },
         { key: '_actions', label: '',        sortable: false },
     ],
@@ -31,6 +34,32 @@ const InvoicesComponent = {
 
         document.getElementById('invoice-search')
             .addEventListener('input', App.debounce(() => this.loadInvoices(), 400));
+
+        // Restaurar filtro de formas de pago guardado
+        try {
+            const saved = JSON.parse(localStorage.getItem('invoice_fopfac_filters') || 'null');
+            if (Array.isArray(saved)) {
+                this._fopfacFilters = new Set(saved);
+                this._fopfacAllSelected = false;
+            }
+        } catch { /* use defaults */ }
+
+        // Dropdown toggle
+        const dropBtn = document.getElementById('fopfac-dropdown-btn');
+        if (dropBtn) {
+            dropBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this._toggleFopfacDropdown();
+            });
+        }
+        // Close dropdown on outside click
+        document.addEventListener('click', (e) => {
+            const dd = document.getElementById('fopfac-dropdown');
+            if (dd && !dd.contains(e.target)) {
+                dd.classList.remove('open');
+                document.getElementById('fopfac-dropdown-menu')?.classList.add('hidden');
+            }
+        });
 
         // Modal close
         document.querySelectorAll('#invoice-modal .modal-close, #invoice-modal .modal-overlay')
@@ -49,7 +78,8 @@ const InvoicesComponent = {
 
         if (pvs.length > 0) {
             this.currentPv = pvs[0];
-            this.loadInvoices();
+            // Cargar formas de pago y luego facturas
+            this.loadPaymentMethods().then(() => this.loadInvoices());
         }
 
         // Sincronizar estado del auto-validate toggle
@@ -84,6 +114,127 @@ const InvoicesComponent = {
             btn.classList.toggle('active', btn.dataset.filter === filter);
         });
         this.loadInvoices();
+    },
+
+    // ── Cargar formas de pago (multi-select checkboxes) ────────────────────
+    async loadPaymentMethods() {
+        try {
+            const data = await API.get('/api/factusol/payment-methods');
+            this._paymentMethods = data || [];
+
+            // Si no hay filtro guardado, seleccionar todas por defecto
+            if (this._fopfacFilters.size === 0 && this._fopfacAllSelected) {
+                this._fopfacFilters = new Set(this._paymentMethods.map(fp => String(fp.CODFPA)));
+                this._fopfacAllSelected = true;
+            }
+
+            this._renderFopfacCheckboxes();
+        } catch (err) {
+            console.warn('No se pudieron cargar formas de pago:', err.message);
+        }
+    },
+
+    _toggleFopfacDropdown() {
+        const dd = document.getElementById('fopfac-dropdown');
+        const menu = document.getElementById('fopfac-dropdown-menu');
+        if (!dd || !menu) return;
+        const isOpen = !menu.classList.contains('hidden');
+        if (isOpen) {
+            dd.classList.remove('open');
+            menu.classList.add('hidden');
+        } else {
+            dd.classList.add('open');
+            menu.classList.remove('hidden');
+        }
+    },
+
+    _renderFopfacCheckboxes() {
+        const list = document.getElementById('fopfac-checkbox-list');
+        if (!list) return;
+        list.innerHTML = this._paymentMethods.map(fp => {
+            const code = String(fp.CODFPA);
+            const checked = this._fopfacFilters.has(code) ? 'checked' : '';
+            return `<div class="multiselect-item">
+                <input type="checkbox" id="fopfac-cb-${code}" value="${code}" ${checked}
+                    onchange="InvoicesComponent.toggleFopfac('${code}', this.checked)">
+                <label for="fopfac-cb-${code}">${fp.DESFPA || code}</label>
+            </div>`;
+        }).join('');
+        this._updateFopfacLabel();
+    },
+
+    toggleFopfac(code, checked) {
+        if (checked) {
+            this._fopfacFilters.add(code);
+        } else {
+            this._fopfacFilters.delete(code);
+        }
+        this._fopfacAllSelected = this._fopfacFilters.size === this._paymentMethods.length;
+        this._saveFopfacFilters();
+        this._updateFopfacLabel();
+        this._applyClientFilter();
+    },
+
+    fopfacSelectAll() {
+        this._fopfacFilters = new Set(this._paymentMethods.map(fp => String(fp.CODFPA)));
+        this._fopfacAllSelected = true;
+        this._renderFopfacCheckboxes();
+        this._saveFopfacFilters();
+        this._applyClientFilter();
+    },
+
+    fopfacSelectNone() {
+        this._fopfacFilters.clear();
+        this._fopfacAllSelected = false;
+        this._renderFopfacCheckboxes();
+        this._saveFopfacFilters();
+        this._applyClientFilter();
+    },
+
+    _saveFopfacFilters() {
+        if (this._fopfacAllSelected) {
+            localStorage.removeItem('invoice_fopfac_filters');
+        } else {
+            localStorage.setItem('invoice_fopfac_filters', JSON.stringify([...this._fopfacFilters]));
+        }
+        // Guardar también en config del backend para auto-validación
+        this._saveAutoValidateFopfac();
+    },
+
+    async _saveAutoValidateFopfac() {
+        try {
+            const codes = this._fopfacAllSelected ? [] : [...this._fopfacFilters];
+            await API.post('/api/arca/auto-validate/payment-filters', { fopfac_codes: codes });
+        } catch { /* silent */ }
+    },
+
+    _updateFopfacLabel() {
+        const label = document.getElementById('fopfac-dropdown-label');
+        if (!label) return;
+        const total = this._paymentMethods.length;
+        const selected = this._fopfacFilters.size;
+        if (selected === 0) {
+            label.innerHTML = 'Ninguna';
+        } else if (selected === total) {
+            label.innerHTML = 'Todas';
+        } else {
+            label.innerHTML = `F. Pago <span class="multiselect-badge">${selected}</span>`;
+        }
+    },
+
+    /** Filtra _allInvoices en memoria y re-renderiza */
+    _applyClientFilter() {
+        this._renderTable();
+        this._updateCounter(this._getFilteredInvoices().length);
+    },
+
+    /** Devuelve facturas filtradas por formas de pago seleccionadas */
+    _getFilteredInvoices() {
+        if (this._fopfacAllSelected || this._fopfacFilters.size === this._paymentMethods.length) {
+            return this._allInvoices;
+        }
+        if (this._fopfacFilters.size === 0) return [];
+        return this._allInvoices.filter(inv => this._fopfacFilters.has(String(inv.FOPFAC)));
     },
 
     // ── Refresh manual ───────────────────────────────────────────────────
@@ -123,9 +274,10 @@ const InvoicesComponent = {
             this._allInvoices = data.invoices || [];
 
             document.getElementById('invoices-loading').classList.add('hidden');
-            this._updateCounter(this._allInvoices.length);
+            const filtered = this._getFilteredInvoices();
+            this._updateCounter(filtered.length);
 
-            if (this._allInvoices.length === 0) {
+            if (filtered.length === 0) {
                 document.getElementById('invoices-empty').classList.remove('hidden');
                 return;
             }
@@ -173,7 +325,7 @@ const InvoicesComponent = {
     _sortedInvoices() {
         const col = this._sortCol;
         const asc = this._sortAsc;
-        return [...this._allInvoices].sort((a, b) => {
+        return [...this._getFilteredInvoices()].sort((a, b) => {
             let va = a[col] ?? '';
             let vb = b[col] ?? '';
             // Fechas
@@ -225,6 +377,7 @@ const InvoicesComponent = {
                 <td class="td-cliente">${inv.CNOFAC || '-'}</td>
                 <td class="td-num">$ ${(inv.TOTFAC || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                 <td><span class="badge badge-${estadoClass}">${estadoLabel}</span></td>
+                <td class="td-fpago">${inv.DESFPA || inv.FOPFAC || '-'}</td>
                 <td>
                     ${validated
                         ? `<span class="badge badge-success cae-mini" title="CAE: ${cae.cae}">CAE</span>`
@@ -242,7 +395,10 @@ const InvoicesComponent = {
                                onclick="InvoicesComponent.validateInvoice(${inv.TIPFAC}, ${inv.CODFAC})">
                                <i data-lucide="check-check"></i> CAE
                            </button>`
-                        : ''}
+                        : `<button class="btn btn-sm btn-danger" title="Nota de Credito"
+                               onclick="InvoicesComponent.createCreditNote(${inv.TIPFAC}, ${inv.CODFAC})">
+                               <i data-lucide="file-minus"></i> NC
+                           </button>`}
                 </td>
             </tr>`;
         }).join('');
@@ -271,6 +427,7 @@ const InvoicesComponent = {
                 <div class="invoice-field"><label>Cod. Cliente</label>${h.CLIFAC || '-'}</div>
                 <div class="invoice-field"><label>Cond. IVA</label>${condIva}</div>
                 <div class="invoice-field"><label>Estado</label>${h.ESTFAC == 1 ? 'Cobrada' : 'Pendiente'}</div>
+                <div class="invoice-field"><label>Forma de Pago</label>${h.DESFPA || h.FOPFAC || '-'}</div>
             </div>`;
 
             // ── CAE ya grabado en Factusol ──
@@ -289,25 +446,29 @@ const InvoicesComponent = {
             }
 
             if (data.cliente) {
+                const codcli = data.cliente.CODCLI || '';
+                const cfecliMap = { 0: 'Sin configurar', 1: 'Consumidor Final', 2: 'Resp. Inscripto', 3: 'Monotributista', 4: 'Exento' };
+                const cfecliLabel = cfecliMap[data.cliente.CFECLI] || `Tipo ${data.cliente.CFECLI}`;
                 html += `<div class="invoice-cliente-block">
                     <div class="invoice-cliente-header">
                         <span class="invoice-cliente-title"><i data-lucide="user"></i> Datos del Cliente en Factusol</span>
                         ${cuit
-                            ? `<button class="btn btn-sm btn-padron" id="btn-consultar-padron"
-                                onclick="InvoicesComponent.consultarPadron('${cuit}', '${(h.CNOFAC||'').replace(/'/g,"\\'")}')">`
-                                + `<i data-lucide="search"></i> Consultar ARCA</button>`
+                            ? `<button class="btn btn-sm btn-padron" id="btn-actualizar-cuit"
+                                onclick="InvoicesComponent.actualizarDatosCuit(${codcli}, '${cuit}', '${tipfac}', '${codfac}')">`
+                                + `<i data-lucide="refresh-cw"></i> Actualizar datos desde CUIT</button>`
                             : `<span class="padron-no-cuit"><i data-lucide="alert-circle"></i> Sin CUIT</span>`}
                     </div>
                     <div class="invoice-header-grid">
+                        <div class="invoice-field"><label>Código</label>${codcli}</div>
                         <div class="invoice-field"><label>CUIT/DNI</label>${cuit || '-'}</div>
                         <div class="invoice-field"><label>Domicilio</label>${data.cliente.DOMCLI || '-'}</div>
                         <div class="invoice-field"><label>Localidad</label>${data.cliente.POBCLI || '-'}</div>
+                        <div class="invoice-field"><label>Cond. Fiscal</label>${cfecliLabel}</div>
                         <div class="invoice-field"><label>Teléfono</label>${data.cliente.TELCLI || '-'}</div>
                     </div>
                 </div>`;
             }
 
-            html += `<div id="padron-panel" class="padron-panel hidden"></div>`;
 
             // Líneas
             html += `<div class="invoice-lines-table"><table><thead><tr>
@@ -373,6 +534,12 @@ const InvoicesComponent = {
                     <button class="btn btn-success" onclick="InvoicesComponent.validateInvoice(${tipfac}, ${codfac})">
                         <i data-lucide="check-check"></i> Validar en ARCA
                     </button>`;
+            } else if (yaValidada && this.currentPv) {
+                footer.innerHTML = `
+                    <button class="btn btn-secondary modal-close">Cerrar</button>
+                    <button class="btn btn-danger" onclick="InvoicesComponent.createCreditNote(${tipfac}, ${codfac})">
+                        <i data-lucide="file-minus"></i> Emitir Nota de Credito
+                    </button>`;
             } else {
                 footer.innerHTML = '<button class="btn btn-secondary modal-close">Cerrar</button>';
             }
@@ -381,77 +548,30 @@ const InvoicesComponent = {
             document.getElementById('invoice-modal').classList.remove('hidden');
             if (typeof lucide !== 'undefined') lucide.createIcons();
 
-            if (cuit && this._padronCache[cuit]) {
-                this._renderPadronPanel(this._padronCache[cuit]);
-            }
+
         } catch (err) {
             App.toast(err.message, 'error');
         }
     },
 
-    // ── Padrón ARCA ───────────────────────────────────────────────────────
-    async consultarPadron(cuit, nombreActual) {
-        const btn = document.getElementById('btn-consultar-padron');
-        if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Consultando...'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
-        const panel = document.getElementById('padron-panel');
-        if (panel) {
-            panel.classList.remove('hidden');
-            panel.innerHTML = `<div class="padron-loading"><i data-lucide="loader-2" class="spin-icon"></i><span>Consultando Padron ARCA para CUIT ${cuit}...</span></div>`;
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-
-        this._logClear();
-        this._logLine(`Consultando padron ARCA para CUIT ${cuit}...`, 'info');
-        this._logLine(`Autenticando con WSAA (ws_sr_padron_a4)...`, 'info');
+    // ── Actualizar datos del cliente desde CUIT ────────────────────────────
+    async actualizarDatosCuit(codcli, cuit, tipfac, codfac) {
+        const btn = document.getElementById('btn-actualizar-cuit');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Actualizando...'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
 
         try {
-            const data = await API.get(`/api/arca/padron/${cuit}`);
-            this._padronCache[cuit] = data;
-            this._logLine(`Padron OK: ${data.razon_social || data.apellido || ''} - ${data.estado_cuit || 'N/D'}`, 'ok');
-            this._renderPadronPanel(data, nombreActual);
+            const result = await API.post(`/api/arca/enrich-customer/${codcli}/${cuit}`);
+            const fields = result.updated_fields || [];
+            App.toast(`Cliente actualizado: ${result.razon_social || ''} — ${result.condicion_iva || 'N/D'} (${fields.length} campos)`, 'success');
+            // Refrescar el modal con los datos actualizados
+            this.viewDetail(tipfac, codfac);
         } catch (err) {
-            this._logLine(`ERROR: ${err.message}`, 'error');
-            if (panel) { panel.innerHTML = `<div class="padron-error"><i data-lucide="alert-triangle"></i><span>Error: ${err.message}</span></div>`; if (typeof lucide !== 'undefined') lucide.createIcons(); }
-            App.toast(`Padron ARCA: ${err.message}`, 'error');
+            App.toast(`Error al actualizar: ${err.message}`, 'error');
         } finally {
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="search"></i> Consultar ARCA'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="refresh-cw"></i> Actualizar datos desde CUIT'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
         }
     },
 
-
-    _renderPadronPanel(data, nombreActual) {
-        const panel = document.getElementById('padron-panel');
-        if (!panel) return;
-        panel.classList.remove('hidden');
-        const estadoClass = data.estado_cuit === 'ACTIVO' ? 'padron-estado-activo' : data.estado_cuit === 'INACTIVO' ? 'padron-estado-inactivo' : 'padron-estado-nd';
-        const nombreCompleto = data.tipo_persona === 'FISICA' ? `${data.apellido || ''} ${data.nombre || ''}`.trim() : data.razon_social || '';
-        const dom = data.domicilio_fiscal || {};
-        const domStr = [dom.calle, dom.numero, dom.piso, dom.depto].filter(Boolean).join(' ');
-        const locStr = [dom.localidad, dom.provincia, dom.cp].filter(Boolean).join(' · ');
-        const hasDiff = nombreActual && nombreCompleto && nombreActual.trim().toLowerCase() !== nombreCompleto.toLowerCase();
-
-        panel.innerHTML = `<div class="padron-result">
-            <div class="padron-result-header">
-                <div class="padron-result-title"><i data-lucide="shield-check"></i><span>Datos en el Padron ARCA</span></div>
-                <span class="padron-estado ${estadoClass}">${data.estado_cuit || 'N/D'}</span>
-            </div>
-            <div class="padron-data-grid">
-                <div class="padron-field"><label>CUIT</label><span class="padron-value">${this._formatCuit(data.cuit)}</span></div>
-                <div class="padron-field"><label>Tipo Persona</label><span class="padron-value">${data.tipo_persona || '-'}</span></div>
-                <div class="padron-field padron-field-wide"><label>Razon Social / Nombre</label>
-                    <span class="padron-value padron-nombre ${hasDiff ? 'padron-diff' : ''}">
-                        ${nombreCompleto || data.razon_social || '-'}
-                        ${hasDiff ? '<span class="padron-diff-badge">Difiere de Factusol</span>' : ''}
-                    </span></div>
-                <div class="padron-field padron-field-wide"><label>Condicion IVA</label><span class="padron-value">${data.condicion_iva || '-'}</span></div>
-                ${domStr ? `<div class="padron-field padron-field-wide"><label>Domicilio Fiscal</label><span class="padron-value">${domStr}</span></div>` : ''}
-                ${locStr ? `<div class="padron-field padron-field-wide"><label>Localidad / CP</label><span class="padron-value">${locStr}</span></div>` : ''}
-            </div>
-            ${hasDiff ? `<div class="padron-diff-alert"><i data-lucide="alert-circle"></i><span>El nombre en Factusol (<strong>${nombreActual}</strong>) difiere del Padron (<strong>${nombreCompleto}</strong>).</span></div>` : ''}
-            <div class="padron-footer-note"><i data-lucide="info"></i>Datos en tiempo real del Padron ARCA. Actualizar en Factusol manualmente.</div>
-        </div>`;
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-    },
 
     _formatCuit(cuit) {
         if (!cuit || cuit.length !== 11) return cuit || '-';
@@ -525,6 +645,49 @@ const InvoicesComponent = {
         }
     },
 
+
+    // ── Nota de Credito ─────────────────────────────────────────────────
+    async createCreditNote(tipfac, codfac) {
+        if (!this.currentPv) {
+            App.toast('No tiene un punto de venta seleccionado', 'error');
+            return;
+        }
+        if (!confirm(
+            `ATENCION: Emitir NOTA DE CREDITO para anular factura ${tipfac}-${codfac}?\n\n` +
+            `Punto de Venta: ${this.currentPv.punto_venta}\n` +
+            `Esto generara una NC en AFIP con los mismos importes de la factura original.\n\n` +
+            `Esta accion NO se puede deshacer.`
+        )) return;
+
+        this._logClear();
+        this._logLine(`Emitiendo Nota de Credito para ${tipfac}-${codfac}...`, 'info');
+        this._logLine(`PV: ${this.currentPv.punto_venta} | Conectando con ARCA...`, 'info');
+
+        try {
+            const result = await API.post(`/api/arca/credit-note/${tipfac}/${codfac}?pv_id=${this.currentPv.id}`);
+
+            if (result.status === 'ok') {
+                this._logLine(`${result.tipo_nombre} emitida: ${result.comprobante_nro}`, 'ok');
+                this._logLine(`CAE: ${result.cae}`, 'ok');
+                App.toast(`${result.message}`, 'success');
+            } else if (result.status === 'already_exists') {
+                this._logLine(`Ya existe NC para esta factura. CAE: ${result.cae}`, 'warn');
+                App.toast(`Ya existe NC para esta factura`, 'info');
+            } else {
+                this._logLine(result.message || 'Respuesta inesperada', 'warn');
+                App.toast(result.message || 'Respuesta inesperada', 'warning');
+            }
+
+            setTimeout(() => {
+                this.closeModal();
+                this.refresh();
+            }, 2000);
+        } catch (err) {
+            const msg = err.message || 'Error desconocido';
+            this._logLine(`ERROR: ${msg}`, 'error');
+            App.toast(`Error al emitir NC: ${msg}`, 'error');
+        }
+    },
 
     closeModal() {
         this._logHide();

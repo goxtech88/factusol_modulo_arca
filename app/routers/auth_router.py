@@ -55,6 +55,21 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     )
 
 
+@router.get("/users")
+def list_usernames(db: Session = Depends(get_db)):
+    """Lista pública de usuarios activos (para el selector de login)."""
+    users = (
+        db.query(User)
+        .filter(User.is_active == True)
+        .order_by(User.full_name)
+        .all()
+    )
+    return [
+        {"username": u.username, "full_name": u.full_name or u.username}
+        for u in users
+    ]
+
+
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
     return {

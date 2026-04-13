@@ -18,6 +18,7 @@ class EmpresaConfig(BaseModel):
     domicilio: Optional[str] = None
     inicio_actividades: Optional[str] = None
     condicion_iva: Optional[str] = None
+    concepto_facturacion: Optional[int] = None
 
 class FactusolConfig(BaseModel):
     db_path: Optional[str] = None
@@ -48,7 +49,6 @@ def get_configuration(_admin: User = Depends(require_admin)):
             "port": config.get("app", {}).get("port", 8000),
         },
         "license": lic_status,
-        "license_key": config.get("license", {}).get("key", ""),
     }
     return safe
 
@@ -80,17 +80,54 @@ def update_arca(data: ArcaConfig, _admin: User = Depends(require_admin)):
     return {"message": "Configuración de ARCA actualizada"}
 
 
-@router.put("/license")
-def update_license(data: dict, _admin: User = Depends(require_admin)):
-    """Guarda la clave de licencia."""
-    config = get_config()
-    if "license" not in config:
-        config["license"] = {}
-    config["license"]["key"] = data.get("key", "").strip()
-    save_config(config)
+@router.post("/license/refresh")
+def refresh_license(_admin: User = Depends(require_admin)):
+    """Fuerza una re-verificación online de la licencia, ignorando el caché."""
     from app.services import license_service
-    status = license_service.get_license_status()
-    return {"message": status["message"], "valid": status["valid"]}
+    status = license_service.refresh_license()
+    return status
+
+
+@router.post("/generate-cert")
+def generate_cert(_admin: User = Depends(require_admin)):
+    """Genera clave privada (.key) y CSR (.req) para ARCA/AFIP."""
+    config = get_config()
+    cuit = config.get("empresa", {}).get("cuit", "").replace("-", "").replace(" ", "").strip()
+    razon_social = config.get("empresa", {}).get("razon_social", "").strip()
+
+    if not cuit or len(cuit) < 10:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Configure el CUIT de la empresa primero")
+    if not razon_social:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Configure la Razón Social de la empresa primero")
+
+    import os
+    from cert_gen import generate_key_and_csr
+
+    output_dir = os.path.join(os.getcwd(), "certs")
+    try:
+        key_path, csr_path = generate_key_and_csr(cuit, razon_social, output_dir)
+    except ImportError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail="Falta la librería 'cryptography'. Instalar con: pip install cryptography")
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"Error al generar certificado: {str(e)}")
+
+    # Auto-configurar key_path
+    config["arca"]["key_path"] = key_path
+    save_config(config)
+
+    # Leer contenido del CSR para copiar
+    with open(csr_path, "r") as f:
+        csr_content = f.read()
+
+    return {
+        "key_path": key_path,
+        "csr_path": csr_path,
+        "csr_content": csr_content,
+    }
 
 
 @router.get("/browse-dialog")

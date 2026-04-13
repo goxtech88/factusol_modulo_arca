@@ -42,16 +42,47 @@ const ConfigComponent = {
             } catch (err) { App.toast(err.message, 'error'); }
         });
 
-        document.getElementById('config-license-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Botón "Consultar CUIT" en empresa - autocompleta datos fiscales
+        document.getElementById('btn-lookup-cuit').addEventListener('click', async () => {
+            const cuit = document.getElementById('cfg-cuit').value.replace(/[^0-9]/g, '').trim();
+            if (!cuit || cuit.length < 10) {
+                App.toast('Ingresá un CUIT válido (10-11 dígitos)', 'error');
+                return;
+            }
+            const btn = document.getElementById('btn-lookup-cuit');
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Consultando...';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
             try {
-                const result = await API.put('/api/config/license', {
-                    key: document.getElementById('cfg-license-key').value,
-                });
-                App.toast(result.message, result.valid ? 'success' : 'error');
-                this._updateLicenseBar(result.valid);
-                if (result.valid) App._checkLicense();
-            } catch (err) { App.toast(err.message, 'error'); }
+                const data = await API.get(`/api/arca/padron/${cuit}`);
+                // Autocompletar campos
+                if (data.razon_social) {
+                    document.getElementById('cfg-razon-social').value = data.razon_social;
+                }
+                if (data.domicilio_fiscal) {
+                    const dom = data.domicilio_fiscal;
+                    const parts = [dom.calle, dom.numero, dom.piso, dom.depto].filter(Boolean);
+                    const loc = [dom.localidad, dom.provincia, dom.cp].filter(Boolean);
+                    const full = parts.concat(loc).join(', ');
+                    if (full) document.getElementById('cfg-domicilio').value = full;
+                }
+                // Mapear condición IVA
+                if (data.condicion_iva) {
+                    const condLower = data.condicion_iva.toLowerCase();
+                    const select = document.getElementById('cfg-condicion-iva');
+                    if (condLower.includes('monotributo')) select.value = 'Monotributista';
+                    else if (condLower.includes('exento')) select.value = 'Exento';
+                    else if (condLower.includes('inscripto')) select.value = 'Responsable Inscripto';
+                }
+                App.toast(`✅ Datos obtenidos: ${data.razon_social || 'OK'}`, 'success');
+            } catch (err) {
+                App.toast(`Error al consultar CUIT: ${err.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="search"></i> Consultar';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
         });
 
         document.getElementById('btn-test-db').addEventListener('click', async () => {
@@ -119,9 +150,8 @@ const ConfigComponent = {
             document.getElementById('cfg-cert-path').value = config.arca?.cert_path || '';
             document.getElementById('cfg-key-path').value = config.arca?.key_path || '';
 
-            // Licencia
-            document.getElementById('cfg-license-key').value = config.license_key || '';
-            this._updateLicenseBar(config.license?.valid);
+            // Plan / Licencia
+            this._updateLicenseBar(config.license);
         } catch (err) {
             App.toast(err.message, 'error');
         }
@@ -150,16 +180,87 @@ const ConfigComponent = {
         }
     },
 
-    _updateLicenseBar(valid) {
+    // ── Generador de Certificado AFIP ──────────────────────────────────
+    async generateCert() {
+        const btn = document.getElementById('btn-generate-cert');
+        const result = document.getElementById('cert-gen-result');
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Generando...';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        try {
+            const data = await API.post('/api/config/generate-cert');
+            // Auto-rellenar key_path
+            document.getElementById('cfg-key-path').value = data.key_path;
+
+            result.classList.remove('hidden');
+            result.innerHTML = `
+                <div class="test-result success" style="white-space:normal">
+                    <strong>Certificado generado correctamente</strong><br>
+                    <span style="font-size:11px">
+                        Clave privada: <code>${data.key_path}</code><br>
+                        CSR: <code>${data.csr_path}</code>
+                    </span>
+                </div>
+                <div class="info-note" style="margin-top:8px;font-size:11px">
+                    <i data-lucide="info"></i>
+                    <div>
+                        <strong>Pasos siguientes:</strong><br>
+                        1. Ir a <a href="https://auth.afip.gob.ar/" target="_blank">auth.afip.gob.ar</a><br>
+                        2. Administración de Certificados Digitales<br>
+                        3. Crear alias y pegar el contenido del CSR:<br>
+                        <textarea readonly style="width:100%;height:80px;font-size:10px;font-family:monospace;margin-top:4px;background:var(--bg-primary);border:1px solid var(--border);border-radius:4px;padding:4px;color:var(--text-main)">${data.csr_content}</textarea>
+                        4. Asociar al Web Service <strong>wsfe</strong><br>
+                        5. Descargar el <strong>.crt</strong> y configurarlo arriba
+                    </div>
+                </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            App.toast('Certificado generado — configure el .crt de AFIP', 'success');
+        } catch (err) {
+            result.classList.remove('hidden');
+            result.innerHTML = `<div class="test-result error">${err.message}</div>`;
+            App.toast(err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="shield-plus"></i> Generar Certificado AFIP';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    },
+
+    _updateLicenseBar(license) {
         const bar = document.getElementById('license-status-bar');
         if (!bar) return;
-        if (valid) {
+
+        if (license && license.plan === 'completa' && license.active) {
             bar.className = 'license-bar license-valid';
-            bar.innerHTML = '<i data-lucide="check-circle"></i> Licencia activa';
-        } else {
+            const until = license.valid_until ? ` — vence ${license.valid_until}` : '';
+            const cache = license.from_cache ? ' <span style="font-size:11px;opacity:.7">(sin conexión)</span>' : '';
+            bar.innerHTML = `<i data-lucide="check-circle"></i> Plan Completo activo${until}${cache}`;
+        } else if (license && license.plan === 'completa' && !license.active) {
             bar.className = 'license-bar license-invalid';
-            bar.innerHTML = '<i data-lucide="alert-triangle"></i> Sin licencia — Panel de Usuarios bloqueado';
+            bar.innerHTML = '<i data-lucide="alert-triangle"></i> Plan Completo vencido — <a href="https://goxtech.com.ar" target="_blank">Renovar</a>';
+        } else {
+            bar.className = 'license-bar license-trial';
+            const msg = (license && license.message) ? license.message : 'Plan Básico activo';
+            bar.innerHTML = `<i data-lucide="info"></i> ${msg}`;
         }
         if (typeof lucide !== 'undefined') lucide.createIcons();
+    },
+
+    async refreshLicense() {
+        const btn = document.getElementById('btn-refresh-license');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Verificando...'; }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        try {
+            const result = await API.post('/api/config/license/refresh');
+            this._updateLicenseBar(result);
+            App._checkLicense();
+            App.toast(result.message, result.plan === 'completa' ? 'success' : 'info');
+        } catch (err) {
+            App.toast('Error al verificar plan: ' + err.message, 'error');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="refresh-cw"></i> Verificar plan'; }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
     },
 };

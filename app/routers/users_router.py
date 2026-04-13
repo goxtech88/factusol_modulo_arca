@@ -1,6 +1,6 @@
 """
 Router de administración de usuarios (solo admin).
-Requiere licencia válida para funcionar.
+La gestión multi-usuario requiere Plan Completo.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,16 +13,16 @@ from app.models.user import User, UserPuntoVenta
 from app.services import license_service
 
 
-def _require_license():
-    """Verifica que la licencia sea válida antes de operar."""
-    if not license_service.is_licensed():
+def _require_completa():
+    """Gestión multi-usuario requiere Plan Completo."""
+    if not license_service.has_completa():
         raise HTTPException(
             status_code=403,
-            detail="Licencia no válida. Ingrese una clave de licencia válida en Configuración.",
+            detail="La gestión de múltiples usuarios requiere el Plan Completo. Más info en goxtech.com.ar",
         )
 
 
-router = APIRouter(prefix="/api/users", tags=["users"], dependencies=[Depends(_require_license)])
+router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 # --- Schemas ---
@@ -82,7 +82,7 @@ def list_users(db: Session = Depends(get_db), _admin: User = Depends(require_adm
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_user(data: UserCreate, db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+def create_user(data: UserCreate, db: Session = Depends(get_db), _admin: User = Depends(require_admin), _plan: None = Depends(_require_completa)):
     existing = db.query(User).filter(User.username == data.username).first()
     if existing:
         raise HTTPException(status_code=400, detail="El usuario ya existe")
@@ -100,7 +100,7 @@ def create_user(data: UserCreate, db: Session = Depends(get_db), _admin: User = 
 
 
 @router.put("/{user_id}")
-def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _admin: User = Depends(require_admin), _plan: None = Depends(_require_completa)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -121,7 +121,7 @@ def update_user(user_id: int, data: UserUpdate, db: Session = Depends(get_db), _
 
 
 @router.delete("/{user_id}")
-def deactivate_user(user_id: int, db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+def deactivate_user(user_id: int, db: Session = Depends(get_db), _admin: User = Depends(require_admin), _plan: None = Depends(_require_completa)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")

@@ -120,55 +120,66 @@ def main():
 
     logger.info("✅ Servidor listo — abriendo ventana")
 
-    # Abrir ventana con PyWebView
+    # Abrir ventana nativa (Chrome/Edge --app mode)
     url = f"http://{local_host}:{port}"
-    try:
-        import webview
-        logger.info(f"Usando PyWebView para abrir: {url}")
-        window = webview.create_window(
-            title,
-            url,
-            width=1280,
-            height=800,
-            min_size=(900, 600),
-            resizable=True,
-            text_select=True,
-        )
-        webview.start()
-        logger.info("Ventana cerrada — saliendo")
-    except ImportError:
-        logger.warning("PyWebView no disponible, abriendo en navegador")
-        _open_in_browser(url, host, port)
-    except Exception:
-        logger.exception("Error con PyWebView, intentando navegador")
-        _open_in_browser(url, host, port)
+    _open_in_browser(url, host, port)
+
+
+def _find_chromium_browser():
+    """Busca Chrome o Edge (ambos soportan --app mode)."""
+    candidates = [
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    ]
+    return next((p for p in candidates if os.path.exists(p)), None)
 
 
 def _open_in_browser(url: str, host: str, port: int):
-    """Fallback: abrir en Chrome modo app o navegador por defecto."""
+    """Abre en Chrome/Edge modo app (sin barra de navegación) o navegador por defecto."""
     import subprocess
     import webbrowser
 
-    chrome_paths = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-    ]
-    chrome = next((p for p in chrome_paths if os.path.exists(p)), None)
+    browser = _find_chromium_browser()
 
-    if chrome:
-        logger.info(f"Abriendo Chrome en modo app: {url}")
-        subprocess.Popen([chrome, f"--app={url}", "--window-size=1280,800", "--no-first-run"])
+    if browser:
+        browser_name = "Chrome" if "chrome" in browser.lower() else "Edge"
+        # user-data-dir persistente junto al exe para evitar diálogos de bienvenida
+        # y que Chrome/Edge lance un proceso independiente del navegador del usuario
+        user_data_dir = os.path.join(os.getcwd(), ".arca_browser")
+        logger.info(f"Abriendo {browser_name} en modo app: {url}")
+        proc = subprocess.Popen([
+            browser,
+            f"--app={url}",
+            f"--user-data-dir={user_data_dir}",
+            "--window-size=1280,800",
+            "--no-first-run",
+            "--disable-extensions",
+            "--disable-sync",
+            "--disable-translate",
+            "--disable-features=TranslateUI,PasswordManagerOnboarding,AutofillSaveCardBubble",
+            "--disable-component-update",
+            "--disable-default-apps",
+            "--no-default-browser-check",
+            "--disable-infobars",
+        ])
+        # Esperar a que el usuario cierre la ventana del navegador
+        try:
+            proc.wait()
+        except KeyboardInterrupt:
+            pass
+        logger.info("Ventana del navegador cerrada — saliendo")
     else:
         logger.info(f"Abriendo navegador por defecto: {url}")
         webbrowser.open(url)
-
-    print(f"🌐 Abierto en navegador: http://{host}:{port}")
-    print("Presione Ctrl+C para detener...")
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        pass
+        print(f"Abierto en navegador: http://{host}:{port}")
+        print("Presione Ctrl+C para detener...")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
 
 
 if __name__ == "__main__":

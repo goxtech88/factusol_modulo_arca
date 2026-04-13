@@ -25,6 +25,7 @@ def validate_invoice(
     Valida una factura de Factusol en ARCA y obtiene el CAE.
     pv_id: ID del punto de venta del usuario a utilizar.
     """
+
     # Buscar config de punto de venta
     if pv_id:
         pv_config = db.query(UserPuntoVenta).filter(
@@ -69,6 +70,47 @@ def validate_invoice(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}") 
 
+    # Auto-enriquecer cliente si tiene CUIT pero falta condición fiscal
+    cliente = detail.get("cliente") or {}
+    nifcli = str(cliente.get("NIFCLI", "") or "").replace("-", "").strip()
+    cfecli_actual = cliente.get("CFECLI", 0) or 0
+
+    if nifcli and len(nifcli) >= 10 and cfecli_actual == 0:
+        try:
+            padron = arca_service.consultar_cuit_online(nifcli)
+            cond = (padron.get("condicion_iva") or "").lower()
+            new_cfecli = 0
+            if "consumidor final" in cond:
+                new_cfecli = 1
+            elif "responsable inscripto" in cond or "iva inscripto" in cond:
+                new_cfecli = 2
+            elif "monotributo" in cond:
+                new_cfecli = 3
+            elif "exento" in cond:
+                new_cfecli = 4
+
+            update = {}
+            if padron.get("razon_social"):
+                update["NOFCLI"] = padron["razon_social"]
+            dom = padron.get("domicilio_fiscal") or {}
+            dom_str = " ".join(p for p in [dom.get("calle", ""), dom.get("numero", "")] if p).strip()
+            if dom_str:
+                update["DOMCLI"] = dom_str
+            if dom.get("localidad"):
+                update["POBCLI"] = dom["localidad"]
+            if dom.get("provincia"):
+                update["PROCLI"] = dom["provincia"]
+            if new_cfecli:
+                update["CFECLI"] = new_cfecli
+
+            codcli = cliente.get("CODCLI")
+            if update and codcli:
+                factusol_service.update_customer_fiscal(codcli, update)
+                # Recargar detalle con datos actualizados
+                detail = factusol_service.get_invoice_detail(tipfac, codfac)
+        except Exception:
+            pass  # Si falla el enriquecimiento, continuar con los datos que hay
+
     # Determinar tipo de comprobante
     from app.services.arca_service import determine_tipo_comprobante
     from app.config import get_config
@@ -77,11 +119,14 @@ def validate_invoice(
     # CFECLI: 0=no config, 1=CF, 2=RI, 3=Mono, 4=Exento
     cfecli = detail.get("cliente", {}).get("CFECLI", 0) or 0
 
-    # Si el PV tiene tipo_comprobante fijo (!=0), usarlo; sino calcular por CFECLI
+    # NIF limpio para determinar tipo de comprobante
+    nifcli_clean = str(detail.get("cliente", {}).get("NIFCLI", "") or "").replace("-", "").strip()
+
+    # Si el PV tiene tipo_comprobante fijo (!=0), usarlo; sino calcular por CFECLI + NIF
     if pv_config.tipo_comprobante and pv_config.tipo_comprobante != 0:
         tipo_comprobante = pv_config.tipo_comprobante
     else:
-        tipo_comprobante = determine_tipo_comprobante(cfecli, cond_emisor)
+        tipo_comprobante = determine_tipo_comprobante(cfecli, cond_emisor, nifcli_clean)
 
 
 
@@ -218,6 +263,137 @@ def validate_invoice(
         "message": "Factura validada exitosamente en ARCA",
     }
 
+
+
+@router.post("/credit-note/{tipfac}/{codfac}")
+def create_credit_note(
+    tipfac: int,
+    codfac: int,
+    pv_id: int = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Emite una Nota de Crédito en ARCA para anular una factura ya validada.
+    Requiere que la factura tenga CAE previamente asignado.
+    """
+    from app.config import get_config
+    from datetime import datetime
+
+    # Buscar el CAE original de la factura
+    cae_original = db.query(CAELog).filter(
+        CAELog.tipfac == tipfac,
+        CAELog.codfac == codfac,
+    ).first()
+
+    if not cae_original:
+        raise HTTPException(
+            status_code=400,
+            detail="La factura no tiene CAE. Solo se pueden anular facturas ya validadas en ARCA.",
+        )
+
+    # Verificar que no se haya emitido ya una NC para esta factura
+    nc_tipos = [3, 8, 13]  # NC A, NC B, NC C
+    existing_nc = db.query(CAELog).filter(
+        CAELog.tipfac == tipfac,
+        CAELog.codfac == codfac,
+        CAELog.tipo_comprobante.in_(nc_tipos),
+    ).first()
+    if existing_nc:
+        return {
+            "status": "already_exists",
+            "cae": existing_nc.cae,
+            "cae_vto": existing_nc.cae_vto,
+            "voucher_number": existing_nc.voucher_number,
+            "tipo_comprobante": existing_nc.tipo_comprobante,
+            "message": "Ya existe una Nota de Crédito para esta factura",
+        }
+
+    # Buscar config de punto de venta
+    if pv_id:
+        pv_config = db.query(UserPuntoVenta).filter(
+            UserPuntoVenta.id == pv_id,
+            UserPuntoVenta.user_id == current_user.id,
+        ).first()
+    else:
+        pv_config = db.query(UserPuntoVenta).filter(
+            UserPuntoVenta.user_id == current_user.id,
+            UserPuntoVenta.serie_factusol == tipfac,
+        ).first()
+
+    if not pv_config:
+        raise HTTPException(
+            status_code=400,
+            detail="No tiene un punto de venta configurado para esta serie",
+        )
+
+    # Obtener datos de Factusol
+    try:
+        detail = factusol_service.get_invoice_detail(tipfac, codfac)
+        if not detail:
+            raise HTTPException(status_code=404, detail="Factura no encontrada en Factusol")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}")
+
+    # Emitir NC en ARCA
+    tipo_cbte_original = cae_original.tipo_comprobante
+    try:
+        result = arca_service.validate_credit_note(
+            invoice_header=detail["header"],
+            invoice_lines=detail["lines"],
+            cliente=detail["cliente"],
+            punto_venta=pv_config.punto_venta,
+            tipo_comprobante_original=tipo_cbte_original,
+            voucher_number_original=cae_original.voucher_number,
+            punto_venta_original=cae_original.punto_venta,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error en ARCA al emitir NC: {str(e)}")
+
+    tipo_nc = result.get("tipo_nc", arca_service.tipo_factura_to_nota_credito(tipo_cbte_original))
+
+    # Guardar log de la NC
+    nc_log = CAELog(
+        user_id=current_user.id,
+        tipfac=tipfac,
+        codfac=codfac,
+        punto_venta=pv_config.punto_venta,
+        tipo_comprobante=tipo_nc,
+        voucher_number=result.get("voucher_number", 0),
+        cae=result.get("CAE", ""),
+        cae_vto=result.get("CAEFchVto", ""),
+        imp_total=detail["header"].get("TOTFAC"),
+        imp_neto=sum(float(detail["header"].get(f"BAS{i}FAC") or 0) for i in range(1, 5)),
+        imp_iva=sum(float(detail["header"].get(f"IIVA{i}FAC") or 0) for i in range(1, 5)),
+        cliente_nombre=detail["header"].get("CNOFAC"),
+        cliente_doc=detail.get("cliente", {}).get("NIFCLI") if detail.get("cliente") else None,
+    )
+    db.add(nc_log)
+    db.commit()
+
+    # Nombres legibles
+    nc_nombres = {3: "NC A", 8: "NC B", 13: "NC C"}
+    nc_nombre = nc_nombres.get(tipo_nc, f"NC Tipo {tipo_nc}")
+
+    _letra_map = {3: "NCA", 8: "NCB", 13: "NCC"}
+    _letra = _letra_map.get(tipo_nc, "NC")
+    _pv_str = str(pv_config.punto_venta).zfill(4)
+    _cbte_str = str(result.get("voucher_number", 0)).zfill(8)
+    _pedfac = f"{_letra}-{_pv_str}-{_cbte_str}"
+
+    return {
+        "status": "ok",
+        "cae": result.get("CAE"),
+        "cae_vto": result.get("CAEFchVto"),
+        "voucher_number": result.get("voucher_number"),
+        "tipo_comprobante": tipo_nc,
+        "tipo_nombre": nc_nombre,
+        "comprobante_nro": _pedfac,
+        "resultado": result.get("resultado"),
+        "message": f"{nc_nombre} emitida exitosamente - {_pedfac}",
+    }
 
 
 @router.get("/status/{tipfac}/{codfac}")
@@ -362,18 +538,85 @@ def consultar_padron(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Consulta el Padrón ARCA (Alcance 4) para obtener datos fiscales de un CUIT.
+    Consulta datos fiscales de un CUIT usando cuitonline.com.
 
     Retorna razón social, tipo persona, condición IVA y domicilio fiscal.
     Útil para actualizar los datos de un cliente en Factusol desde la UI.
     """
     try:
-        data = arca_service.consultar_padron(cuit)
+        data = arca_service.consultar_cuit_online(cuit)
         return data
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Error al consultar padrón ARCA: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Error al consultar datos del CUIT: {str(e)}")
+
+
+# ── Enriquecer cliente desde CUIT ─────────────────────────────────────────────
+
+@router.post("/enrich-customer/{codcli}/{cuit}")
+def enrich_customer(
+    codcli: int,
+    cuit: str,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Consulta datos fiscales del CUIT y actualiza el cliente en Factusol.
+    Un solo endpoint que hace lookup + update.
+    """
+    from app.services import factusol_service
+
+    try:
+        data = arca_service.consultar_cuit_online(cuit)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error al consultar CUIT: {str(e)}")
+
+    # Mapear condición IVA a CFECLI de Factusol
+    cfecli = 0
+    cond = (data.get("condicion_iva") or "").lower()
+    if "consumidor final" in cond:
+        cfecli = 1
+    elif "responsable inscripto" in cond or "iva inscripto" in cond:
+        cfecli = 2
+    elif "monotributo" in cond:
+        cfecli = 3
+    elif "exento" in cond:
+        cfecli = 4
+
+    # Preparar datos para Factusol
+    update = {}
+    if data.get("razon_social"):
+        update["NOFCLI"] = data["razon_social"]
+    dom = data.get("domicilio_fiscal") or {}
+    dom_parts = [dom.get("calle", ""), dom.get("numero", "")].copy()
+    dom_str = " ".join(p for p in dom_parts if p).strip()
+    if dom_str:
+        update["DOMCLI"] = dom_str
+    if dom.get("localidad"):
+        update["POBCLI"] = dom["localidad"]
+    if dom.get("cp"):
+        update["CPOCLI"] = dom["cp"]
+    if dom.get("provincia"):
+        update["PROCLI"] = dom["provincia"]
+    if cfecli:
+        update["CFECLI"] = cfecli
+
+    if update:
+        try:
+            factusol_service.update_customer_fiscal(codcli, update)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error al actualizar cliente: {str(e)}")
+
+    return {
+        "status": "ok",
+        "razon_social": data.get("razon_social", ""),
+        "condicion_iva": data.get("condicion_iva", ""),
+        "cfecli": cfecli,
+        "updated_fields": list(update.keys()),
+        "source": data.get("source", "cuitonline.com"),
+    }
 
 
 # ── Auto-validación ──────────────────────────────────────────────────────────
@@ -390,9 +633,7 @@ async def auto_validate_toggle(
     enabled: bool,
     current_user: User = Depends(get_current_user),
 ):
-    """Activa/desactiva la auto-validación."""
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Solo administradores")
+    """Activa/desactiva la auto-validación. Disponible para admin y usuarios."""
     from app.services import auto_validate
     return auto_validate.toggle(enabled)
 
@@ -403,7 +644,27 @@ def auto_validate_interval(
     current_user: User = Depends(get_current_user),
 ):
     """Cambia el intervalo de chequeo (30-600 segundos)."""
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Solo administradores")
     from app.services import auto_validate
     return auto_validate.set_interval(seconds)
+
+
+@router.post("/auto-validate/payment-filters")
+def auto_validate_payment_filters(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+):
+    """Guarda las formas de pago permitidas para auto-validación.
+    body: { fopfac_codes: ["1", "2", ...] }  — vacío = todas permitidas.
+    """
+    from app.services import auto_validate
+    codes = body.get("fopfac_codes", [])
+    return auto_validate.set_payment_filters(codes)
+
+
+@router.get("/auto-validate/payment-filters")
+def get_auto_validate_payment_filters(
+    current_user: User = Depends(get_current_user),
+):
+    """Devuelve las formas de pago configuradas para auto-validación."""
+    from app.services import auto_validate
+    return auto_validate.get_payment_filters()

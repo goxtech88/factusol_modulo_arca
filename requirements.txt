@@ -10,3 +10,7 @@ python-multipart==0.0.9
 pywebview
 pyinstaller
 qrcode[pil]
+requests
+httpx
+beautifulsoup4
+pyafipws @ git+https://github.com/reingart/pyafipws.git

@@ -10,12 +10,17 @@ Documentación:
   https://github.com/reingart/pyafipws
 """
 import os
+import re
 import json
 import base64
 import hashlib
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
+
+import httpx
+from html.parser import HTMLParser
 
 from app.config import get_config
 
@@ -36,6 +41,12 @@ WSFE_URL_PROD = "https://servicios1.afip.gov.ar/wsfev1/service.asmx"
 # URLs del Padrón Alcance 4
 PADRON_A4_URL_HOMO = "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl"
 PADRON_A4_URL_PROD = "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl"
+
+# URL de CuitOnline (fallback público para consulta de datos fiscales)
+CUIT_ONLINE_SEARCH_URL = "https://www.cuitonline.com/search.php?q={cuit}"
+CUIT_ONLINE_DETAIL_URL = "https://www.cuitonline.com/detalle/{cuit}/{slug}.html"
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -187,9 +198,9 @@ def get_last_voucher_number(punto_venta: int, tipo_comprobante: int) -> int:
     return int(last or 0)
 
 
-def determine_tipo_comprobante(cfecli: int, cond_iva_emisor: str = "Responsable Inscripto") -> int:
+def determine_tipo_comprobante(cfecli: int, cond_iva_emisor: str = "Responsable Inscripto", nifcli: str = "") -> int:
     """
-    Determina el tipo de comprobante AFIP según CFECLI del cliente en Factusol.
+    Determina el tipo de comprobante AFIP según CFECLI y NIF del cliente.
 
     Tipos de comprobante AFIP:
       1  = Factura A   (RI emite a RI)
@@ -197,21 +208,32 @@ def determine_tipo_comprobante(cfecli: int, cond_iva_emisor: str = "Responsable 
       11 = Factura C   (Monotributista emite a cualquiera)
 
     CFECLI en Factusol (F_CLI):
-      0 = No configurado (se trata como RI → Factura A)
-      1 = Consumidor Final (DNI)    → Factura B
+      0 = No configurado
+      1 = Consumidor Final (DNI)       → Factura B
       2 = Responsable Inscripto (CUIT) → Factura A
-      3 = Monotributista (CUIT)     → Factura B
-      4 = Exento (CUIT)             → Factura B
+      3 = Monotributista (CUIT)        → Factura B
+      4 = Exento (CUIT)                → Factura B
+
+    Lógica de NIF:
+      - Vacío              → Consumidor final sin identificar → Factura B
+      - < 11 dígitos (DNI) → Consumidor final con DNI        → Factura B
+      - 11 dígitos (CUIT)  → usar CFECLI para decidir A o B
     """
     if cond_iva_emisor == "Monotributista":
         return 11  # Factura C
 
     cfecli = int(cfecli or 0)
+    nifcli_clean = str(nifcli or "").replace("-", "").strip()
 
-    if cfecli in (0, 2):
-        return 1   # Factura A (RI o no configurado)
+    # Sin NIF o con DNI (< 11 dígitos) → consumidor final → Factura B
+    if not nifcli_clean or (nifcli_clean.isdigit() and len(nifcli_clean) < 11):
+        return 6
+
+    # Con CUIT (11 dígitos): usar CFECLI
+    if cfecli == 2:
+        return 1   # Factura A (Responsable Inscripto)
     else:
-        return 6   # Factura B (CF, Mono, Exento)
+        return 6   # Factura B (CF=0/1, Mono=3, Exento=4)
 
 
 
@@ -302,11 +324,21 @@ def build_voucher_data(
         imp_total = round(total_neto + total_iva, 2)
 
     # Documento del cliente
-    doc_tipo = 80   # CUIT
-    doc_nro = str(cliente.get("NIFCLI", "") or "").replace("-", "").strip() if cliente else ""
-    if not doc_nro or not doc_nro.isdigit():
-        doc_tipo = 99  # Sin identificar (consumidor final)
+    # Distinguir: vacío → sin identificar (99), DNI < 11 dígitos (96), CUIT 11 dígitos (80)
+    doc_nro_raw = str(cliente.get("NIFCLI", "") or "").replace("-", "").strip() if cliente else ""
+
+    if not doc_nro_raw or not doc_nro_raw.isdigit():
+        # NIF vacío o no numérico → consumidor final sin identificar
+        doc_tipo = 99
         doc_nro = "0"
+    elif len(doc_nro_raw) < 11:
+        # DNI u otro doc de menos de 11 dígitos → doc tipo DNI
+        doc_tipo = 96
+        doc_nro = doc_nro_raw
+    else:
+        # CUIT (exactamente 11 dígitos)
+        doc_tipo = 80
+        doc_nro = doc_nro_raw
 
     # Concepto de facturación (1=Productos, 2=Servicios, 3=Ambos)
     config = get_config()
@@ -430,6 +462,119 @@ def validate_invoice(
 
 
 
+def tipo_factura_to_nota_credito(tipo_factura: int) -> int:
+    """Convierte tipo de factura AFIP al tipo de nota de crédito correspondiente.
+    Factura A (1) → NC A (3), Factura B (6) → NC B (8), Factura C (11) → NC C (13)
+    """
+    mapping = {1: 3, 6: 8, 11: 13}
+    nc_tipo = mapping.get(tipo_factura)
+    if nc_tipo is None:
+        raise ValueError(f"No se puede hacer NC para tipo de comprobante {tipo_factura}")
+    return nc_tipo
+
+
+def validate_credit_note(
+    invoice_header: dict,
+    invoice_lines: list[dict],
+    cliente: dict,
+    punto_venta: int,
+    tipo_comprobante_original: int,
+    voucher_number_original: int,
+    punto_venta_original: int,
+) -> dict:
+    """
+    Emite una Nota de Crédito en AFIP asociada a una factura previamente validada.
+
+    La NC lleva los mismos importes que la factura original y referencia
+    al comprobante asociado (tipo, PV, número).
+
+    Retorna: {"CAE": str, "CAEFchVto": str, "voucher_number": int, "tipo_nc": int}
+    """
+    import logging
+    log = logging.getLogger("arca_service")
+
+    tipo_nc = tipo_factura_to_nota_credito(tipo_comprobante_original)
+
+    wsfe = _create_wsfe_instance()
+    data = build_voucher_data(invoice_header, invoice_lines, cliente, punto_venta, tipo_nc)
+
+    # Obtener próximo número de NC
+    last = wsfe.CompUltimoAutorizado(tipo_nc, punto_venta)
+    if wsfe.Excepcion:
+        raise ValueError(f"Error al consultar último comprobante NC: {wsfe.Excepcion}")
+    next_cbte = int(last or 0) + 1
+
+    log.info(f"[ARCA-NC] PV={punto_venta} TipoNC={tipo_nc} UltCbte={last} NextCbte={next_cbte}")
+    log.info(f"[ARCA-NC] Asociada a: Tipo={tipo_comprobante_original} PV={punto_venta_original} Nro={voucher_number_original}")
+    log.info(f"[ARCA-NC] ImpTotal={data['imp_total']} Neto={data['imp_neto']} IVA={data['imp_iva']}")
+
+    # Fecha de hoy para la NC
+    fecha_hoy = datetime.now().strftime("%Y%m%d")
+
+    wsfe.CrearFactura(
+        concepto=data["concepto"],
+        tipo_doc=data["tipo_doc"],
+        nro_doc=data["nro_doc"],
+        tipo_cbte=tipo_nc,
+        punto_vta=punto_venta,
+        cbt_desde=next_cbte,
+        cbt_hasta=next_cbte,
+        imp_total=data["imp_total"],
+        imp_tot_conc=data["imp_tot_conc"],
+        imp_neto=data["imp_neto"],
+        imp_iva=data["imp_iva"],
+        imp_trib=data["imp_trib"],
+        imp_op_ex=data["imp_op_ex"],
+        fecha_cbte=fecha_hoy,
+        moneda_id=data["moneda_id"],
+        moneda_ctz=data["moneda_ctz"],
+        fecha_serv_desde=data.get("fch_serv_desde"),
+        fecha_serv_hasta=data.get("fch_serv_hasta"),
+        fecha_venc_pago=data.get("fch_vto_pago"),
+    )
+
+    # Agregar comprobante asociado (la factura original)
+    wsfe.AgregarCmpAsoc(
+        tipo=tipo_comprobante_original,
+        pto_vta=punto_venta_original,
+        nro=voucher_number_original,
+    )
+
+    # Agregar alícuotas de IVA
+    for iva_item in data.get("iva", []):
+        wsfe.AgregarIva(
+            iva_id=iva_item["Id"],
+            base_imp=iva_item["BaseImp"],
+            importe=iva_item["Importe"],
+        )
+
+    # Solicitar CAE
+    wsfe.CAESolicitar()
+
+    log.info(f"[ARCA-NC] Resultado={wsfe.Resultado} CAE={wsfe.CAE} Vto={wsfe.Vencimiento}")
+    if wsfe.Obs:
+        log.warning(f"[ARCA-NC] Observaciones: {wsfe.Obs}")
+    if wsfe.ErrMsg:
+        log.error(f"[ARCA-NC] ErrMsg: {wsfe.ErrMsg}")
+
+    if wsfe.Excepcion:
+        raise ValueError(f"Error WSFE al solicitar CAE para NC: {wsfe.Excepcion}")
+    if wsfe.ErrMsg:
+        raise ValueError(f"Error AFIP: {wsfe.ErrMsg}")
+
+    if wsfe.Resultado == "R" and not wsfe.CAE:
+        raise ValueError(f"NC Rechazada por AFIP: {wsfe.Obs or 'Sin detalle'}")
+
+    return {
+        "CAE": wsfe.CAE,
+        "CAEFchVto": wsfe.Vencimiento,
+        "voucher_number": next_cbte,
+        "tipo_nc": tipo_nc,
+        "resultado": wsfe.Resultado,
+        "obs": wsfe.Obs,
+    }
+
+
 def get_voucher_info(punto_venta: int, tipo_comprobante: int, voucher_number: int) -> dict:
     """Obtiene información de un comprobante ya emitido."""
     wsfe = _create_wsfe_instance()
@@ -527,6 +672,279 @@ def generate_afip_qr(
         return ""
 
 
+
+
+def _fetch_html(url: str) -> str:
+    """Descarga HTML usando httpx (ya incluido en PyInstaller)."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "es-AR,es;q=0.9",
+    }
+    try:
+        with httpx.Client(follow_redirects=True, timeout=15) as client:
+            resp = client.get(url, headers=headers)
+            resp.raise_for_status()
+            return resp.text
+    except Exception as e:
+        raise ValueError(f"Error al consultar {url}: {e}")
+
+
+def _extract_links(html: str, pattern: str) -> list[str]:
+    """Extrae hrefs de links que contienen el patrón dado."""
+    return re.findall(r'href=["\']([^"\']*' + re.escape(pattern) + r'[^"\']*)["\']', html)
+
+
+def _extract_text_from_html(html: str) -> str:
+    """Extrae texto plano del HTML eliminando tags."""
+    # Eliminar scripts y styles
+    text = re.sub(r'<script[^>]*>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    # Reemplazar <br>, <p>, <div>, <li>, <tr> con saltos de línea
+    text = re.sub(r'<(?:br|/p|/div|/li|/tr|/h[1-6])[^>]*>', '\n', text, flags=re.IGNORECASE)
+    # Eliminar todos los tags restantes
+    text = re.sub(r'<[^>]+>', ' ', text)
+    # Decodificar entidades HTML comunes
+    text = text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+    text = text.replace('&nbsp;', ' ').replace('&aacute;', 'á').replace('&eacute;', 'é')
+    text = text.replace('&iacute;', 'í').replace('&oacute;', 'ó').replace('&uacute;', 'ú')
+    text = text.replace('&ntilde;', 'ñ').replace('&Aacute;', 'Á').replace('&Eacute;', 'É')
+    text = text.replace('&Iacute;', 'Í').replace('&Oacute;', 'Ó').replace('&Uacute;', 'Ú')
+    text = text.replace('&Ntilde;', 'Ñ')
+    # Limpiar espacios múltiples
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n\s*\n', '\n', text)
+    return text.strip()
+
+
+def _extract_h1(html: str) -> str:
+    """Extrae el contenido del primer tag <h1>."""
+    match = re.search(r'<h1[^>]*>(.*?)</h1>', html, re.DOTALL | re.IGNORECASE)
+    if match:
+        return re.sub(r'<[^>]+>', '', match.group(1)).strip()
+    return ""
+
+
+def consultar_cuit_online(cuit_consulta: str) -> dict:
+    """
+    Consulta datos fiscales de un CUIT usando cuitonline.com (scraping).
+    No requiere certificado digital ni autenticación AFIP.
+    Usa httpx (ya incluido en PyInstaller) y regex para parsing HTML.
+
+    Retorna el mismo formato que consultar_padron() para compatibilidad.
+    """
+    cuit_limpio = re.sub(r"[^0-9]", "", str(cuit_consulta).strip())
+    if len(cuit_limpio) < 10 or len(cuit_limpio) > 11:
+        raise ValueError(f"CUIT inválido: {cuit_consulta}")
+
+    # Paso 1: Buscar el CUIT para obtener el slug (nombre en URL)
+    search_url = CUIT_ONLINE_SEARCH_URL.format(cuit=cuit_limpio)
+    search_html = _fetch_html(search_url)
+
+    # Buscar el link al detalle: detalle/{cuit}/{slug}.html (puede ser relativo o absoluto)
+    detail_links = _extract_links(search_html, f"detalle/{cuit_limpio}")
+    detail_link = None
+    for href in detail_links:
+        if href.endswith(".html"):
+            detail_link = href
+            break
+
+    if not detail_link:
+        # Intentar extraer datos mínimos de la búsqueda
+        search_text = _extract_text_from_html(search_html)
+        razon_social = ""
+        condicion_iva = ""
+
+        # Buscar nombre cerca del CUIT en el texto
+        match = re.search(rf'{cuit_limpio}[^a-zA-Z]*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s,\.]+)', search_text)
+        if match:
+            razon_social = match.group(1).strip()
+
+        condicion_iva = _extract_condicion_iva(search_text)
+
+        if razon_social:
+            return _build_cuitonline_result(cuit_limpio, razon_social, condicion_iva, {})
+
+        # Fuente 2: Intentar con afip.tangofactura.com (puede estar caído)
+        try:
+            tango_data = _consultar_tangofactura(cuit_limpio)
+            if tango_data:
+                return tango_data
+        except Exception:
+            pass
+
+        raise ValueError(
+            f"No se encontraron datos para el CUIT {cuit_consulta}. "
+            f"El CUIT puede ser muy nuevo o no estar indexado. "
+            f"Cargue los datos manualmente."
+        )
+
+    # Paso 2: Obtener detalle completo
+    if detail_link.startswith("http"):
+        detail_url = detail_link
+    elif detail_link.startswith("/"):
+        detail_url = f"https://www.cuitonline.com{detail_link}"
+    else:
+        detail_url = f"https://www.cuitonline.com/{detail_link}"
+    detail_html = _fetch_html(detail_url)
+    page_text = _extract_text_from_html(detail_html)
+
+    # Extraer razón social (del <h1> o del contenido)
+    razon_social = _extract_h1(detail_html)
+    # Limpiar el CUIT del nombre si aparece
+    razon_social = re.sub(r"\d{2}-\d{8}-\d", "", razon_social).strip()
+    # Quitar prefijos comunes
+    razon_social = re.sub(r"^(Constancia de |CUIT\s+)", "", razon_social, flags=re.IGNORECASE).strip()
+
+    # Extraer condición IVA
+    condicion_iva = _extract_condicion_iva(page_text)
+
+    # Extraer domicilio fiscal
+    domicilio = _extract_domicilio(page_text)
+
+    # Extraer tipo persona
+    tipo_persona = "JURIDICA" if any(x in razon_social.upper() for x in ["SRL", "S.R.L", "S.A.", " SA ", "SAS", "S.A.S"]) else "FISICA"
+
+    return _build_cuitonline_result(cuit_limpio, razon_social, condicion_iva, domicilio, tipo_persona)
+
+
+def _consultar_tangofactura(cuit: str) -> Optional[dict]:
+    """Intenta consultar afip.tangofactura.com como fuente alternativa."""
+    try:
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(f"https://afip.tangofactura.com/Rest/GetContribuyenteFull?cuit={cuit}")
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            if data.get("errorGetData"):
+                return None
+            razon = data.get("Contribuyente", {}).get("nombre", "") or data.get("denominacion", "")
+            if not razon:
+                return None
+            # Mapear condición IVA
+            tipo_iva = data.get("Contribuyente", {}).get("tipoPersona", "")
+            condicion = "Sin datos"
+            if data.get("condicionIVA"):
+                cond = data["condicionIVA"].lower()
+                if "inscripto" in cond:
+                    condicion = "Responsable Inscripto"
+                elif "monotributo" in cond:
+                    condicion = "Responsable Monotributo"
+                elif "exento" in cond:
+                    condicion = "Exento"
+            domicilio_str = data.get("Contribuyente", {}).get("domicilioFiscal", "")
+            domicilio = {"calle": domicilio_str, "numero": "", "piso": "", "depto": "",
+                         "localidad": "", "provincia": "", "cp": ""}
+            tipo = "JURIDICA" if any(x in razon.upper() for x in ["SRL", "S.R.L", "S.A.", " SA ", "SAS"]) else "FISICA"
+            result = _build_cuitonline_result(cuit, razon, condicion, domicilio, tipo)
+            result["source"] = "tangofactura.com"
+            return result
+    except Exception:
+        return None
+
+
+def _extract_condicion_iva(text: str) -> str:
+    """Extrae la condición IVA del texto de la página."""
+    text_lower = text.lower()
+    # Buscar patrones comunes
+    if "iva exento" in text_lower or "iva - exento" in text_lower:
+        return "Exento"
+    if "monotributo" in text_lower and ("iva" not in text_lower or "iva inscripto" not in text_lower):
+        return "Responsable Monotributo"
+    if "iva inscripto" in text_lower or "responsable inscripto" in text_lower:
+        return "Responsable Inscripto"
+    if "consumidor final" in text_lower:
+        return "Consumidor Final"
+    if "monotributo" in text_lower:
+        return "Responsable Monotributo"
+    return "Sin datos"
+
+
+def _extract_domicilio(text: str) -> dict:
+    """Extrae el domicilio fiscal del texto de la página."""
+    domicilio = {"calle": "", "numero": "", "piso": "", "depto": "", "localidad": "", "provincia": "", "cp": ""}
+
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        line_stripped = line.strip()
+        # Buscar "Domicilio" seguido de la dirección
+        if "domicilio" in line_stripped.lower() and "fiscal" in line_stripped.lower():
+            # La dirección suele estar en la misma línea o la siguiente
+            for j in range(i, min(i + 3, len(lines))):
+                candidate = lines[j].strip()
+                # Buscar patrón de dirección: texto con número
+                if re.search(r"\d{2,5}", candidate) and len(candidate) > 10 and "domicilio" not in candidate.lower():
+                    domicilio["calle"] = candidate
+                    break
+            continue
+
+        # Buscar localidad/provincia en formato "Ciudad, Provincia"
+        if any(prov in line_stripped for prov in [
+            "Buenos Aires", "Córdoba", "Santa Fe", "Mendoza", "Tucumán",
+            "Entre Ríos", "Salta", "Misiones", "Chaco", "Corrientes",
+            "Santiago del Estero", "San Juan", "Jujuy", "Río Negro",
+            "Neuquén", "Formosa", "Chubut", "San Luis", "Catamarca",
+            "La Rioja", "La Pampa", "Santa Cruz", "Tierra del Fuego",
+            "CABA", "Capital Federal"
+        ]):
+            parts = line_stripped.split(",")
+            if len(parts) >= 2:
+                domicilio["localidad"] = parts[0].strip()
+                domicilio["provincia"] = parts[-1].strip()
+            elif not domicilio["provincia"]:
+                domicilio["provincia"] = line_stripped.strip()
+
+    # Si la calle tiene formato "Calle 123", separar
+    if domicilio["calle"]:
+        match = re.match(r"(.+?)\s+(\d{1,5})\s*$", domicilio["calle"])
+        if match:
+            domicilio["calle"] = match.group(1).strip()
+            domicilio["numero"] = match.group(2)
+
+    return domicilio
+
+
+def _build_cuitonline_result(cuit: str, razon_social: str, condicion_iva: str,
+                              domicilio: dict, tipo_persona: str = "JURIDICA") -> dict:
+    """Construye el resultado en el mismo formato que consultar_padron()."""
+    CONDICION_TO_ID = {
+        "Responsable Inscripto": 1,
+        "Responsable No Inscripto": 2,
+        "Exento": 3,
+        "No Responsable": 4,
+        "Consumidor Final": 5,
+        "Responsable Monotributo": 6,
+        "Sujeto No Categorizado": 7,
+    }
+
+    nombre = ""
+    apellido = ""
+    if tipo_persona == "FISICA":
+        parts = razon_social.split(" ", 1)
+        if len(parts) == 2:
+            apellido = parts[0]
+            nombre = parts[1]
+
+    return {
+        "cuit": cuit,
+        "razon_social": razon_social,
+        "nombre": nombre,
+        "apellido": apellido,
+        "tipo_persona": tipo_persona,
+        "condicion_iva": condicion_iva,
+        "condicion_iva_id": CONDICION_TO_ID.get(condicion_iva),
+        "domicilio_fiscal": domicilio or {
+            "calle": "", "numero": "", "piso": "", "depto": "",
+            "localidad": "", "provincia": "", "cp": ""
+        },
+        "estado_cuit": "ACTIVO",
+        "source": "cuitonline.com",
+        "raw": {
+            "denominacion": razon_social,
+            "tipoClave": tipo_persona,
+            "estadoClave": "ACTIVO",
+        }
+    }
 
 
 def consultar_padron(cuit_consulta: str) -> dict:

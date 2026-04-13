@@ -43,9 +43,10 @@ const App = {
         document.getElementById('page-login').classList.remove('hidden');
         document.getElementById('page-app').classList.add('hidden');
         document.getElementById('page-app').classList.remove('active');
-        document.getElementById('login-username').value = '';
-        document.getElementById('login-password').value = '';
         document.getElementById('login-error').classList.add('hidden');
+        // Populate user dropdown and restore saved credentials
+        LoginComponent.loadUsers();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     },
 
     showApp() {
@@ -72,13 +73,26 @@ const App = {
     async _checkLicense() {
         try {
             const config = await API.get('/api/config');
-            this._licensed = config.license?.valid || false;
+            const lic = config.license || {};
+            this._plan = lic.plan || 'basica';
+            this._hasCompleta = (lic.plan === 'completa' && lic.active);
+
+            // Mostrar badge de plan en sidebar
             const usersNav = document.querySelector('.nav-item[data-page="users"]');
-            if (usersNav && !this._licensed) {
-                usersNav.classList.add('nav-locked');
-                usersNav.title = 'Licencia requerida';
+            if (usersNav) {
+                if (!this._hasCompleta) {
+                    usersNav.classList.add('nav-locked');
+                    usersNav.title = 'Requiere Plan Completo';
+                } else {
+                    usersNav.classList.remove('nav-locked');
+                    usersNav.title = '';
+                }
             }
-        } catch { this._licensed = false; }
+
+            // Quitar banner de trial si existía de versión anterior
+            const banner = document.getElementById('trial-banner');
+            if (banner) banner.remove();
+        } catch { this._plan = 'basica'; this._hasCompleta = false; }
     },
 
     navigate(page) {
@@ -93,7 +107,7 @@ const App = {
         const titles = {
             dashboard: 'Dashboard',
             invoices: 'Facturas',
-            customers: 'Clientes',
+
             'cae-logs': 'CAE Emitidos',
             users: 'Usuarios',
             config: 'Configuración',
@@ -119,9 +133,7 @@ const App = {
             case 'invoices':
                 InvoicesComponent.loadPuntosVenta();
                 break;
-            case 'customers':
-                CustomersComponent.load();
-                break;
+
             case 'cae-logs':
                 CAELogsComponent.load();
                 break;

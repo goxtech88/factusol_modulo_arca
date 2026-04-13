@@ -79,6 +79,29 @@ def set_interval(seconds: int) -> dict:
     return get_status()
 
 
+def set_payment_filters(fopfac_codes: list[str]) -> dict:
+    """Guarda las formas de pago permitidas para auto-validación.
+    Lista vacía = todas permitidas.
+    """
+    config = load_config()
+    if "auto_validate" not in config:
+        config["auto_validate"] = {"enabled": False, "interval_seconds": 60}
+    config["auto_validate"]["fopfac_codes"] = fopfac_codes
+    save_config(config)
+    _add_log(
+        f"Filtro formas de pago: {'todas' if not fopfac_codes else f'{len(fopfac_codes)} seleccionada(s)'}",
+        "info",
+    )
+    return {"fopfac_codes": fopfac_codes}
+
+
+def get_payment_filters() -> dict:
+    """Devuelve las formas de pago configuradas."""
+    config = get_config()
+    codes = config.get("auto_validate", {}).get("fopfac_codes", [])
+    return {"fopfac_codes": codes}
+
+
 # ── Background loop ──────────────────────────────────────────────────────────
 
 async def _auto_validate_loop():
@@ -97,6 +120,14 @@ async def _auto_validate_loop():
 
         _running = True
         interval = av_config.get("interval_seconds", 60)
+
+        # Auto-validación requiere Plan Completo
+        from app.services import license_service
+        if not license_service.has_completa():
+            _last_result = "Plan Básico"
+            _add_log("Auto-validación pausada: requiere Plan Completo (goxtech.com.ar)", "error")
+            await asyncio.sleep(interval)
+            continue
 
         try:
             count = await asyncio.to_thread(_validate_pending_sync)
@@ -135,11 +166,20 @@ def _is_today(fecfac) -> bool:
 def _validate_pending_sync() -> int:
     """Busca facturas de HOY sin CAE y las valida (sync).
     Solo procesa puntos de venta de usuarios con auto_validate_enabled=True.
+    Respeta el filtro de formas de pago configurado.
     """
     db = SessionLocal()
     validated = 0
 
     try:
+        # Leer filtro de formas de pago
+        config = get_config()
+        allowed_fopfac = set(
+            str(c) for c in config.get("auto_validate", {}).get("fopfac_codes", [])
+        )
+        # Lista vacía = todas permitidas
+        filter_by_fopfac = len(allowed_fopfac) > 0
+
         # Solo PVs de usuarios activos con auto-validación habilitada
         pvs = (
             db.query(UserPuntoVenta)
@@ -161,6 +201,12 @@ def _validate_pending_sync() -> int:
                 # Solo facturas de HOY
                 if not _is_today(fecfac):
                     continue
+
+                # Filtro por forma de pago
+                if filter_by_fopfac:
+                    fopfac = str(inv.get("FOPFAC", ""))
+                    if fopfac not in allowed_fopfac:
+                        continue
 
                 # Ya tiene CAE en Factusol?
                 bnofac = str(inv.get("BNOFAC", "") or "").strip()
@@ -205,14 +251,61 @@ def _validate_single_sync(
     if not detail:
         return None
 
+    # Auto-enriquecer cliente si tiene CUIT pero le falta condición fiscal
+    cliente = detail.get("cliente") or {}
+    cfecli = cliente.get("CFECLI", 0) or 0
+    nifcli = str(cliente.get("NIFCLI", "") or "").replace("-", "").strip()
+
+    if nifcli and len(nifcli) >= 10 and cfecli == 0:
+        try:
+            _add_log(f"Auto-enriqueciendo cliente CUIT {nifcli}...")
+            padron = arca_service.consultar_cuit_online(nifcli)
+            cond = (padron.get("condicion_iva") or "").lower()
+            new_cfecli = 0
+            if "consumidor final" in cond:
+                new_cfecli = 1
+            elif "responsable inscripto" in cond or "iva inscripto" in cond:
+                new_cfecli = 2
+            elif "monotributo" in cond:
+                new_cfecli = 3
+            elif "exento" in cond:
+                new_cfecli = 4
+
+            update = {}
+            if padron.get("razon_social"):
+                update["NOFCLI"] = padron["razon_social"]
+            dom = padron.get("domicilio_fiscal") or {}
+            dom_str = " ".join(p for p in [dom.get("calle", ""), dom.get("numero", "")] if p).strip()
+            if dom_str:
+                update["DOMCLI"] = dom_str
+            if dom.get("localidad"):
+                update["POBCLI"] = dom["localidad"]
+            if dom.get("provincia"):
+                update["PROCLI"] = dom["provincia"]
+            if new_cfecli:
+                update["CFECLI"] = new_cfecli
+                cfecli = new_cfecli
+
+            codcli = cliente.get("CODCLI")
+            if update and codcli:
+                factusol_service.update_customer_fiscal(codcli, update)
+                _add_log(f"Cliente {nifcli} actualizado: {padron.get('razon_social', '')} - {padron.get('condicion_iva', '')}", "success")
+                # Recargar detalle con datos actualizados
+                detail = factusol_service.get_invoice_detail(tipfac, codfac)
+                cfecli = detail.get("cliente", {}).get("CFECLI", 0) or 0
+        except Exception as e:
+            _add_log(f"No se pudo enriquecer cliente {nifcli}: {str(e)[:60]}", "error")
+
     config = get_config()
     cond_emisor = config.get("empresa", {}).get("condicion_iva", "Responsable Inscripto")
-    cfecli = detail.get("cliente", {}).get("CFECLI", 0) or 0
+
+    # NIF limpio para determinar tipo de comprobante
+    nifcli_clean = str(detail.get("cliente", {}).get("NIFCLI", "") or "").replace("-", "").strip()
 
     if pv_config.tipo_comprobante and pv_config.tipo_comprobante != 0:
         tipo_comprobante = pv_config.tipo_comprobante
     else:
-        tipo_comprobante = arca_service.determine_tipo_comprobante(cfecli, cond_emisor)
+        tipo_comprobante = arca_service.determine_tipo_comprobante(cfecli, cond_emisor, nifcli_clean)
 
     _add_log(f"Validando {tipfac}-{codfac} (tipo {tipo_comprobante}, PV {pv_config.punto_venta})...")
 

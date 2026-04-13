@@ -28,10 +28,12 @@ def get_invoices(
     tipfac: int,
     search: str = "",
     date_filter: str = "all",  # all | today | yesterday | last7
+    fopfac: str = "",  # filtro por forma de pago (código)
 ) -> list[dict]:
     """
     Obtiene facturas de Factusol filtradas por serie (TIPFAC).
     date_filter admite: 'all', 'today', 'yesterday', 'last7'
+    fopfac: código de forma de pago para filtrar (vacío = todas)
     """
     from datetime import date, timedelta
 
@@ -67,11 +69,16 @@ def get_invoices(
         query = """
             SELECT f.TIPFAC, f.CODFAC, f.FECFAC, f.CLIFAC, f.CNOFAC,
                    f.TOTFAC, f.ESTFAC, f.ALMFAC, f.PEDFAC, f.CNIFAC,
-                   f.BNOFAC, f.BNUFAC
+                   f.BNOFAC, f.BNUFAC, f.FOPFAC, fp.DESFPA
             FROM F_FAC f
+            LEFT JOIN F_FPA fp ON f.FOPFAC = fp.CODFPA
             WHERE f.TIPFAC = ?
         """
         params: list = [tipfac]
+
+        if fopfac:
+            query += " AND f.FOPFAC = ?"
+            params.append(fopfac)
 
         if fecha_desde:
             # Access ODBC acepta datetime.date directamente via pyodbc
@@ -111,8 +118,9 @@ def get_invoice_detail(tipfac: int, codfac: int) -> Optional[dict]:
                    f.BAS1FAC, f.BAS2FAC, f.BAS3FAC, f.BAS4FAC,
                    f.IIVA1FAC, f.IIVA2FAC, f.IIVA3FAC,
                    f.PIVA1FAC, f.PIVA2FAC, f.PIVA3FAC,
-                   f.BNOFAC, f.BNUFAC, f.IMGFAC
+                   f.BNOFAC, f.BNUFAC, f.IMGFAC, f.FOPFAC, fp.DESFPA
             FROM F_FAC f
+            LEFT JOIN F_FPA fp ON f.FOPFAC = fp.CODFPA
             WHERE f.TIPFAC = ? AND f.CODFAC = ?
         """, [tipfac, codfac])
 
@@ -158,25 +166,6 @@ def get_invoice_detail(tipfac: int, codfac: int) -> Optional[dict]:
     finally:
         conn.close()
 
-
-def get_customers(search: str = "", limit: int = 200) -> list[dict]:
-    """Obtiene lista de clientes con datos fiscales."""
-    conn = _get_connection()
-    try:
-        cursor = conn.cursor()
-        query = """SELECT CODCLI, NOFCLI, DOMCLI, POBCLI, CPOCLI, PROCLI,
-                          NIFCLI, TELCLI, IVACLI, CFECLI, EMACLI
-                   FROM F_CLI"""
-        params = []
-        if search:
-            query += " WHERE NOFCLI LIKE ? OR NIFCLI LIKE ? OR CODCLI LIKE ?"
-            params = [f"%{search}%", f"%{search}%", f"%{search}%"]
-        query += " ORDER BY NOFCLI"
-        cursor.execute(query, params)
-        columns = [desc[0] for desc in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-    finally:
-        conn.close()
 
 
 def update_customer_fiscal(codcli: int, data: dict) -> bool:
@@ -303,3 +292,14 @@ def write_cae_to_factura(
     finally:
         conn.close()
 
+
+def get_payment_methods() -> list[dict]:
+    """Obtiene todas las formas de pago de la tabla F_FPA."""
+    conn = _get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT CODFPA, DESFPA FROM F_FPA ORDER BY CODFPA")
+        columns = [desc[0] for desc in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    finally:
+        conn.close()

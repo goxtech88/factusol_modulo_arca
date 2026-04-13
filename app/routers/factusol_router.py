@@ -14,6 +14,7 @@ def list_invoices(
     serie: int = Query(..., description="Serie/TIPFAC de Factusol"),
     search: str = Query("", description="Buscar por nombre de cliente o nro"),
     date_filter: str = Query("all", description="Filtro fecha: all|today|yesterday|last7"),
+    fopfac: str = Query("", description="Filtro por forma de pago (código)"),
     current_user: User = Depends(get_current_user),
 ):
     """Lista facturas de una serie. El usuario solo puede ver las series asignadas."""
@@ -22,7 +23,7 @@ def list_invoices(
         raise HTTPException(status_code=403, detail="No tiene acceso a esta serie")
 
     try:
-        invoices = factusol_service.get_invoices(serie, search=search, date_filter=date_filter)
+        invoices = factusol_service.get_invoices(serie, search=search, date_filter=date_filter, fopfac=fopfac)
         return {"invoices": invoices, "total": len(invoices)}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -52,16 +53,6 @@ def get_invoice_detail(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}")
 
-
-@router.get("/customers")
-def list_customers(
-    search: str = Query(""),
-    current_user: User = Depends(get_current_user),
-):
-    try:
-        return factusol_service.get_customers(search=search)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/customers/{codcli}/fiscal")
@@ -94,3 +85,14 @@ def list_articles(
 def test_connection(current_user: User = Depends(get_current_user)):
     """Prueba la conexión a la base de datos Factusol."""
     return factusol_service.test_connection()
+
+
+@router.get("/payment-methods")
+def list_payment_methods(
+    current_user: User = Depends(get_current_user),
+):
+    """Lista todas las formas de pago de Factusol (F_FPA)."""
+    try:
+        return factusol_service.get_payment_methods()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
