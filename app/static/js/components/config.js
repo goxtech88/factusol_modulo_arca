@@ -152,6 +152,9 @@ const ConfigComponent = {
 
             // Plan / Licencia
             this._updateLicenseBar(config.license);
+
+            // Puntos de Venta
+            this.loadPVs();
         } catch (err) {
             App.toast(err.message, 'error');
         }
@@ -245,6 +248,114 @@ const ConfigComponent = {
             bar.innerHTML = `<i data-lucide="info"></i> ${msg}`;
         }
         if (typeof lucide !== 'undefined') lucide.createIcons();
+    },
+
+    // ── Punto de Venta ─────────────────────────────────────────────────
+    _editingPvId: null,
+
+    async loadPVs() {
+        try {
+            const pvs = await API.get('/api/config/my-puntos-venta');
+            const container = document.getElementById('config-pv-list');
+            if (!pvs.length) {
+                container.innerHTML = '<p style="color:var(--text-muted);font-size:13px">No tiene puntos de venta configurados. Agregue uno para poder facturar.</p>';
+                document.getElementById('btn-add-pv-config').classList.remove('hidden');
+                return;
+            }
+            const tipoMap = {0: 'Auto', 1: 'Factura A', 6: 'Factura B', 11: 'Factura C'};
+            container.innerHTML = pvs.map(pv => `
+                <div class="pv-config-row" style="display:flex;align-items:center;gap:10px;padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px">
+                    <div style="flex:1">
+                        <strong>${pv.nombre}</strong>
+                        <span style="font-size:12px;color:var(--text-muted)">
+                            — PV ${pv.punto_venta} | Serie ${pv.serie_factusol} | ${tipoMap[pv.tipo_comprobante] || 'Tipo ' + pv.tipo_comprobante}
+                        </span>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="ConfigComponent.editPV(${pv.id}, '${pv.nombre}', ${pv.punto_venta}, ${pv.serie_factusol}, ${pv.tipo_comprobante})">
+                        <i data-lucide="pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="ConfigComponent.deletePV(${pv.id})">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            // En plan básico con 1 PV, ocultar botón agregar
+            const hasCompleta = App._hasCompleta;
+            const addBtn = document.getElementById('btn-add-pv-config');
+            if (!hasCompleta && pvs.length >= 1) {
+                addBtn.classList.add('hidden');
+            } else {
+                addBtn.classList.remove('hidden');
+            }
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        } catch (err) {
+            console.error('Error loading PVs:', err);
+        }
+    },
+
+    showAddPV() {
+        this._editingPvId = null;
+        document.getElementById('cfg-pv-nombre').value = '';
+        document.getElementById('cfg-pv-numero').value = '';
+        document.getElementById('cfg-pv-serie').value = '1';
+        document.getElementById('cfg-pv-tipo').value = '0';
+        document.getElementById('config-pv-form').classList.remove('hidden');
+        document.getElementById('btn-add-pv-config').classList.add('hidden');
+    },
+
+    editPV(id, nombre, pv, serie, tipo) {
+        this._editingPvId = id;
+        document.getElementById('cfg-pv-nombre').value = nombre;
+        document.getElementById('cfg-pv-numero').value = pv;
+        document.getElementById('cfg-pv-serie').value = serie;
+        document.getElementById('cfg-pv-tipo').value = tipo;
+        document.getElementById('config-pv-form').classList.remove('hidden');
+        document.getElementById('btn-add-pv-config').classList.add('hidden');
+    },
+
+    cancelPV() {
+        this._editingPvId = null;
+        document.getElementById('config-pv-form').classList.add('hidden');
+        document.getElementById('btn-add-pv-config').classList.remove('hidden');
+    },
+
+    async savePV() {
+        const data = {
+            nombre: document.getElementById('cfg-pv-nombre').value.trim(),
+            punto_venta: parseInt(document.getElementById('cfg-pv-numero').value) || 0,
+            serie_factusol: parseInt(document.getElementById('cfg-pv-serie').value) || 1,
+            tipo_comprobante: parseInt(document.getElementById('cfg-pv-tipo').value) || 0,
+        };
+        if (!data.nombre || !data.punto_venta) {
+            App.toast('Complete el nombre y el numero de PV', 'error');
+            return;
+        }
+        try {
+            if (this._editingPvId) {
+                await API.put(`/api/config/my-puntos-venta/${this._editingPvId}`, data);
+                App.toast('Punto de venta actualizado', 'success');
+            } else {
+                await API.post('/api/config/my-puntos-venta', data);
+                App.toast('Punto de venta agregado', 'success');
+            }
+            this.cancelPV();
+            this.loadPVs();
+        } catch (err) {
+            App.toast(err.message, 'error');
+        }
+    },
+
+    async deletePV(pvId) {
+        if (!confirm('Eliminar este punto de venta?')) return;
+        try {
+            await API.delete(`/api/config/my-puntos-venta/${pvId}`);
+            App.toast('Punto de venta eliminado', 'success');
+            this.loadPVs();
+        } catch (err) {
+            App.toast(err.message, 'error');
+        }
     },
 
     async refreshLicense() {

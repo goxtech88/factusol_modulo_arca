@@ -530,6 +530,50 @@
                                 </button>
                                 <div id="cert-gen-result" class="hidden" style="margin-top:10px"></div>
                             </div>
+                            <div class="card">
+                                <h3><i data-lucide="map-pin"></i> Punto de Venta</h3>
+                                <div class="info-note" style="margin-bottom:12px">
+                                    <i data-lucide="info"></i>
+                                    Configure el punto de venta de ARCA y la serie de Factusol que le corresponde.
+                                </div>
+                                <div id="config-pv-list"></div>
+                                <div id="config-pv-form" class="hidden" style="margin-top:12px">
+                                    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">
+                                        <div class="form-group">
+                                            <label>Nombre</label>
+                                            <input type="text" id="cfg-pv-nombre" placeholder="Sucursal Centro">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>PV ARCA</label>
+                                            <input type="number" id="cfg-pv-numero" placeholder="2" min="1">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Serie Factusol</label>
+                                            <input type="number" id="cfg-pv-serie" placeholder="1" min="1" max="9">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tipo Cbte</label>
+                                            <select id="cfg-pv-tipo" class="select-styled">
+                                                <option value="0">Auto (segun cliente)</option>
+                                                <option value="1">Factura A</option>
+                                                <option value="6">Factura B</option>
+                                                <option value="11">Factura C</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;gap:8px">
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="ConfigComponent.savePV()">
+                                            Guardar PV
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="ConfigComponent.cancelPV()">
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline btn-sm" id="btn-add-pv-config" onclick="ConfigComponent.showAddPV()" style="margin-top:10px">
+                                    <i data-lucide="plus"></i> Agregar Punto de Venta
+                                </button>
+                            </div>
                         </div>
                     </section>
                 </div>

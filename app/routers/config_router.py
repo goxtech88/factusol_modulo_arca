@@ -1,12 +1,15 @@
 """
 Router para configuración del sistema (admin only).
+Incluye gestión de Punto de Venta del usuario actual (sin requerir plan completa).
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
+from sqlalchemy.orm import Session
 
-from app.auth import require_admin
-from app.models.user import User
+from app.auth import require_admin, get_current_user
+from app.database import get_db
+from app.models.user import User, UserPuntoVenta
 from app.config import get_config, save_config
 
 router = APIRouter(prefix="/api/config", tags=["config"])
@@ -224,3 +227,108 @@ def browse_files(
         "parent": str(target.parent) if target.parent != target else "",
         "items": items[:200],  # Limit results
     }
+
+
+# ── Punto de Venta del usuario actual ────────────────────────────────────────
+# Permite gestionar PVs sin requerir Plan Completa (para plan básico con 1 PV).
+
+
+class PVConfig(BaseModel):
+    nombre: str
+    punto_venta: int
+    serie_factusol: int
+    tipo_comprobante: int = 0  # 0=auto
+
+
+@router.get("/my-puntos-venta")
+def get_my_puntos_venta(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Obtiene los puntos de venta del usuario actual."""
+    pvs = db.query(UserPuntoVenta).filter(
+        UserPuntoVenta.user_id == current_user.id
+    ).all()
+    return [
+        {
+            "id": pv.id,
+            "nombre": pv.nombre,
+            "punto_venta": pv.punto_venta,
+            "serie_factusol": pv.serie_factusol,
+            "tipo_comprobante": pv.tipo_comprobante,
+        }
+        for pv in pvs
+    ]
+
+
+@router.post("/my-puntos-venta")
+def add_my_punto_venta(
+    data: PVConfig,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Agrega un PV al usuario actual. Plan básico: máximo 1 PV."""
+    from app.services import license_service
+
+    existing = db.query(UserPuntoVenta).filter(
+        UserPuntoVenta.user_id == current_user.id
+    ).count()
+
+    if not license_service.has_completa() and existing >= 1:
+        raise HTTPException(
+            status_code=403,
+            detail="El Plan Básico permite 1 punto de venta. Para más, active el Plan Completo en goxtech.com.ar",
+        )
+
+    pv = UserPuntoVenta(
+        user_id=current_user.id,
+        nombre=data.nombre,
+        punto_venta=data.punto_venta,
+        serie_factusol=data.serie_factusol,
+        tipo_comprobante=data.tipo_comprobante,
+    )
+    db.add(pv)
+    db.commit()
+    db.refresh(pv)
+    return {"id": pv.id, "message": "Punto de venta configurado"}
+
+
+@router.put("/my-puntos-venta/{pv_id}")
+def update_my_punto_venta(
+    pv_id: int,
+    data: PVConfig,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Actualiza un PV del usuario actual."""
+    pv = db.query(UserPuntoVenta).filter(
+        UserPuntoVenta.id == pv_id,
+        UserPuntoVenta.user_id == current_user.id,
+    ).first()
+    if not pv:
+        raise HTTPException(status_code=404, detail="Punto de venta no encontrado")
+
+    pv.nombre = data.nombre
+    pv.punto_venta = data.punto_venta
+    pv.serie_factusol = data.serie_factusol
+    pv.tipo_comprobante = data.tipo_comprobante
+    db.commit()
+    return {"message": "Punto de venta actualizado"}
+
+
+@router.delete("/my-puntos-venta/{pv_id}")
+def delete_my_punto_venta(
+    pv_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Elimina un PV del usuario actual."""
+    pv = db.query(UserPuntoVenta).filter(
+        UserPuntoVenta.id == pv_id,
+        UserPuntoVenta.user_id == current_user.id,
+    ).first()
+    if not pv:
+        raise HTTPException(status_code=404, detail="Punto de venta no encontrado")
+    db.delete(pv)
+    db.commit()
+    return {"message": "Punto de venta eliminado"}

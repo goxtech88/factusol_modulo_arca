@@ -78,12 +78,13 @@ const App = {
             this._hasCompleta = (lic.plan === 'completa' && lic.active);
 
             // Mostrar badge de plan en sidebar
+            // Ocultar "Usuarios" si no tiene plan completa
             const usersNav = document.querySelector('.nav-item[data-page="users"]');
             if (usersNav) {
                 if (!this._hasCompleta) {
-                    usersNav.classList.add('nav-locked');
-                    usersNav.title = 'Requiere Plan Completo';
+                    usersNav.style.display = 'none';
                 } else {
+                    usersNav.style.display = '';
                     usersNav.classList.remove('nav-locked');
                     usersNav.title = '';
                 }
