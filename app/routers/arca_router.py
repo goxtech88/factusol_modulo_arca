@@ -2,13 +2,14 @@
 Router para validación de facturas en ARCA (AFIP).
 """
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.auth import get_current_user
 from app.models.user import User, UserPuntoVenta
 from app.models.cae_log import CAELog
-from app.services import factusol_service, arca_service
+from app.services import factusol_service, arca_service, rg1361_service
 
 router = APIRouter(prefix="/api/arca", tags=["arca"])
 
@@ -657,3 +658,52 @@ def get_auto_validate_payment_filters(
     """Devuelve las formas de pago configuradas para auto-validación."""
     from app.services import auto_validate
     return auto_validate.get_payment_filters()
+
+
+# ── RG 1361 - Duplicado Electrónico ──────────────────────────────────────────
+
+@router.get("/rg1361/export")
+def export_rg1361(
+    year: int,
+    month: int,
+    pv: int | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Genera y descarga un ZIP con CABECERA_AAAAMM.txt y DETALLE_AAAAMM.txt
+    según el formato de la RG (AFIP) 1361/2002 - Anexo II - Régimen de
+    Almacenamiento Electrónico de Registraciones (Duplicado Electrónico).
+
+    - year/month: período fiscal a exportar.
+    - pv: opcional, filtra por punto de venta (todos si se omite).
+    - admin ve todos los CAE; usuario ve solo los suyos.
+    """
+    if not (1 <= month <= 12):
+        raise HTTPException(status_code=400, detail="Mes inválido (1-12)")
+    if not (2000 <= year <= 2100):
+        raise HTTPException(status_code=400, detail="Año inválido")
+
+    user_filter = None if current_user.role == "admin" else current_user.id
+
+    try:
+        zip_bytes, filename, count = rg1361_service.generate_zip(
+            db, year=year, month=month, pv=pv, user_id=user_filter,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al generar archivos RG 1361: {str(e)}")
+
+    if count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No hay comprobantes con CAE para {year:04d}-{month:02d}" + (f" (PV {pv})" if pv else ""),
+        )
+
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Comprobantes-Count": str(count),
+        },
+    )
