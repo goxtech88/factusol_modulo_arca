@@ -33,4 +33,10 @@ class CAELog(Base):
     cliente_nombre = Column(String(200), nullable=True)
     cliente_doc = Column(String(20), nullable=True)
 
+    # Campos especificos para Notas de Credito (nullable para facturas normales)
+    motivo = Column(String(50), nullable=True)
+    cmp_asoc_tipo = Column(Integer, nullable=True)
+    cmp_asoc_pv = Column(Integer, nullable=True)
+    cmp_asoc_nro = Column(Integer, nullable=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

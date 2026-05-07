@@ -70,52 +70,16 @@ def validate_invoice(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}") 
 
-    # Auto-enriquecer cliente si tiene CUIT pero falta condición fiscal
+    # Auto-enriquecimiento de padron desactivado (v1.5.1) — genera errores
+    # al no ser datos oficiales. El CFECLI debe configurarse en Factusol.
     cliente = detail.get("cliente") or {}
-    nifcli = str(cliente.get("NIFCLI", "") or "").replace("-", "").strip()
-    cfecli_actual = cliente.get("CFECLI", 0) or 0
-
-    if nifcli and len(nifcli) >= 10 and cfecli_actual == 0:
-        try:
-            padron = arca_service.consultar_cuit_online(nifcli)
-            cond = (padron.get("condicion_iva") or "").lower()
-            new_cfecli = 0
-            if "consumidor final" in cond:
-                new_cfecli = 1
-            elif "responsable inscripto" in cond or "iva inscripto" in cond:
-                new_cfecli = 2
-            elif "monotributo" in cond:
-                new_cfecli = 3
-            elif "exento" in cond:
-                new_cfecli = 4
-
-            update = {}
-            if padron.get("razon_social"):
-                update["NOFCLI"] = padron["razon_social"]
-            dom = padron.get("domicilio_fiscal") or {}
-            dom_str = " ".join(p for p in [dom.get("calle", ""), dom.get("numero", "")] if p).strip()
-            if dom_str:
-                update["DOMCLI"] = dom_str
-            if dom.get("localidad"):
-                update["POBCLI"] = dom["localidad"]
-            if dom.get("provincia"):
-                update["PROCLI"] = dom["provincia"]
-            if new_cfecli:
-                update["CFECLI"] = new_cfecli
-
-            codcli = cliente.get("CODCLI")
-            if update and codcli:
-                factusol_service.update_customer_fiscal(codcli, update)
-                # Recargar detalle con datos actualizados
-                detail = factusol_service.get_invoice_detail(tipfac, codfac)
-        except Exception:
-            pass  # Si falla el enriquecimiento, continuar con los datos que hay
 
     # Determinar tipo de comprobante
     from app.services.arca_service import determine_tipo_comprobante
     from app.config import get_config
     config = get_config()
     cond_emisor = config.get("empresa", {}).get("condicion_iva", "Responsable Inscripto")
+    mono_como_a = bool(config.get("empresa", {}).get("facturar_mono_como_a", True))
     # CFECLI: 0=no config, 1=CF, 2=RI, 3=Mono, 4=Exento
     cfecli = detail.get("cliente", {}).get("CFECLI", 0) or 0
 
@@ -126,7 +90,7 @@ def validate_invoice(
     if pv_config.tipo_comprobante and pv_config.tipo_comprobante != 0:
         tipo_comprobante = pv_config.tipo_comprobante
     else:
-        tipo_comprobante = determine_tipo_comprobante(cfecli, cond_emisor, nifcli_clean)
+        tipo_comprobante = determine_tipo_comprobante(cfecli, cond_emisor, nifcli_clean, mono_como_a)
 
 
 
@@ -145,6 +109,19 @@ def validate_invoice(
             "tipo_comprobante": existing.tipo_comprobante,
             "message": "Esta factura ya fue validada en ARCA",
         }
+
+    # Verificar que no tenga NC emitida (no se puede re-validar una factura anulada)
+    nc_tipos = [3, 8, 13]
+    existing_nc = db.query(CAELog).filter(
+        CAELog.tipfac == tipfac,
+        CAELog.codfac == codfac,
+        CAELog.tipo_comprobante.in_(nc_tipos),
+    ).first()
+    if existing_nc:
+        raise HTTPException(
+            status_code=400,
+            detail="Esta factura tiene una NC emitida. No se puede volver a validar.",
+        )
 
     # Mapear tipo de comprobante a nombre legible
     cbte_nombres = {1: "Factura A", 2: "ND A", 3: "NC A", 6: "Factura B", 7: "ND B",
@@ -403,23 +380,35 @@ def check_cae_status(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Verifica si una factura ya tiene CAE asignado."""
-    log = db.query(CAELog).filter(
+    """Verifica si una factura ya tiene CAE asignado y si tiene NC emitida."""
+    # Buscar factura original (tipo 1, 6, 11)
+    nc_tipos = [3, 8, 13]
+    factura_log = db.query(CAELog).filter(
         CAELog.tipfac == tipfac,
         CAELog.codfac == codfac,
+        CAELog.tipo_comprobante.notin_(nc_tipos),
     ).first()
 
-    if log:
+    # Buscar NC asociada
+    nc_log = db.query(CAELog).filter(
+        CAELog.tipfac == tipfac,
+        CAELog.codfac == codfac,
+        CAELog.tipo_comprobante.in_(nc_tipos),
+    ).first()
+
+    if factura_log:
         return {
             "validated": True,
-            "cae": log.cae,
-            "cae_vto": log.cae_vto,
-            "voucher_number": log.voucher_number,
-            "punto_venta": log.punto_venta,
-            "tipo_comprobante": log.tipo_comprobante,
-            "created_at": log.created_at.isoformat() if log.created_at else None,
+            "cae": factura_log.cae,
+            "cae_vto": factura_log.cae_vto,
+            "voucher_number": factura_log.voucher_number,
+            "punto_venta": factura_log.punto_venta,
+            "tipo_comprobante": factura_log.tipo_comprobante,
+            "created_at": factura_log.created_at.isoformat() if factura_log.created_at else None,
+            "has_nc": nc_log is not None,
+            "nc_cae": nc_log.cae if nc_log else None,
         }
-    return {"validated": False}
+    return {"validated": False, "has_nc": False}
 
 
 @router.get("/logs")

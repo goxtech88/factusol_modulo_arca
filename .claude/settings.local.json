@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show:*)",
+      "Bash(pip install:*)",
+      "Bash(rm -rf venv)",
+      "Bash(python -m venv venv)",
+      "Bash(venv/Scripts/pip install:*)",
+      "Bash(venv/Scripts/python.exe -c \"import webview; print\\(''pywebview OK:'', webview.__version__\\)\")",
+      "Bash(venv/Scripts/python.exe -c \"import webview; print\\(''webview OK''\\); import pyafipws; print\\(''pyafipws OK''\\)\")",
+      "Bash(venv/Scripts/python.exe -m PyInstaller arca.spec --noconfirm --distpath \"C:/temp/arca_build/dist\" --workpath \"C:/temp/arca_build/work\")",
+      "Bash(rm -rf dist/ARCA)",
+      "Bash(mkdir -p dist)",
+      "Bash(cp -r \"C:/temp/arca_build/dist/ARCA\" dist/)",
+      "Bash(pyinstaller arca.spec --noconfirm)",
+      "Bash(taskkill /f /im ARCA.exe)",
+      "Bash(taskkill /f /im chrome.exe /fi \"WINDOWTITLE eq Factusol*\")",
+      "Bash(taskkill //f //im ARCA.exe)",
+      "Bash(cmd.exe /c build_desktop.bat)",
+      "Bash(./venv/Scripts/python.exe -m PyInstaller arca.spec --noconfirm --distpath \"C:\\\\temp\\\\arca_build\\\\dist\" --workpath \"C:\\\\temp\\\\arca_build\\\\work\")",
+      "Bash(cp -r \"C:\\\\temp\\\\arca_build\\\\dist\\\\ARCA\" dist/)",
+      "Bash(./venv/Scripts/python.exe -m PyInstaller LicenseGen.spec --noconfirm --distpath \"C:\\\\temp\\\\arca_build\\\\dist\" --workpath \"C:\\\\temp\\\\arca_build\\\\work\")",
+      "WebFetch(domain:api.afip.dev)",
+      "Bash(curl -s -w \"\\\\n%{http_code}\" \"https://api.afip.dev/v1/person/20111111112\")",
+      "Bash(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@192.168.1.212 \"echo ''=== OS ==='' && cat /etc/os-release | head -5 && echo ''=== HestiaCP ==='' && hestia version 2>/dev/null || v-list-sys-info 2>/dev/null | head -5 && echo ''=== Usuarios web ==='' && ls /home/ && echo ''=== Python ==='' && python3 --version\")",
+      "Bash(apt-get install:*)",
+      "Bash(apk add:*)",
+      "Bash(python3 -c \"import paramiko; print\\(''paramiko ok''\\)\")",
+      "Bash(python3:*)",
+      "Bash(venv\\\\Scripts\\\\python.exe -m PyInstaller arca.spec --noconfirm --distpath \"C:\\\\temp\\\\arca_build\\\\dist\" --workpath \"C:\\\\temp\\\\arca_build\\\\work\")",
+      "Bash(./venv/Scripts/python.exe -m PyInstaller arca.spec --noconfirm --distpath \"C:/temp/arca_build/dist\" --workpath \"C:/temp/arca_build/work\")",
+      "Bash(ls \"C:/Users/goxte/OneDrive/Develop/Factusol_Modulo_ARCA/venv/Scripts/\"*.exe)",
+      "Bash(ls \"C:/Users/goxte/OneDrive/Develop/Factusol_Modulo_ARCA/venv/Scripts/python\"*)"
+    ]
+  }
+}

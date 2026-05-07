@@ -395,10 +395,12 @@ const InvoicesComponent = {
                                onclick="InvoicesComponent.validateInvoice(${inv.TIPFAC}, ${inv.CODFAC})">
                                <i data-lucide="check-check"></i> CAE
                            </button>`
-                        : `<button class="btn btn-sm btn-danger" title="Nota de Credito"
-                               onclick="InvoicesComponent.createCreditNote(${inv.TIPFAC}, ${inv.CODFAC})">
-                               <i data-lucide="file-minus"></i> NC
-                           </button>`}
+                        : cae?.has_nc
+                            ? `<span class="badge badge-warning" title="NC emitida: ${cae.nc_cae || ''}">NC</span>`
+                            : `<button class="btn btn-sm btn-danger" title="Nota de Credito"
+                                   onclick="InvoicesComponent.createCreditNote(${inv.TIPFAC}, ${inv.CODFAC})">
+                                   <i data-lucide="file-minus"></i> NC
+                               </button>`}
                 </td>
             </tr>`;
         }).join('');
@@ -650,6 +652,17 @@ const InvoicesComponent = {
     async createCreditNote(tipfac, codfac) {
         if (!this.currentPv) {
             App.toast('No tiene un punto de venta seleccionado', 'error');
+            return;
+        }
+        // Verificar que tenga CAE y no tenga NC ya emitida
+        const key = `${tipfac}-${codfac}`;
+        const st = this._caeStatuses[key];
+        if (!st?.validated) {
+            App.toast('La factura no tiene CAE. Solo se pueden emitir NC de facturas validadas en ARCA.', 'error');
+            return;
+        }
+        if (st?.has_nc) {
+            App.toast('Ya existe una Nota de Credito para esta factura', 'warning');
             return;
         }
         if (!confirm(

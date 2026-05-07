@@ -66,6 +66,14 @@
                         <i data-lucide="file-text"></i>
                         <span>Facturas</span>
                     </li>
+                    <li class="nav-item" data-page="credit-notes">
+                        <i data-lucide="file-minus"></i>
+                        <span>Notas de Crédito</span>
+                    </li>
+                    <li class="nav-item" data-page="purchases">
+                        <i data-lucide="shopping-cart"></i>
+                        <span>Compras</span>
+                    </li>
 <li class="nav-item" data-page="cae-logs">
                         <i data-lucide="clock"></i>
                         <span>CAE Emitidos</span>
@@ -294,6 +302,117 @@
                     </div>
 
 
+                    <!-- Credit Notes (Notas de Credito) -->
+                    <section id="section-credit-notes" class="section hidden">
+                        <div class="toolbar">
+                            <div class="toolbar-left">
+                                <h3>Notas de Crédito</h3>
+                            </div>
+                            <div class="toolbar-right">
+                                <button class="btn btn-primary" id="btn-new-credit-note" onclick="CreditNotesComponent.showEmitModal()">
+                                    <i data-lucide="plus"></i> Emitir Nota de Crédito
+                                </button>
+                            </div>
+                        </div>
+                        <div class="toolbar" style="margin-top:8px">
+                            <div class="toolbar-left" style="gap:10px">
+                                <label>Desde:</label>
+                                <input type="date" id="nc-filter-from" class="select-styled" onchange="CreditNotesComponent.load()">
+                                <label>Hasta:</label>
+                                <input type="date" id="nc-filter-to" class="select-styled" onchange="CreditNotesComponent.load()">
+                                <div class="input-group search-group">
+                                    <i data-lucide="search"></i>
+                                    <input type="text" id="nc-filter-cliente" placeholder="Cliente...">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card" style="margin-top:1rem">
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Tipo</th>
+                                            <th>PV-Número</th>
+                                            <th>Cliente</th>
+                                            <th>Factura origen</th>
+                                            <th>Motivo</th>
+                                            <th style="text-align:right">Importe</th>
+                                            <th>CAE</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="credit-notes-tbody"></tbody>
+                                </table>
+                            </div>
+                            <div id="credit-notes-empty" class="empty-state hidden">
+                                <i data-lucide="inbox"></i>
+                                <p>No hay notas de crédito emitidas</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Emit NC Modal -->
+                    <div id="emit-nc-modal" class="modal hidden">
+                        <div class="modal-overlay"></div>
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>Emitir Nota de Crédito</h3>
+                                <button class="btn-icon modal-close"><i data-lucide="x"></i></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label>Buscar factura original</label>
+                                    <div class="input-group search-group">
+                                        <i data-lucide="search"></i>
+                                        <input type="text" id="nc-invoice-search" placeholder="Número o cliente...">
+                                    </div>
+                                    <div id="nc-search-results" class="nc-search-results"></div>
+                                </div>
+                                <div id="nc-selected-invoice" class="nc-selected hidden"></div>
+                                <div class="form-group">
+                                    <label>Motivo</label>
+                                    <select id="nc-motivo" class="select-styled">
+                                        <option value="Devolucion">Devolución</option>
+                                        <option value="Descuento">Descuento</option>
+                                        <option value="Anulacion">Anulación</option>
+                                        <option value="Error de facturacion">Error de facturación</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                                        <input type="checkbox" id="nc-total-check" checked onchange="CreditNotesComponent._toggleTotal(this.checked)">
+                                        <span>Nota de Crédito total</span>
+                                    </label>
+                                </div>
+                                <div class="form-group hidden" id="nc-parcial-group">
+                                    <label>Importe parcial</label>
+                                    <input type="number" id="nc-importe" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary modal-close">Cancelar</button>
+                                <button class="btn btn-primary" id="btn-emit-nc" onclick="CreditNotesComponent.submitNC()">
+                                    <i data-lucide="file-minus"></i> Emitir NC
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Purchases (Placeholder) -->
+                    <section id="section-purchases" class="section hidden">
+                        <div class="card" style="margin-top:2rem;text-align:center;padding:3rem">
+                            <i data-lucide="construction" style="width:64px;height:64px;color:var(--text-muted)"></i>
+                            <h2 style="margin-top:1rem">Módulo de Compras — Próximamente</h2>
+                            <p style="color:var(--text-muted);max-width:600px;margin:1rem auto">
+                                Estamos trabajando para incluir la gestión de comprobantes de compras,
+                                registro de facturas recibidas y reporte de crédito fiscal. Disponible en próximas versiones.
+                            </p>
+                            <button class="btn btn-primary" onclick="App.navigate('dashboard')">
+                                <i data-lucide="arrow-left"></i> Volver al Dashboard
+                            </button>
+                        </div>
+                    </section>
+
                     <!-- CAE Logs -->
                     <section id="section-cae-logs" class="section hidden">
                         <div class="toolbar">
@@ -448,6 +567,17 @@
                                             <option value="3">Productos y Servicios</option>
                                         </select>
                                     </div>
+                                    <div class="form-group">
+                                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                                            <input type="checkbox" id="cfg-mono-como-a" checked>
+                                            <span>Emitir Factura A a Monotributistas (RG 5022/21)</span>
+                                        </label>
+                                        <small style="color:var(--text-muted);font-size:11px;display:block;margin-top:4px">
+                                            Si está activado, los clientes con CFECLI=3 (Monotributo) reciben Factura A.
+                                            Recordá configurar en Factusol la leyenda obligatoria:
+                                            <em>"Receptor del comprobante - Responsable Monotributo"</em>.
+                                        </small>
+                                    </div>
                                     <button type="submit" class="btn btn-primary">
                                         Guardar
                                     </button>
@@ -462,6 +592,21 @@
                                     </button>
                                     <span style="font-size:12px;color:var(--text-muted)">El plan se verifica automáticamente contra el servidor de GoxTech</span>
                                 </div>
+                            </div>
+                            <div class="card">
+                                <h3><i data-lucide="download-cloud"></i> Actualizaciones</h3>
+                                <div id="update-status" style="margin-bottom:10px">
+                                    <span style="color:var(--text-muted)">Haga click en "Verificar" para buscar actualizaciones.</span>
+                                </div>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <button class="btn btn-secondary" id="btn-check-update" onclick="ConfigComponent.checkUpdate()">
+                                        <i data-lucide="search"></i> Verificar ultima version
+                                    </button>
+                                    <button class="btn btn-primary hidden" id="btn-apply-update" onclick="ConfigComponent.applyUpdate()">
+                                        <i data-lucide="download"></i> Actualizar ahora
+                                    </button>
+                                </div>
+                                <div id="update-changelog" class="hidden" style="margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:6px;font-size:13px"></div>
                             </div>
                             <div class="card">
                                 <h3><i data-lucide="database"></i> Factusol</h3>
@@ -590,6 +735,13 @@
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
 
+    <!-- Floating Support Button (WhatsApp) — solo planes con soporte -->
+    <button id="support-fab" class="support-fab" style="display:none" title="Soporte WhatsApp GoxTech" aria-label="Soporte WhatsApp">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="#ffffff">
+            <path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43ZM12.07 21.8h-.01a9.88 9.88 0 0 1-5.03-1.38l-.36-.22-3.75.98 1-3.66-.23-.37a9.86 9.86 0 0 1-1.51-5.26c0-5.45 4.44-9.89 9.9-9.89 2.64 0 5.13 1.03 6.99 2.9a9.83 9.83 0 0 1 2.9 6.99c0 5.46-4.44 9.91-9.9 9.91Zm5.43-7.42c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.38-1.47-.88-.79-1.47-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.21-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48 0 1.46 1.07 2.87 1.22 3.07.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.69.63.71.22 1.35.19 1.86.12.57-.08 1.76-.72 2-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"/>
+        </svg>
+    </button>
+
 
     <script src="/static/js/api.js"></script>
     <script src="/static/js/auth.js"></script>
@@ -599,6 +751,7 @@
     <script src="/static/js/components/cae-logs.js"></script>
     <script src="/static/js/components/admin.js"></script>
     <script src="/static/js/components/config.js"></script>
+    <script src="/static/js/components/credit_notes.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

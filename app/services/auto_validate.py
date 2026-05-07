@@ -121,14 +121,7 @@ async def _auto_validate_loop():
         _running = True
         interval = av_config.get("interval_seconds", 60)
 
-        # Auto-validación requiere Plan Completo
-        from app.services import license_service
-        if not license_service.has_completa():
-            _last_result = "Plan Básico"
-            _add_log("Auto-validación pausada: requiere Plan Completo (goxtech.com.ar)", "error")
-            await asyncio.sleep(interval)
-            continue
-
+        # Auto-validacion disponible en todos los planes desde v1.5.0
         try:
             count = await asyncio.to_thread(_validate_pending_sync)
             _last_run = datetime.now().strftime("%H:%M:%S")
@@ -251,53 +244,14 @@ def _validate_single_sync(
     if not detail:
         return None
 
-    # Auto-enriquecer cliente si tiene CUIT pero le falta condición fiscal
+    # Auto-enriquecimiento de padron desactivado (v1.5.1) — genera errores
+    # al no ser datos oficiales. El CFECLI debe configurarse en Factusol.
     cliente = detail.get("cliente") or {}
     cfecli = cliente.get("CFECLI", 0) or 0
-    nifcli = str(cliente.get("NIFCLI", "") or "").replace("-", "").strip()
-
-    if nifcli and len(nifcli) >= 10 and cfecli == 0:
-        try:
-            _add_log(f"Auto-enriqueciendo cliente CUIT {nifcli}...")
-            padron = arca_service.consultar_cuit_online(nifcli)
-            cond = (padron.get("condicion_iva") or "").lower()
-            new_cfecli = 0
-            if "consumidor final" in cond:
-                new_cfecli = 1
-            elif "responsable inscripto" in cond or "iva inscripto" in cond:
-                new_cfecli = 2
-            elif "monotributo" in cond:
-                new_cfecli = 3
-            elif "exento" in cond:
-                new_cfecli = 4
-
-            update = {}
-            if padron.get("razon_social"):
-                update["NOFCLI"] = padron["razon_social"]
-            dom = padron.get("domicilio_fiscal") or {}
-            dom_str = " ".join(p for p in [dom.get("calle", ""), dom.get("numero", "")] if p).strip()
-            if dom_str:
-                update["DOMCLI"] = dom_str
-            if dom.get("localidad"):
-                update["POBCLI"] = dom["localidad"]
-            if dom.get("provincia"):
-                update["PROCLI"] = dom["provincia"]
-            if new_cfecli:
-                update["CFECLI"] = new_cfecli
-                cfecli = new_cfecli
-
-            codcli = cliente.get("CODCLI")
-            if update and codcli:
-                factusol_service.update_customer_fiscal(codcli, update)
-                _add_log(f"Cliente {nifcli} actualizado: {padron.get('razon_social', '')} - {padron.get('condicion_iva', '')}", "success")
-                # Recargar detalle con datos actualizados
-                detail = factusol_service.get_invoice_detail(tipfac, codfac)
-                cfecli = detail.get("cliente", {}).get("CFECLI", 0) or 0
-        except Exception as e:
-            _add_log(f"No se pudo enriquecer cliente {nifcli}: {str(e)[:60]}", "error")
 
     config = get_config()
     cond_emisor = config.get("empresa", {}).get("condicion_iva", "Responsable Inscripto")
+    mono_como_a = bool(config.get("empresa", {}).get("facturar_mono_como_a", True))
 
     # NIF limpio para determinar tipo de comprobante
     nifcli_clean = str(detail.get("cliente", {}).get("NIFCLI", "") or "").replace("-", "").strip()
@@ -305,7 +259,7 @@ def _validate_single_sync(
     if pv_config.tipo_comprobante and pv_config.tipo_comprobante != 0:
         tipo_comprobante = pv_config.tipo_comprobante
     else:
-        tipo_comprobante = arca_service.determine_tipo_comprobante(cfecli, cond_emisor, nifcli_clean)
+        tipo_comprobante = arca_service.determine_tipo_comprobante(cfecli, cond_emisor, nifcli_clean, mono_como_a)
 
     _add_log(f"Validando {tipfac}-{codfac} (tipo {tipo_comprobante}, PV {pv_config.punto_venta})...")
 

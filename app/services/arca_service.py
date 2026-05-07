@@ -198,26 +198,35 @@ def get_last_voucher_number(punto_venta: int, tipo_comprobante: int) -> int:
     return int(last or 0)
 
 
-def determine_tipo_comprobante(cfecli: int, cond_iva_emisor: str = "Responsable Inscripto", nifcli: str = "") -> int:
+def determine_tipo_comprobante(
+    cfecli: int,
+    cond_iva_emisor: str = "Responsable Inscripto",
+    nifcli: str = "",
+    mono_como_a: bool = True,
+) -> int:
     """
     Determina el tipo de comprobante AFIP según CFECLI y NIF del cliente.
 
     Tipos de comprobante AFIP:
-      1  = Factura A   (RI emite a RI)
-      6  = Factura B   (RI emite a CF, Monotributo, Exento)
+      1  = Factura A   (RI emite a RI o a Mono con RG 5022/21)
+      6  = Factura B   (RI emite a CF, Exento, o Mono si se desactiva RG 5022)
       11 = Factura C   (Monotributista emite a cualquiera)
 
     CFECLI en Factusol (F_CLI):
       0 = No configurado
       1 = Consumidor Final (DNI)       → Factura B
       2 = Responsable Inscripto (CUIT) → Factura A
-      3 = Monotributista (CUIT)        → Factura B
+      3 = Monotributista (CUIT)        → Factura A si mono_como_a, sino B
       4 = Exento (CUIT)                → Factura B
 
     Lógica de NIF:
       - Vacío              → Consumidor final sin identificar → Factura B
       - < 11 dígitos (DNI) → Consumidor final con DNI        → Factura B
       - 11 dígitos (CUIT)  → usar CFECLI para decidir A o B
+
+    Nota RG 5022/21 (AFIP): los RI deben emitir Factura A a Monotributistas
+    con la leyenda "Receptor del comprobante - Responsable Monotributo".
+    La leyenda debe imprimirse en el comprobante desde Factusol.
     """
     if cond_iva_emisor == "Monotributista":
         return 11  # Factura C
@@ -232,8 +241,9 @@ def determine_tipo_comprobante(cfecli: int, cond_iva_emisor: str = "Responsable 
     # Con CUIT (11 dígitos): usar CFECLI
     if cfecli == 2:
         return 1   # Factura A (Responsable Inscripto)
-    else:
-        return 6   # Factura B (CF=0/1, Mono=3, Exento=4)
+    if cfecli == 3 and mono_como_a:
+        return 1   # Factura A a Monotributista (RG 5022/21)
+    return 6       # Factura B (CF=0/1, Exento=4, o Mono si mono_como_a=False)
 
 
 
@@ -481,6 +491,7 @@ def validate_credit_note(
     tipo_comprobante_original: int,
     voucher_number_original: int,
     punto_venta_original: int,
+    importe_override: float | None = None,
 ) -> dict:
     """
     Emite una Nota de Crédito en AFIP asociada a una factura previamente validada.
@@ -497,6 +508,32 @@ def validate_credit_note(
 
     wsfe = _create_wsfe_instance()
     data = build_voucher_data(invoice_header, invoice_lines, cliente, punto_venta, tipo_nc)
+
+    # NC parcial: reescalar importes proporcionalmente al total original
+    if importe_override is not None and importe_override > 0:
+        original_total = float(data.get("imp_total") or 0)
+        if original_total <= 0:
+            raise ValueError("No se puede emitir NC parcial: la factura original tiene total 0")
+        nuevo_total = round(float(importe_override), 2)
+        if nuevo_total > original_total + 0.01:
+            raise ValueError(f"El importe de la NC ({nuevo_total}) supera el total de la factura original ({original_total})")
+        factor = nuevo_total / original_total
+        data["imp_total"] = nuevo_total
+        data["imp_neto"] = round(float(data.get("imp_neto") or 0) * factor, 2)
+        data["imp_iva"] = round(float(data.get("imp_iva") or 0) * factor, 2)
+        data["imp_tot_conc"] = round(float(data.get("imp_tot_conc") or 0) * factor, 2)
+        data["imp_op_ex"] = round(float(data.get("imp_op_ex") or 0) * factor, 2)
+        data["imp_trib"] = round(float(data.get("imp_trib") or 0) * factor, 2)
+        # Reescalar alicuotas manteniendo mismo Id (tasa de IVA)
+        nuevas_iva = []
+        for iva_item in data.get("iva", []):
+            nuevas_iva.append({
+                "Id": iva_item["Id"],
+                "BaseImp": round(float(iva_item["BaseImp"]) * factor, 2),
+                "Importe": round(float(iva_item["Importe"]) * factor, 2),
+            })
+        data["iva"] = nuevas_iva
+        log.info(f"[ARCA-NC] Parcial: factor={factor:.4f} nuevo_total={nuevo_total}")
 
     # Obtener próximo número de NC
     last = wsfe.CompUltimoAutorizado(tipo_nc, punto_venta)

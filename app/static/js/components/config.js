@@ -13,6 +13,7 @@ const ConfigComponent = {
                     inicio_actividades: document.getElementById('cfg-inicio-actividades').value,
                     condicion_iva: document.getElementById('cfg-condicion-iva').value,
                     concepto_facturacion: parseInt(document.getElementById('cfg-concepto').value) || 1,
+                    facturar_mono_como_a: document.getElementById('cfg-mono-como-a').checked,
                 });
                 App.toast('Configuración de empresa guardada', 'success');
                 App.loadEmpresaName();
@@ -141,6 +142,7 @@ const ConfigComponent = {
             document.getElementById('cfg-inicio-actividades').value = config.empresa?.inicio_actividades || '';
             document.getElementById('cfg-condicion-iva').value = config.empresa?.condicion_iva || 'Responsable Inscripto';
             document.getElementById('cfg-concepto').value = String(config.empresa?.concepto_facturacion || 1);
+            document.getElementById('cfg-mono-como-a').checked = config.empresa?.facturar_mono_como_a !== false;
 
             // Factusol
             document.getElementById('cfg-db-path').value = config.factusol?.db_path || '';
@@ -238,14 +240,15 @@ const ConfigComponent = {
             bar.className = 'license-bar license-valid';
             const until = license.valid_until ? ` — vence ${license.valid_until}` : '';
             const cache = license.from_cache ? ' <span style="font-size:11px;opacity:.7">(sin conexión)</span>' : '';
-            bar.innerHTML = `<i data-lucide="check-circle"></i> Plan Completo activo${until}${cache}`;
+            // Desde v1.5.0 el plan pago se diferencia por incluir soporte WhatsApp.
+            const etiqueta = (license.sub_plan === 'vitalicia') ? 'Vitalicia (con soporte WhatsApp)' : 'Mensual (con soporte WhatsApp)';
+            bar.innerHTML = `<i data-lucide="check-circle"></i> ${etiqueta}${until}${cache}`;
         } else if (license && license.plan === 'completa' && !license.active) {
             bar.className = 'license-bar license-invalid';
-            bar.innerHTML = '<i data-lucide="alert-triangle"></i> Plan Completo vencido — <a href="https://goxtech.com.ar" target="_blank">Renovar</a>';
+            bar.innerHTML = '<i data-lucide="alert-triangle"></i> Plan pago vencido — <a href="https://goxtech.com.ar" target="_blank">Renovar</a>';
         } else {
             bar.className = 'license-bar license-trial';
-            const msg = (license && license.message) ? license.message : 'Plan Básico activo';
-            bar.innerHTML = `<i data-lucide="info"></i> ${msg}`;
+            bar.innerHTML = '<i data-lucide="info"></i> Básica (sin soporte)';
         }
         if (typeof lucide !== 'undefined') lucide.createIcons();
     },
@@ -371,6 +374,105 @@ const ConfigComponent = {
             App.toast('Error al verificar plan: ' + err.message, 'error');
         } finally {
             if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="refresh-cw"></i> Verificar plan'; }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    },
+
+    // ── Actualizaciones ───────────────────────────────────────────────
+    _latestUpdate: null,
+
+    async checkUpdate() {
+        const btn = document.getElementById('btn-check-update');
+        const status = document.getElementById('update-status');
+        const applyBtn = document.getElementById('btn-apply-update');
+        const changelogDiv = document.getElementById('update-changelog');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader"></i> Verificando...';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        try {
+            const data = await API.get('/api/updates/check');
+            this._latestUpdate = data;
+
+            if (data.has_update) {
+                status.innerHTML = `
+                    <div style="padding:8px 12px;background:var(--primary-light, #e8f5e9);border-radius:6px;border-left:4px solid var(--primary)">
+                        <strong>Nueva version disponible: v${data.latest_version}</strong>
+                        <span style="color:var(--text-muted);margin-left:8px">(${data.date})</span>
+                        <br><span style="font-size:13px">Version actual: v${data.current_version}</span>
+                    </div>`;
+                applyBtn.classList.remove('hidden');
+                if (data.changelog) {
+                    changelogDiv.classList.remove('hidden');
+                    changelogDiv.innerHTML = `<strong>Cambios:</strong><br>${data.changelog}`;
+                }
+                App.toast(`Nueva version disponible: v${data.latest_version}`, 'info');
+            } else {
+                status.innerHTML = `
+                    <div style="padding:8px 12px;background:var(--bg-tertiary);border-radius:6px">
+                        <i data-lucide="check-circle" style="width:16px;height:16px;vertical-align:middle;color:var(--success)"></i>
+                        <strong>Estas al dia</strong> — Version actual: v${data.current_version}
+                    </div>`;
+                applyBtn.classList.add('hidden');
+                changelogDiv.classList.add('hidden');
+                App.toast('Ya tenes la ultima version', 'success');
+            }
+        } catch (err) {
+            status.innerHTML = `<span style="color:var(--danger)">Error al verificar: ${err.message}</span>`;
+            App.toast('No se pudo verificar actualizaciones: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="search"></i> Verificar ultima version';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    },
+
+    async applyUpdate() {
+        if (!this._latestUpdate?.has_update) {
+            App.toast('No hay actualizaciones disponibles', 'warning');
+            return;
+        }
+
+        if (!confirm(
+            `Actualizar ARCA a v${this._latestUpdate.latest_version}?\n\n` +
+            `La aplicacion se cerrara, se actualizara automaticamente y se reiniciara.\n` +
+            `Su configuracion, base de datos y certificados se preservaran.\n\n` +
+            `Continuar?`
+        )) return;
+
+        const btn = document.getElementById('btn-apply-update');
+        const status = document.getElementById('update-status');
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader"></i> Descargando...';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        status.innerHTML = `
+            <div style="padding:12px;background:var(--bg-tertiary);border-radius:6px;text-align:center">
+                <div style="font-size:16px;margin-bottom:8px"><strong>Descargando actualizacion...</strong></div>
+                <div style="font-size:13px;color:var(--text-muted)">No cierre la aplicacion. Se reiniciara automaticamente.</div>
+            </div>`;
+
+        try {
+            const result = await API.post('/api/updates/apply');
+
+            if (result.status === 'updating') {
+                status.innerHTML = `
+                    <div style="padding:12px;background:var(--primary-light, #e8f5e9);border-radius:6px;text-align:center">
+                        <div style="font-size:16px;margin-bottom:8px"><strong>Actualizacion descargada</strong></div>
+                        <div style="font-size:13px">La aplicacion se cerrara y reiniciara en unos segundos...</div>
+                    </div>`;
+                App.toast('Actualizacion en progreso. Reiniciando...', 'success');
+            } else if (result.status === 'up_to_date') {
+                status.innerHTML = `<span style="color:var(--success)">Ya estas en la version mas reciente.</span>`;
+                btn.classList.add('hidden');
+                App.toast(result.message, 'info');
+            }
+        } catch (err) {
+            status.innerHTML = `<span style="color:var(--danger)">Error al actualizar: ${err.message}</span>`;
+            App.toast('Error al actualizar: ' + err.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="download"></i> Actualizar ahora';
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     },

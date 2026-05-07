@@ -14,12 +14,12 @@ from app.services import license_service
 
 
 def _require_completa():
-    """Gestión multi-usuario requiere Plan Completo."""
-    if not license_service.has_completa():
-        raise HTTPException(
-            status_code=403,
-            detail="La gestión de múltiples usuarios requiere el Plan Completo. Más info en goxtech.com.ar",
-        )
+    """Funcionalidad disponible en todos los planes desde v1.5.0.
+
+    Se mantiene el nombre por compatibilidad, pero ya no impone restriccion.
+    El plan Basico tiene todas las funciones; los planes pagos incluyen soporte.
+    """
+    return None
 
 
 router = APIRouter(prefix="/api/users", tags=["users"])

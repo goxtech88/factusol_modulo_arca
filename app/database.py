@@ -24,7 +24,35 @@ def get_db():
 
 
 def init_db():
-    """Crea todas las tablas si no existen."""
+    """Crea todas las tablas si no existen y aplica migraciones automaticas."""
     from app.models.user import User, UserPuntoVenta  # noqa: F401
     from app.models.cae_log import CAELog  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    _auto_migrate()
+
+
+def _auto_migrate():
+    """Agrega columnas faltantes a tablas existentes (SQLite, sin Alembic).
+
+    Este mecanismo simple mira PRAGMA table_info y hace ALTER TABLE ADD COLUMN
+    para cada columna que falta. Solo soporta agregar columnas nullable.
+    """
+    # Columnas esperadas en cae_logs (nombre -> definicion SQL)
+    expected_cae_logs = {
+        "motivo": "VARCHAR(50)",
+        "cmp_asoc_tipo": "INTEGER",
+        "cmp_asoc_pv": "INTEGER",
+        "cmp_asoc_nro": "INTEGER",
+    }
+    try:
+        with engine.begin() as conn:
+            from sqlalchemy import text
+            existing = {
+                row[1] for row in conn.exec_driver_sql("PRAGMA table_info(cae_logs)").fetchall()
+            }
+            for col, ddl in expected_cae_logs.items():
+                if col not in existing:
+                    conn.exec_driver_sql(f"ALTER TABLE cae_logs ADD COLUMN {col} {ddl}")
+                    print(f"[migrate] cae_logs: columna {col} agregada")
+    except Exception as e:
+        print(f"[migrate] Error en auto-migracion: {e}")

@@ -36,6 +36,7 @@ DEFAULT_CONFIG = {
         "inicio_actividades": "",
         "condicion_iva": "Responsable Inscripto",
         "concepto_facturacion": 1,
+        "facturar_mono_como_a": True,  # RG 5022/21 - AFIP: RI emite Factura A a Monotributistas
     },
     "factusol": {
         "db_path": "",

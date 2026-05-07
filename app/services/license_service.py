@@ -48,15 +48,29 @@ def _save_cache(cuit: str, plan: str, active: bool, valid_until: str | None) -> 
     save_config(config)
 
 
+def _get_app_version() -> str:
+    """Obtiene la version actual de la app para reportar al backend."""
+    try:
+        from app.main import app
+        return app.version
+    except Exception:
+        return ""
+
+
 def _check_online(cuit: str) -> dict | None:
     """
     Consulta el backend de licencias.
     Retorna dict con plan/active/valid_until, o None si no hay conexión.
+    Envía la version del cliente para tracking.
     """
     try:
+        version = _get_app_version()
+        params = {"cuit": cuit}
+        if version:
+            params["v"] = version
         resp = httpx.get(
             _LICENSE_API_URL,
-            params={"cuit": cuit},
+            params=params,
             timeout=8.0,
         )
         if resp.status_code == 200:

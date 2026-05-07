@@ -20,6 +20,13 @@ const App = {
         InvoicesComponent.init();
         AdminComponent.init();
         ConfigComponent.init();
+        if (typeof CreditNotesComponent !== 'undefined') CreditNotesComponent.init();
+
+        // Floating Support Button (WhatsApp)
+        const fab = document.getElementById('support-fab');
+        if (fab) {
+            fab.addEventListener('click', () => this._openWhatsAppSupport());
+        }
 
         // Sidebar navigation
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -75,25 +82,49 @@ const App = {
             const config = await API.get('/api/config');
             const lic = config.license || {};
             this._plan = lic.plan || 'basica';
+            // Desde v1.5.0: el plan basico tiene todas las funciones; los planes
+            // pagos se diferencian unicamente por incluir soporte por WhatsApp.
             this._hasCompleta = (lic.plan === 'completa' && lic.active);
+            this._hasSupport = this._hasCompleta;
 
-            // Mostrar badge de plan en sidebar
-            // Ocultar "Usuarios" si no tiene plan completa
-            const usersNav = document.querySelector('.nav-item[data-page="users"]');
-            if (usersNav) {
-                if (!this._hasCompleta) {
-                    usersNav.style.display = 'none';
-                } else {
-                    usersNav.style.display = '';
-                    usersNav.classList.remove('nav-locked');
-                    usersNav.title = '';
-                }
-            }
-
-            // Quitar banner de trial si existía de versión anterior
+            // Quitar banner de trial si existia de version anterior
             const banner = document.getElementById('trial-banner');
             if (banner) banner.remove();
-        } catch { this._plan = 'basica'; this._hasCompleta = false; }
+
+            // Actualizar visibilidad del boton flotante de soporte
+            this._updateSupportFab();
+        } catch {
+            this._plan = 'basica';
+            this._hasCompleta = false;
+            this._hasSupport = false;
+            this._updateSupportFab();
+        }
+    },
+
+    _updateSupportFab() {
+        const fab = document.getElementById('support-fab');
+        if (!fab) return;
+        fab.style.display = this._hasSupport ? '' : 'none';
+    },
+
+    async _openWhatsAppSupport() {
+        try {
+            // TODO: Replace with GoxTech real number
+            const phone = '5491112345678';
+            let empresa = {};
+            try {
+                const cfg = await API.get('/api/config');
+                empresa = cfg.empresa || {};
+            } catch { /* ignore */ }
+            const nombre = (Auth.user && (Auth.user.full_name || Auth.user.username)) || 'Usuario';
+            const razon = empresa.razon_social || 'Empresa';
+            const cuit = empresa.cuit || 'sin CUIT';
+            const msg = `Hola, soy ${nombre} de ${razon} (CUIT ${cuit}). Tengo una consulta sobre ARCA Sync v1.5.0...`;
+            const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank', 'noopener');
+        } catch (e) {
+            App.toast('No se pudo abrir WhatsApp', 'error');
+        }
     },
 
     navigate(page) {
@@ -108,7 +139,8 @@ const App = {
         const titles = {
             dashboard: 'Dashboard',
             invoices: 'Facturas',
-
+            'credit-notes': 'Notas de Crédito',
+            purchases: 'Compras',
             'cae-logs': 'CAE Emitidos',
             users: 'Usuarios',
             config: 'Configuración',
@@ -134,7 +166,12 @@ const App = {
             case 'invoices':
                 InvoicesComponent.loadPuntosVenta();
                 break;
-
+            case 'credit-notes':
+                if (typeof CreditNotesComponent !== 'undefined') CreditNotesComponent.load();
+                break;
+            case 'purchases':
+                // Placeholder, sin carga de datos
+                break;
             case 'cae-logs':
                 CAELogsComponent.load();
                 break;

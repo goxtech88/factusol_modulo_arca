@@ -22,6 +22,7 @@ class EmpresaConfig(BaseModel):
     inicio_actividades: Optional[str] = None
     condicion_iva: Optional[str] = None
     concepto_facturacion: Optional[int] = None
+    facturar_mono_como_a: Optional[bool] = None
 
 class FactusolConfig(BaseModel):
     db_path: Optional[str] = None
@@ -267,19 +268,7 @@ def add_my_punto_venta(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Agrega un PV al usuario actual. Plan básico: máximo 1 PV."""
-    from app.services import license_service
-
-    existing = db.query(UserPuntoVenta).filter(
-        UserPuntoVenta.user_id == current_user.id
-    ).count()
-
-    if not license_service.has_completa() and existing >= 1:
-        raise HTTPException(
-            status_code=403,
-            detail="El Plan Básico permite 1 punto de venta. Para más, active el Plan Completo en goxtech.com.ar",
-        )
-
+    """Agrega un PV al usuario actual. Sin limite de cantidad en ningun plan."""
     pv = UserPuntoVenta(
         user_id=current_user.id,
         nombre=data.nombre,
