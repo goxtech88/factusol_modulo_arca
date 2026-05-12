@@ -244,6 +244,18 @@ def _validate_single_sync(
     if not detail:
         return None
 
+    # Auto-ajustar fecha si esta fuera del rango AFIP (evita error 10016)
+    fecha_orig = detail.get("header", {}).get("FECFAC")
+    fecha_final, was_adjusted, ajuste_msg, _info = arca_service.auto_adjust_invoice_date(fecha_orig, concepto=1)
+    if was_adjusted:
+        try:
+            factusol_service.update_invoice_date(tipfac, codfac, fecha_final)
+            detail["header"]["FECFAC"] = fecha_final
+            _add_log(f"🗓 {tipfac}-{codfac}: {ajuste_msg}")
+        except Exception as e:
+            _add_log(f"⚠️  {tipfac}-{codfac}: no pude actualizar fecha en F_FAC ({e}), continuo con fecha ajustada")
+            detail["header"]["FECFAC"] = fecha_final
+
     # Auto-enriquecimiento de padron desactivado (v1.5.1) — genera errores
     # al no ser datos oficiales. El CFECLI debe configurarse en Factusol.
     cliente = detail.get("cliente") or {}

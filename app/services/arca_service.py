@@ -198,6 +198,98 @@ def get_last_voucher_number(punto_venta: int, tipo_comprobante: int) -> int:
     return int(last or 0)
 
 
+# ── Validación de fecha de comprobante (AFIP) ──────────────────────────────
+# AFIP solo permite emitir CAE con fecha de comprobante dentro de un rango
+# relativo a la fecha actual del servidor:
+#   - Concepto 1 (Productos):           ±5 días
+#   - Concepto 2/3 (Servicios / Mixto): ±10 días
+# Fuente: RG 4291 / Manual WSFEv1. Si se manda fuera de rango → error 10016/10017.
+
+AFIP_FECHA_MARGEN_PRODUCTOS = 5   # días hacia atrás / adelante
+AFIP_FECHA_MARGEN_SERVICIOS = 10
+
+
+def _parse_fecha(fecha_cbte):
+    """Normaliza date/datetime/str a date. Retorna None si no se puede parsear."""
+    from datetime import datetime as _dt, date as _date
+    if fecha_cbte is None:
+        return None
+    if isinstance(fecha_cbte, _dt):
+        return fecha_cbte.date()
+    if isinstance(fecha_cbte, _date):
+        return fecha_cbte
+    if isinstance(fecha_cbte, str):
+        s = fecha_cbte.strip()
+        try:
+            if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+                return _date(int(s[:4]), int(s[5:7]), int(s[8:10]))
+            if len(s) == 8 and s.isdigit():
+                return _date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+            return _dt.fromisoformat(s).date()
+        except Exception:
+            return None
+    return None
+
+
+# Alias para timedelta en mensajes (evita import en cada llamada)
+from datetime import timedelta as _td
+from datetime import date as _date
+
+
+def auto_adjust_invoice_date(fecha_cbte, concepto: int = 1) -> tuple:
+    """
+    Si la fecha del comprobante está fuera del rango AFIP, devuelve la fecha
+    AJUSTADA al límite válido más cercano (no bloquea, ARREGLA).
+
+    Retorna (fecha_final: date, was_adjusted: bool, mensaje_info: str, info: dict)
+
+    Lógica:
+      - Si fecha está dentro de ±margen → devuelve la original sin cambios.
+      - Si está MÁS de `margen` días en el pasado → ajusta a `hoy - margen`.
+        (preserva el "intento" del usuario de fechar atrás, pero al límite válido)
+      - Si está MÁS de `margen` días en el futuro → ajusta a `hoy + margen`.
+      - Si no se puede parsear → ajusta a `hoy` y avisa.
+    """
+    margen = AFIP_FECHA_MARGEN_SERVICIOS if concepto in (2, 3) else AFIP_FECHA_MARGEN_PRODUCTOS
+    hoy = _date.today()
+    limite_atras = hoy - _td(days=margen)
+    limite_adelante = hoy + _td(days=margen)
+
+    f = _parse_fecha(fecha_cbte)
+    if f is None:
+        info = {"original": str(fecha_cbte), "ajustada": hoy.isoformat(), "motivo": "parse_error"}
+        return hoy, True, f"Fecha invalida ({fecha_cbte!r}), usando hoy {hoy.strftime('%d/%m/%Y')}.", info
+
+    delta = (f - hoy).days
+    info = {
+        "original": f.isoformat(),
+        "hoy": hoy.isoformat(),
+        "dias_diferencia": delta,
+        "margen_dias": margen,
+        "concepto": concepto,
+    }
+
+    if abs(delta) <= margen:
+        info["ajustada"] = f.isoformat()
+        return f, False, "", info
+
+    # Fuera de rango → ajustar al límite más cercano
+    if delta < 0:
+        ajustada = limite_atras
+        msg = (
+            f"Fecha de Factusol ({f.strftime('%d/%m/%Y')}) era de {abs(delta)} dias atras, "
+            f"fuera del rango AFIP. Se ajusto a {ajustada.strftime('%d/%m/%Y')} (limite valido)."
+        )
+    else:
+        ajustada = limite_adelante
+        msg = (
+            f"Fecha de Factusol ({f.strftime('%d/%m/%Y')}) era de {delta} dias en el futuro, "
+            f"fuera del rango AFIP. Se ajusto a {ajustada.strftime('%d/%m/%Y')} (limite valido)."
+        )
+    info["ajustada"] = ajustada.isoformat()
+    return ajustada, True, msg, info
+
+
 def determine_tipo_comprobante(
     cfecli: int,
     cond_iva_emisor: str = "Responsable Inscripto",

@@ -213,13 +213,18 @@ const App = {
         };
         const iconName = iconMap[type] || 'info';
 
-        // Duracion segun tipo
-        const durationMap = { error: 8000, warning: 6000, success: 4000, info: 4000 };
-        const duration = durationMap[type] || 4000;
+        // Duracion segun tipo y largo del mensaje (mensajes largos quedan mas tiempo)
+        const baseDuration = { error: 8000, warning: 6000, success: 4000, info: 4000 };
+        const extraPerChar = String(message).length > 100 ? Math.min(8000, String(message).length * 30) : 0;
+        const duration = (baseDuration[type] || 4000) + extraPerChar;
+
+        // Escape HTML y preservar saltos de linea con pre-wrap (mensajes multilinea)
+        const escapeHtml = (s) => String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         toast.innerHTML = `
             <i data-lucide="${iconName}"></i>
-            <span class="toast-msg">${message}</span>
+            <span class="toast-msg" style="white-space:pre-wrap; word-break:break-word">${escapeHtml(message)}</span>
             <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
         `;
         container.appendChild(toast);

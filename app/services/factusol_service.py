@@ -293,6 +293,46 @@ def write_cae_to_factura(
         conn.close()
 
 
+def update_invoice_date(tipfac: int, codfac: int, nueva_fecha) -> bool:
+    """
+    Actualiza FECFAC en F_FAC para que la factura quede con la fecha realmente
+    enviada a ARCA. Imprescindible para que la fecha de Factusol coincida con
+    la del CAE cuando se autoajusto por estar fuera del rango AFIP.
+
+    `nueva_fecha` puede ser date, datetime o string 'YYYY-MM-DD'.
+    """
+    from datetime import datetime, date
+    if isinstance(nueva_fecha, datetime):
+        f = nueva_fecha.date()
+    elif isinstance(nueva_fecha, date):
+        f = nueva_fecha
+    elif isinstance(nueva_fecha, str):
+        s = nueva_fecha.strip()
+        if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+            f = date(int(s[:4]), int(s[5:7]), int(s[8:10]))
+        elif len(s) == 8 and s.isdigit():
+            f = date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+        else:
+            raise ValueError(f"Fecha invalida: {nueva_fecha!r}")
+    else:
+        raise ValueError(f"Tipo de fecha no soportado: {type(nueva_fecha).__name__}")
+
+    conn = _get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE F_FAC SET FECFAC = ? WHERE TIPFAC = ? AND CODFAC = ?",
+            [f, tipfac, codfac],
+        )
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def get_payment_methods() -> list[dict]:
     """Obtiene todas las formas de pago de la tabla F_FPA."""
     conn = _get_connection()

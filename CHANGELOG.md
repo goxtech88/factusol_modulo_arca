@@ -1,5 +1,19 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.6.2 (2026-05-11)
+
+### Nuevas funcionalidades
+- **Auto-ajuste de fecha del comprobante (AFIP RG 4291)**: Si la fecha de la factura en Factusol esta fuera del rango aceptado por AFIP (+/- 5 dias para productos, +/- 10 para servicios), la app la ajusta automaticamente al limite valido mas cercano (hoy-5 o hoy+5) en vez de devolver el error tecnico 10016. Tambien actualiza `F_FAC.FECFAC` en Factusol para que la fecha del CAE quede sincronizada con la de la factura.
+  - Aplica a validacion manual, validacion en lote y auto-validador.
+  - La respuesta del endpoint incluye `fecha_ajustada: true` y un mensaje informativo cuando se hizo el ajuste.
+  - Si el `UPDATE` en Factusol falla, sigue de todos modos con la fecha ajustada (sin romper el flujo).
+
+### UX
+- **Mensajes de error multilinea**: Los toasts ahora respetan saltos de linea y se autoajustan en duracion segun el largo del mensaje. Antes los errores estructurados aparecian como "[object Object]".
+- API client extrae automaticamente `message` / `error` de respuestas FastAPI con `detail` estructurado.
+
+---
+
 ## v1.6.1 (2026-05-06)
 
 ### Nuevas funcionalidades

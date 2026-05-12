@@ -21,7 +21,19 @@ const API = {
         }
         if (!response.ok) {
             const err = await response.json().catch(() => ({ detail: 'Error desconocido' }));
-            throw new Error(err.detail || `Error ${response.status}`);
+            // FastAPI puede devolver detail como string o como dict estructurado
+            // (ej: {error: "...", message: "...", info: {...}}). Extraemos lo legible.
+            let msg;
+            if (typeof err.detail === 'string') {
+                msg = err.detail;
+            } else if (err.detail && typeof err.detail === 'object') {
+                msg = err.detail.message || err.detail.error || JSON.stringify(err.detail);
+            } else {
+                msg = `Error ${response.status}`;
+            }
+            const e = new Error(msg);
+            e.errorInfo = (err.detail && typeof err.detail === 'object') ? err.detail : null;
+            throw e;
         }
         return response.json();
     },

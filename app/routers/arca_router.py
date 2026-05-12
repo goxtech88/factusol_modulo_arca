@@ -69,7 +69,24 @@ def validate_invoice(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}")
+
+    # ── Auto-ajuste de fecha del comprobante (rango AFIP) ──
+    # AFIP rechaza con error 10016 si la fecha esta > 5 dias (productos) o > 10
+    # (servicios) respecto del actual. En vez de bloquear, ajustamos la fecha
+    # al limite valido mas cercano y actualizamos F_FAC para que Factusol quede
+    # sincronizado con la fecha que efectivamente se mando a AFIP.
+    fecha_orig = detail.get("header", {}).get("FECFAC")
+    fecha_final, was_adjusted, ajuste_msg, ajuste_info = arca_service.auto_adjust_invoice_date(fecha_orig, concepto=1)
+    if was_adjusted:
+        try:
+            factusol_service.update_invoice_date(tipfac, codfac, fecha_final)
+            # Refrescar detail con la nueva fecha para que el voucher se arme con ella
+            detail["header"]["FECFAC"] = fecha_final
+            print(f"[FECHA AJUSTADA] {tipfac}-{codfac}: {ajuste_msg}")
+        except Exception as _e:
+            print(f"[FECHA] WARN: no pude actualizar FECFAC en F_FAC: {_e}")
+            # Sigo de todos modos: pyafipws recibe la fecha ajustada del header
 
     # Auto-enriquecimiento de padron desactivado (v1.5.1) — genera errores
     # al no ser datos oficiales. El CFECLI debe configurarse en Factusol.
@@ -230,6 +247,10 @@ def validate_invoice(
         print(f"⚠️ No se pudo grabar CAE en Factusol F_FAC: {_write_err}")
 
 
+    msg_resp = "Factura validada exitosamente en ARCA"
+    if was_adjusted:
+        msg_resp += f" - {ajuste_msg}"
+
     return {
         "status": "ok",
         "cae": result.get("CAE"),
@@ -238,7 +259,9 @@ def validate_invoice(
         "tipo_comprobante": tipo_comprobante,
         "resultado": result.get("resultado"),
         "qr_path": qr_path,
-        "message": "Factura validada exitosamente en ARCA",
+        "fecha_ajustada": was_adjusted,
+        "fecha_ajuste_info": ajuste_info if was_adjusted else None,
+        "message": msg_resp,
     }
 
 
