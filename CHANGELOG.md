@@ -1,5 +1,15 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.6.9 (2026-05-12)
+
+### Fix - Condicion fiscal del cliente mostrada en el modal de factura
+- **Problema**: en el modal de detalle de la factura (Facturas -> click en una factura), el campo "Cond. IVA" SIEMPRE mostraba "Resp. Inscripto" independientemente de como estaba cargado el cliente en Factusol.
+- **Causa**: el frontend estaba mapeando el campo `IVACLI` (codigo interno de calculos de Factusol que por default queda en 0) en vez de `CFECLI` (condicion fiscal real del cliente).
+- **Fix**: el header del modal ahora usa `CFECLI` con el mapeo correcto: 0=Sin configurar, 1=Consumidor Final, 2=Resp. Inscripto, 3=Monotributista, 4=Exento, 5=No Responsable.
+- Esto es solo visual — la decision del tipo de comprobante (A/B/C) ya usaba `CFECLI` correctamente desde v1.6.8.
+
+---
+
 ## v1.6.8 (2026-05-12)
 
 ### Fix - Tipo de comprobante para clientes Exentos

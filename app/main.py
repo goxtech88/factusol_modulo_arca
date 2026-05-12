@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Factusol ARCA Sync",
     description="Módulo de facturación electrónica ARCA para Factusol",
-    version="1.6.8",
+    version="1.6.9",
     lifespan=lifespan,
 )
 

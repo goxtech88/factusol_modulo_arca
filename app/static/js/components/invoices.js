@@ -418,9 +418,22 @@ const InvoicesComponent = {
 
             document.getElementById('modal-invoice-title').textContent = `Factura ${h.TIPFAC}-${h.CODFAC}`;
 
-            // Condicion IVA del cliente
-            const ivaMap = { 0: 'Resp. Inscripto', 1: 'Monotributista', 3: 'Exento', 4: 'Consumidor Final' };
-            const condIva = data.cliente ? (ivaMap[data.cliente.IVACLI] || `Tipo ${data.cliente.IVACLI}`) : '-';
+            // Condicion fiscal del cliente — usar CFECLI (no IVACLI).
+            // IVACLI es un codigo interno de calculos de Factusol que por default
+            // queda en 0 y se mapeaba mal a "Resp. Inscripto" para todos los clientes.
+            // CFECLI refleja la condicion fiscal real del cliente:
+            //   0=No configurado, 1=CF, 2=RI, 3=Mono, 4=Exento, 5=No Responsable
+            const cfecliMapHeader = {
+                0: 'Sin configurar',
+                1: 'Consumidor Final',
+                2: 'Resp. Inscripto',
+                3: 'Monotributista',
+                4: 'Exento',
+                5: 'No Responsable',
+            };
+            const condIva = data.cliente
+                ? (cfecliMapHeader[data.cliente.CFECLI] ?? `Tipo ${data.cliente.CFECLI}`)
+                : '-';
 
             let html = `<div class="invoice-header-grid">
                 <div class="invoice-field"><label>Nro</label>${h.TIPFAC}-${h.CODFAC}</div>
