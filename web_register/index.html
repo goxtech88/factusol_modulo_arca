@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factusol ARCA Sync — Registro gratuito | GoxTech</title>
+<meta name="description" content="Modulo de facturacion electronica AFIP para Factusol. Registrate gratis y descarga el modulo para validar tus facturas con CAE automatico.">
+<style>
+    :root {
+        --bg: #f5f7fa;
+        --card: #ffffff;
+        --primary: #c8102e;       /* rojo GoxTech */
+        --primary-dark: #a00d24;
+        --text: #1a1a1a;
+        --text-muted: #6b7280;
+        --border: #e5e7eb;
+        --input-bg: #ffffff;
+        --success: #16a34a;
+        --error: #dc2626;
+        --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8edf4 100%);
+        min-height: 100vh;
+        color: var(--text);
+        line-height: 1.5;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .container {
+        width: 100%;
+        max-width: 980px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        background: var(--card);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    @media (max-width: 768px) {
+        .container { grid-template-columns: 1fr; }
+        .hero { padding: 32px 24px !important; }
+    }
+    .hero {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        padding: 48px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .hero-logo {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin-bottom: 40px;
+        opacity: 0.95;
+    }
+    .hero h1 {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        letter-spacing: -0.5px;
+    }
+    .hero p.lead {
+        font-size: 16px;
+        opacity: 0.92;
+        margin-bottom: 28px;
+    }
+    .feature-list { list-style: none; }
+    .feature-list li {
+        padding: 8px 0;
+        font-size: 14px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .feature-list .check {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        position: relative;
+        margin-top: 2px;
+    }
+    .feature-list .check::after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 2px;
+        width: 5px;
+        height: 9px;
+        border-right: 2px solid white;
+        border-bottom: 2px solid white;
+        transform: rotate(45deg);
+    }
+    .form-side {
+        padding: 48px 40px;
+    }
+    .form-side h2 {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 6px;
+    }
+    .form-side > .sub {
+        color: var(--text-muted);
+        font-size: 14px;
+        margin-bottom: 24px;
+    }
+    .field {
+        margin-bottom: 14px;
+    }
+    .field label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .field label .req { color: var(--primary); }
+    .field input, .field select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--input-bg);
+        font-size: 14px;
+        font-family: inherit;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .field input:focus, .field select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
+    }
+    .field-help {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+    .btn-submit {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 12px;
+        transition: background 0.15s, transform 0.05s;
+    }
+    .btn-submit:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-submit:active:not(:disabled) { transform: translateY(1px); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    .legal {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 16px;
+        text-align: center;
+    }
+    .alert {
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        display: none;
+    }
+    .alert.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
+    .alert.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; display: block; }
+    .success-panel {
+        text-align: center;
+        padding: 24px;
+        display: none;
+    }
+    .success-panel.show { display: block; }
+    .success-panel .icon {
+        width: 64px;
+        height: 64px;
+        background: var(--success);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+    .success-panel .icon::after {
+        content: "";
+        width: 22px;
+        height: 12px;
+        border-left: 4px solid white;
+        border-bottom: 4px solid white;
+        transform: rotate(-45deg) translate(2px, -3px);
+    }
+    .success-panel h3 {
+        font-size: 22px;
+        margin-bottom: 8px;
+        color: var(--success);
+    }
+    .success-panel p { color: var(--text-muted); margin-bottom: 16px; }
+    .download-btn {
+        display: inline-block;
+        padding: 12px 24px;
+        background: var(--primary);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+    .download-btn:hover { background: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Lado izquierdo: pitch -->
+    <div class="hero">
+        <div class="hero-logo">🧾 GoxTech</div>
+        <h1>Factusol ARCA Sync</h1>
+        <p class="lead">Facturación electrónica AFIP/ARCA para Factusol — gratis para empezar.</p>
+
+        <ul class="feature-list">
+            <li><span class="check"></span> <span>Validación automática con CAE</span></li>
+            <li><span class="check"></span> <span>QR y código de barras AFIP en cada factura</span></li>
+            <li><span class="check"></span> <span>Exportador RG 1361 (CABECERA + DETALLE + VENTAS) listo para PAMI</span></li>
+            <li><span class="check"></span> <span>Auto-ajuste de fecha cuando AFIP la rechaza</span></li>
+            <li><span class="check"></span> <span>Notas de Crédito desde la app</span></li>
+            <li><span class="check"></span> <span>Multi punto de venta + multi-usuario</span></li>
+        </ul>
+
+        <p style="margin-top:24px; font-size:13px; opacity:0.85">
+            ¿Ya tenés cuenta? Ingresá a la app y validá tus facturas desde el primer minuto.
+        </p>
+    </div>
+
+    <!-- Lado derecho: form -->
+    <div class="form-side">
+        <div id="form-panel">
+            <h2>Activá tu licencia gratis</h2>
+            <p class="sub">Completá el formulario y descargá el módulo. Solo te pedimos datos básicos para crear tu cuenta.</p>
+
+            <div id="alert" class="alert"></div>
+
+            <form id="register-form" autocomplete="on" novalidate>
+                <div class="field">
+                    <label for="company">Razón social <span class="req">*</span></label>
+                    <input type="text" id="company" name="company" required maxlength="200" placeholder="Mi Empresa S.R.L.">
+                </div>
+
+                <div class="field">
+                    <label for="cuit">CUIT <span class="req">*</span></label>
+                    <input type="text" id="cuit" name="cuit" required inputmode="numeric" maxlength="13" placeholder="20-12345678-9">
+                </div>
+
+                <div class="field">
+                    <label for="cond-iva">Condición frente al IVA</label>
+                    <select id="cond-iva" name="cond_iva">
+                        <option value="Responsable Inscripto">Responsable Inscripto</option>
+                        <option value="Monotributista">Monotributista</option>
+                        <option value="Exento">Exento</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="contact">Nombre del responsable <span class="req">*</span></label>
+                    <input type="text" id="contact" name="contact" required maxlength="100" placeholder="Juan Pérez">
+                </div>
+
+                <div class="field">
+                    <label for="email">Email <span class="req">*</span></label>
+                    <input type="email" id="email" name="email" required maxlength="200" placeholder="contacto@miempresa.com.ar">
+                </div>
+
+                <div class="field">
+                    <label for="phone">WhatsApp <span class="req">*</span></label>
+                    <input type="tel" id="phone" name="phone" required maxlength="40" placeholder="+54 9 11 1234-5678">
+                    <div class="field-help">Para enviarte el instalador y soporte si lo necesitás</div>
+                </div>
+
+                <button type="submit" class="btn-submit" id="btn-submit">
+                    Crear cuenta gratis
+                </button>
+
+                <p class="legal">
+                    Al registrarte aceptás recibir comunicaciones de soporte sobre el módulo. No compartimos tus datos con terceros.
+                </p>
+            </form>
+        </div>
+
+        <!-- Panel de éxito -->
+        <div id="success-panel" class="success-panel">
+            <div class="icon"></div>
+            <h3>¡Cuenta activada!</h3>
+            <p id="success-msg">Tu licencia gratuita está lista. La descarga del módulo va a iniciarse automáticamente en unos segundos.</p>
+            <a href="https://goxtech.com.ar/arca_factusol/api/downloads/file/2" id="dl-link" class="download-btn">
+                ⬇ Descargar módulo ahora
+            </a>
+            <p style="margin-top:16px; font-size:13px; color:var(--text-muted)">
+                Si la descarga no inicia sola, hacé click en el botón de arriba.
+            </p>
+            <p style="margin-top:8px; font-size:13px; color:var(--text-muted)">
+                Te enviamos los datos por email a <strong id="confirm-email">—</strong>.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_URL = "https://goxtech.com.ar/arca_factusol/api/licenses/free";
+// El manifest tiene la URL del ZIP actual. Lo consultamos al cargar la página.
+const MANIFEST_URL = "https://goxtechlabs.com.ar/downloads/arca-latest.json";
+
+// Validación CUIT (mod 11)
+function isValidCuit(cuit) {
+    const c = (cuit || "").replace(/\D/g, "");
+    if (c.length !== 11) return false;
+    const m = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+    let total = 0;
+    for (let i = 0; i < 10; i++) total += parseInt(c[i], 10) * m[i];
+    let expected = 11 - (total % 11);
+    if (expected === 11) expected = 0;
+    else if (expected === 10) return false;
+    return parseInt(c[10], 10) === expected;
+}
+
+function showAlert(msg, type) {
+    const el = document.getElementById("alert");
+    el.className = "alert " + type;
+    el.textContent = msg;
+}
+
+function clearAlert() {
+    const el = document.getElementById("alert");
+    el.className = "alert";
+    el.textContent = "";
+}
+
+// URL directa de descarga del modulo ARCA (id=2 en la tabla downloads del backend).
+// La descarga incrementa el contador en la DB y dispara el `Content-Disposition: attachment`.
+const DOWNLOAD_URL = "https://goxtech.com.ar/arca_factusol/api/downloads/file/2";
+document.getElementById("dl-link").href = DOWNLOAD_URL;
+
+function triggerAutoDownload() {
+    // Forzar descarga creando un <a> hidden y haciendo click programatico.
+    // Asi el browser dispara la descarga inmediata sin navegar afuera.
+    const a = document.createElement("a");
+    a.href = DOWNLOAD_URL;
+    a.download = "";  // hint para browser
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+document.getElementById("register-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearAlert();
+
+    const company = document.getElementById("company").value.trim();
+    const cuit = document.getElementById("cuit").value.trim();
+    const condIva = document.getElementById("cond-iva").value;
+    const contact = document.getElementById("contact").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+
+    // Validaciones cliente
+    if (!company) return showAlert("Razón social es obligatoria", "error");
+    if (!isValidCuit(cuit)) return showAlert("CUIT inválido. Verificá que tenga 11 dígitos y dígito verificador correcto.", "error");
+    if (!contact) return showAlert("Nombre del responsable es obligatorio", "error");
+    if (!email || !email.includes("@") || !(email.split("@")[1] || "").includes(".")) {
+        return showAlert("Email inválido", "error");
+    }
+    if (phone.replace(/\D/g, "").length < 8) return showAlert("WhatsApp es obligatorio (mínimo 8 dígitos)", "error");
+
+    const btn = document.getElementById("btn-submit");
+    btn.disabled = true;
+    btn.textContent = "Activando...";
+
+    try {
+        const resp = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                cuit: cuit.replace(/\D/g, ""),
+                email,
+                company_name: company,
+                phone,
+                contact_name: contact,
+                source: "web_register",
+            }),
+        });
+
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            const msg = (data && data.detail) || `Error ${resp.status}`;
+            throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+        }
+
+        // Éxito → mostrar panel
+        document.getElementById("form-panel").style.display = "none";
+        document.getElementById("success-panel").classList.add("show");
+        document.getElementById("confirm-email").textContent = email;
+
+        // Auto-descarga: dispara la descarga ~1.5s despues de que aparece el panel,
+        // para que el usuario alcance a ver el mensaje "Cuenta activada!" antes.
+        setTimeout(triggerAutoDownload, 1500);
+
+        // (Opcional) datalayer para analytics
+        try {
+            if (typeof window.dataLayer !== "undefined") {
+                window.dataLayer.push({ event: "license_register", plan: "basica", cuit: cuit.replace(/\D/g, "") });
+            }
+        } catch (_) {}
+    } catch (err) {
+        showAlert(err.message || "Error de red. Verificá tu conexión.", "error");
+        btn.disabled = false;
+        btn.textContent = "Crear cuenta gratis";
+    }
+});
+</script>
+
+</body>
+</html>
