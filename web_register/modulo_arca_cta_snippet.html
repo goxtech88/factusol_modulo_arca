@@ -1,0 +1,399 @@
+  <!-- ==================================================================
+       CTA MODULO ARCA - Paso a paso + Form de Registro
+       Self-contained (HTML + CSS scoped + JS inline). Sin dependencias.
+       =================================================================== -->
+  <section id="arca-cta" class="arca-cta-section">
+    <style>
+      .arca-cta-section {
+        position: relative;
+        padding: 56px 16px 64px;
+        background: linear-gradient(135deg, #c8102e 0%, #8b0a1f 100%);
+        color: #fff;
+        overflow: hidden;
+      }
+      .arca-cta-section::before {
+        content: ""; position: absolute;
+        top: -140px; right: -100px;
+        width: 380px; height: 380px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%; filter: blur(50px); z-index: 0;
+      }
+      .arca-cta-section::after {
+        content: ""; position: absolute;
+        bottom: -140px; left: -100px;
+        width: 420px; height: 420px;
+        background: rgba(0, 0, 0, 0.18);
+        border-radius: 50%; filter: blur(60px); z-index: 0;
+      }
+      .arca-cta-wrap {
+        position: relative; z-index: 1;
+        max-width: 1120px; margin: 0 auto;
+      }
+
+      /* ── Paso a paso ── */
+      .arca-steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin: 0 auto 36px;
+        max-width: 900px;
+      }
+      @media (max-width: 720px) { .arca-steps { grid-template-columns: 1fr; max-width: 480px; } }
+      .arca-step {
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        padding: 18px 18px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        transition: transform 0.2s, background 0.2s;
+      }
+      .arca-step:hover { background: rgba(255, 255, 255, 0.18); transform: translateY(-2px); }
+      .arca-step .num {
+        flex-shrink: 0;
+        width: 42px; height: 42px;
+        background: #fff; color: #c8102e;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; font-weight: 800;
+      }
+      .arca-step h4 {
+        margin: 0; font-size: 15px; font-weight: 700; line-height: 1.2;
+      }
+      .arca-step p {
+        margin: 3px 0 0; font-size: 12.5px; opacity: 0.85; line-height: 1.35;
+      }
+
+      /* ── Grid principal ── */
+      .arca-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+        align-items: start;
+      }
+      @media (max-width: 880px) {
+        .arca-grid { grid-template-columns: 1fr; gap: 26px; }
+        .arca-cta-pitch h2 { font-size: 28px !important; }
+      }
+
+      .arca-cta-pitch .badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(255,255,255,0.18); backdrop-filter: blur(8px);
+        color: #fff; font-size: 12px; font-weight: 600;
+        padding: 6px 12px; border-radius: 20px; margin-bottom: 16px;
+        letter-spacing: 0.3px;
+      }
+      .arca-cta-pitch .badge .dot {
+        width: 8px; height: 8px; background: #4ade80; border-radius: 50%;
+        animation: arca-pulse 2s infinite;
+      }
+      @keyframes arca-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+      .arca-cta-pitch h2 {
+        font-size: 36px; font-weight: 800; line-height: 1.15;
+        margin: 0 0 14px; letter-spacing: -0.5px;
+      }
+      .arca-cta-pitch h2 .accent {
+        background: linear-gradient(90deg, #fff 0%, #fed7aa 100%);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .arca-cta-pitch p.lead {
+        font-size: 16.5px; opacity: 0.92; line-height: 1.5; margin: 0 0 20px;
+      }
+      .arca-cta-features { list-style: none; padding: 0; margin: 0; }
+      .arca-cta-features li {
+        padding: 7px 0; font-size: 14px;
+        display: flex; align-items: flex-start; gap: 10px; opacity: 0.95;
+      }
+      .arca-cta-features .check {
+        flex-shrink: 0; width: 20px; height: 20px;
+        background: rgba(255,255,255,0.2); border-radius: 50%;
+        position: relative; margin-top: 1px;
+      }
+      .arca-cta-features .check::after {
+        content: ""; position: absolute;
+        left: 6px; top: 4px; width: 5px; height: 9px;
+        border-right: 2px solid #fff; border-bottom: 2px solid #fff;
+        transform: rotate(45deg);
+      }
+      .arca-cta-features strong { color: #fff; }
+
+      /* ── Form ── */
+      .arca-cta-form {
+        background: #fff; border-radius: 16px; padding: 26px 24px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        color: #1a1a1a;
+      }
+      .arca-cta-form h3 {
+        font-size: 18px; font-weight: 700; margin: 0 0 4px; color: #1a1a1a;
+      }
+      .arca-cta-form .sub {
+        color: #6b7280; font-size: 13px; margin: 0 0 16px;
+      }
+      .arca-cta-form .row {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;
+      }
+      @media (max-width: 480px) { .arca-cta-form .row { grid-template-columns: 1fr; } }
+      .arca-cta-form .field { margin-bottom: 10px; }
+      .arca-cta-form label {
+        display: block; font-size: 11px; font-weight: 700; color: #6b7280;
+        text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px;
+      }
+      .arca-cta-form label .req { color: #c8102e; }
+      .arca-cta-form input, .arca-cta-form select {
+        width: 100%; padding: 9px 11px;
+        border: 1px solid #e5e7eb; border-radius: 8px;
+        font-size: 14px; font-family: inherit; background: #fff;
+        transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box;
+      }
+      .arca-cta-form input:focus, .arca-cta-form select:focus {
+        outline: none; border-color: #c8102e;
+        box-shadow: 0 0 0 3px rgba(200,16,46,0.1);
+      }
+      .arca-cta-form .btn-submit {
+        width: 100%; padding: 13px 16px;
+        background: linear-gradient(135deg, #c8102e 0%, #8b0a1f 100%);
+        color: #fff; border: none; border-radius: 10px;
+        font-size: 15px; font-weight: 700; cursor: pointer;
+        margin-top: 8px;
+        transition: transform 0.1s, box-shadow 0.15s;
+      }
+      .arca-cta-form .btn-submit:hover:not(:disabled) {
+        box-shadow: 0 6px 20px rgba(200,16,46,0.4);
+        transform: translateY(-1px);
+      }
+      .arca-cta-form .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+      .arca-cta-form .legal {
+        font-size: 11px; color: #6b7280; text-align: center;
+        margin-top: 12px; line-height: 1.4;
+      }
+      .arca-cta-alert {
+        padding: 10px 12px; border-radius: 8px; font-size: 13px;
+        margin-bottom: 12px; display: none;
+      }
+      .arca-cta-alert.error {
+        background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block;
+      }
+      .arca-cta-success {
+        text-align: center; padding: 22px; display: none;
+      }
+      .arca-cta-success.show { display: block; }
+      .arca-cta-success .icon {
+        width: 60px; height: 60px; background: #16a34a; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        margin: 0 auto 14px;
+      }
+      .arca-cta-success .icon::after {
+        content: ""; width: 22px; height: 12px;
+        border-left: 4px solid #fff; border-bottom: 4px solid #fff;
+        transform: rotate(-45deg) translate(2px, -3px);
+      }
+      .arca-cta-success h3 { color: #16a34a; font-size: 20px; margin: 0 0 8px; }
+      .arca-cta-success p { color: #6b7280; margin: 0 0 14px; font-size: 14px; }
+      .arca-cta-success .btn-dl {
+        display: inline-block; padding: 10px 20px;
+        background: #c8102e; color: #fff; text-decoration: none;
+        border-radius: 8px; font-weight: 700; font-size: 14px;
+      }
+    </style>
+
+    <div class="arca-cta-wrap">
+
+      <!-- Paso a paso 1-2-3 -->
+      <div class="arca-steps">
+        <div class="arca-step">
+          <div class="num">1</div>
+          <div>
+            <h4>Registrate</h4>
+            <p>Datos básicos de tu empresa y CUIT.</p>
+          </div>
+        </div>
+        <div class="arca-step">
+          <div class="num">2</div>
+          <div>
+            <h4>Descargá</h4>
+            <p>Bajás el módulo en 30 segundos.</p>
+          </div>
+        </div>
+        <div class="arca-step">
+          <div class="num">3</div>
+          <div>
+            <h4>Empezá a facturar</h4>
+            <p>CAE automático desde Factusol.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pitch + Form -->
+      <div class="arca-grid">
+
+        <!-- Pitch -->
+        <div class="arca-cta-pitch">
+          <span class="badge"><span class="dot"></span> Plan Gratis disponible</span>
+          <h2>Facturá electrónicamente con <span class="accent">CAE automático</span></h2>
+          <p class="lead">Activamos tu licencia gratuita al instante. Empezás a emitir facturas A, B y C desde Factusol — sin Token Fiscal, sin instalaciones complejas.</p>
+          <ul class="arca-cta-features">
+            <li><span class="check"></span><span><strong>Múltiples puntos de venta</strong> compatibles con Factusol y TPV Sol</span></li>
+            <li><span class="check"></span><span><strong>Múltiples usuarios</strong> con permisos por PV y rol</span></li>
+            <li><span class="check"></span><span><strong>Facturación automatizada</strong> por forma de pago (auto-validación en background)</span></li>
+            <li><span class="check"></span><span><strong>CAE + QR + Código de Barras AFIP</strong> en cada comprobante</span></li>
+            <li><span class="check"></span><span><strong>Sin Token Fiscal</strong> — autenticación con tu CUIT</span></li>
+          </ul>
+        </div>
+
+        <!-- Form -->
+        <div class="arca-cta-form" id="arca-cta-card">
+          <div id="arca-form-panel">
+            <h3>Empezá a usar el sistema</h3>
+            <p class="sub">Completá los datos y tu licencia gratis queda activa al instante.</p>
+
+            <div id="arca-cta-alert" class="arca-cta-alert"></div>
+
+            <form id="arca-cta-form" autocomplete="on" novalidate>
+              <div class="field">
+                <label for="arca-company">Razón social <span class="req">*</span></label>
+                <input type="text" id="arca-company" required maxlength="200" placeholder="Mi Empresa S.R.L.">
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label for="arca-cuit">CUIT <span class="req">*</span></label>
+                  <input type="text" id="arca-cuit" required inputmode="numeric" maxlength="13" placeholder="20-12345678-9">
+                </div>
+                <div class="field">
+                  <label for="arca-cond">Condición IVA</label>
+                  <select id="arca-cond">
+                    <option value="Responsable Inscripto">Resp. Inscripto</option>
+                    <option value="Monotributista">Monotributo</option>
+                    <option value="Exento">Exento</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label for="arca-contact">Nombre y apellido <span class="req">*</span></label>
+                <input type="text" id="arca-contact" required maxlength="100" placeholder="Juan Pérez">
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label for="arca-email">Email <span class="req">*</span></label>
+                  <input type="email" id="arca-email" required maxlength="200" placeholder="vos@empresa.com">
+                </div>
+                <div class="field">
+                  <label for="arca-phone">WhatsApp <span class="req">*</span></label>
+                  <input type="tel" id="arca-phone" required maxlength="40" placeholder="+54 9 11 1234-5678">
+                </div>
+              </div>
+              <button type="submit" class="btn-submit">
+                Activar licencia gratis y descargar
+              </button>
+              <p class="legal">
+                Al registrarte aceptás recibir comunicaciones de soporte. No compartimos tus datos.
+              </p>
+            </form>
+          </div>
+
+          <!-- Éxito -->
+          <div id="arca-cta-success-panel" class="arca-cta-success">
+            <div class="icon"></div>
+            <h3>¡Cuenta activada!</h3>
+            <p>La descarga del módulo va a iniciarse en unos segundos.</p>
+            <a href="https://goxtech.com.ar/arca_factusol/api/downloads/file/2" id="arca-dl-link" class="btn-dl">
+              ⬇ Descargar módulo
+            </a>
+            <p style="margin-top:14px;font-size:12px;">
+              Email enviado a <strong id="arca-confirm-email">—</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+    (function() {
+      const ARCA_API = "https://goxtech.com.ar/arca_factusol/api/licenses/free";
+      const ARCA_DL = "https://goxtech.com.ar/arca_factusol/api/downloads/file/2";
+      const SRC = "modulo_arca_cta";
+
+      function isValidCuit(c) {
+        c = (c || "").replace(/\D/g, "");
+        if (c.length !== 11) return false;
+        const m = [5,4,3,2,7,6,5,4,3,2];
+        let t = 0;
+        for (let i = 0; i < 10; i++) t += parseInt(c[i],10) * m[i];
+        let e = 11 - (t % 11);
+        if (e === 11) e = 0; else if (e === 10) return false;
+        return parseInt(c[10],10) === e;
+      }
+      function showErr(msg) {
+        const el = document.getElementById("arca-cta-alert");
+        el.className = "arca-cta-alert error"; el.textContent = msg;
+      }
+      function clearErr() {
+        document.getElementById("arca-cta-alert").className = "arca-cta-alert";
+      }
+      function autoDownload() {
+        const a = document.createElement("a");
+        a.href = ARCA_DL; a.download = "";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+
+      const form = document.getElementById("arca-cta-form");
+      if (!form) return;
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clearErr();
+        const company = document.getElementById("arca-company").value.trim();
+        const cuit = document.getElementById("arca-cuit").value.trim();
+        const cond = document.getElementById("arca-cond").value;
+        const contact = document.getElementById("arca-contact").value.trim();
+        const email = document.getElementById("arca-email").value.trim();
+        const phone = document.getElementById("arca-phone").value.trim();
+
+        if (!company) return showErr("Razón social es obligatoria");
+        if (!isValidCuit(cuit)) return showErr("CUIT inválido. Verificá los 11 dígitos y el dígito verificador.");
+        if (!contact) return showErr("Nombre y apellido es obligatorio");
+        if (!email || !email.includes("@") || !(email.split("@")[1] || "").includes(".")) return showErr("Email inválido");
+        if (phone.replace(/\D/g,"").length < 8) return showErr("WhatsApp obligatorio (mínimo 8 dígitos)");
+
+        const btn = form.querySelector(".btn-submit");
+        btn.disabled = true; btn.textContent = "Activando...";
+        try {
+          const resp = await fetch(ARCA_API, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+              cuit: cuit.replace(/\D/g,""), email,
+              company_name: company, phone,
+              contact_name: contact, source: SRC,
+            }),
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            const msg = (data && data.detail) || `Error ${resp.status}`;
+            throw new Error(typeof msg === "string" ? msg : "Error al registrar");
+          }
+          document.getElementById("arca-form-panel").style.display = "none";
+          document.getElementById("arca-cta-success-panel").classList.add("show");
+          document.getElementById("arca-confirm-email").textContent = email;
+          document.getElementById("arca-dl-link").href = ARCA_DL;
+          setTimeout(autoDownload, 1500);
+          try {
+            if (typeof window.dataLayer !== "undefined") {
+              window.dataLayer.push({event:"license_register",plan:"basica",source:SRC});
+            }
+          } catch(_) {}
+        } catch (err) {
+          showErr(err.message || "Error de red");
+          btn.disabled = false;
+          btn.textContent = "Activar licencia gratis y descargar";
+        }
+      });
+    })();
+    </script>
+  </section>
+  <!-- ==================================================================
+       FIN CTA MODULO ARCA
+       =================================================================== -->
+
