@@ -421,6 +421,12 @@
                                 <div id="cae-month-filter"></div>
                             </div>
                             <div class="toolbar-right">
+                                <button class="btn btn-secondary" onclick="CAELogsComponent.load()" title="Recargar la lista de CAE Emitidos desde el servidor">
+                                    <i data-lucide="refresh-cw"></i> Actualizar
+                                </button>
+                                <button class="btn btn-secondary" onclick="CAELogsComponent.runDiagnostic()" title="Diagnóstico: muestra qué hay en la DB y qué usuario está logueado">
+                                    <i data-lucide="stethoscope"></i> Diagnóstico
+                                </button>
                                 <button class="btn btn-secondary" onclick="CAELogsComponent.exportRG1361()" title="Exportar CABECERA.txt y DETALLE.txt según RG (AFIP) 1361 - Duplicado Electrónico">
                                     <i data-lucide="file-down"></i> Exportar RG 1361
                                 </button>

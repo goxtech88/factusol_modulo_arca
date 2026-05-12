@@ -469,6 +469,74 @@ def list_cae_logs(
     ]
 
 
+@router.get("/diagnostic")
+def diagnostic(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Endpoint de diagnostico para CAE Emitidos. Devuelve:
+      - Datos del usuario actual (id, username, role, full_name)
+      - Total de logs CAE en la DB (global vs los visibles para el user)
+      - Ultimos 5 CAE (id, fecha, factura, PV, CAE, cliente)
+      - Path de la DB SQLite
+      - Version de la app
+
+    Util cuando "CAE Emitidos" aparece vacio: dice si el problema es de
+    permisos (rol no admin), de filtro (mes), o si la tabla esta vacia.
+    """
+    from app.database import engine
+    import sys
+    from app.main import app as fastapi_app
+
+    total = db.query(CAELog).count()
+
+    if current_user.role == "admin":
+        visible = total
+        recent = db.query(CAELog).order_by(CAELog.created_at.desc()).limit(5).all()
+    else:
+        visible = db.query(CAELog).filter(CAELog.user_id == current_user.id).count()
+        recent = (
+            db.query(CAELog)
+            .filter(CAELog.user_id == current_user.id)
+            .order_by(CAELog.created_at.desc())
+            .limit(5)
+            .all()
+        )
+
+    return {
+        "version": fastapi_app.version,
+        "frozen": bool(getattr(sys, "frozen", False)),
+        "current_user": {
+            "id": current_user.id,
+            "username": current_user.username,
+            "full_name": current_user.full_name,
+            "role": current_user.role,
+            "is_admin": current_user.role == "admin",
+        },
+        "cae_logs": {
+            "total_en_db": total,
+            "visibles_para_este_user": visible,
+            "ultimos_5": [
+                {
+                    "id": l.id,
+                    "tipfac_codfac": f"{l.tipfac}-{l.codfac}",
+                    "punto_venta": l.punto_venta,
+                    "tipo_comprobante": l.tipo_comprobante,
+                    "voucher_number": l.voucher_number,
+                    "cae": l.cae,
+                    "cliente_nombre": l.cliente_nombre,
+                    "imp_total": l.imp_total,
+                    "user_id": l.user_id,
+                    "created_at": l.created_at.isoformat() if l.created_at else None,
+                }
+                for l in recent
+            ],
+        },
+        "db_url": str(engine.url).replace("///", "/// "),  # sanitizar para que se vea
+    }
+
+
 @router.get("/last-voucher/{pv_id}")
 def get_last_voucher(
     pv_id: int,

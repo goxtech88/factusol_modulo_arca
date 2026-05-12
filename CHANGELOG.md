@@ -1,5 +1,17 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.6.3 (2026-05-12)
+
+### UX
+- **Boton "Actualizar"** en CAE Emitidos: refresca la lista desde el server sin reabrir la app. Util cuando el WebView cachea contenido viejo.
+- **Boton "Diagnostico"** en CAE Emitidos: muestra al instante cuantos CAE hay en la DB, el rol/id del user actual y los ultimos 5 CAE. Permite distinguir entre tabla vacia, problema de permisos o cache.
+- El `load()` ahora muestra un toast con la cantidad de comprobantes cargados (warning si esta vacio).
+
+### Backend
+- Nuevo endpoint `GET /api/arca/diagnostic` que devuelve user actual + estadisticas de la tabla `cae_logs` + ultimos 5 registros + version + path de la DB.
+
+---
+
 ## v1.6.2 (2026-05-11)
 
 ### Nuevas funcionalidades

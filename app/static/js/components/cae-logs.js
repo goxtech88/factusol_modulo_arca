@@ -19,8 +19,48 @@ const CAELogsComponent = {
             this._allLogs = logs;
             this._renderMonthSelector(logs);
             this._render();
+            App.toast(`${logs.length} comprobante(s) cargado(s)`, logs.length === 0 ? 'warning' : 'success');
         } catch (err) {
             App.toast(err.message, 'error');
+        }
+    },
+
+    /**
+     * Diagnostico cuando CAE Emitidos aparece vacio: pregunta al backend
+     * que hay en la DB, que user esta logueado, y muestra los ultimos 5 CAE.
+     */
+    async runDiagnostic() {
+        try {
+            const d = await API.get('/api/arca/diagnostic');
+            const u = d.current_user || {};
+            const c = d.cae_logs || {};
+            const ult = (c.ultimos_5 || []).map((l, i) =>
+                `  ${i + 1}. ${l.tipfac_codfac} | PV ${l.punto_venta} | nro ${l.voucher_number} | CAE ${l.cae} | ${l.cliente_nombre || '-'} | $${(l.imp_total || 0).toFixed(2)} | user_id=${l.user_id} | ${l.created_at}`
+            ).join('\n') || '  (no hay CAE en la DB)';
+
+            const msg =
+`DIAGNOSTICO CAE EMITIDOS — app v${d.version}
+
+USUARIO ACTUAL:
+  - id: ${u.id}
+  - username: ${u.username}
+  - nombre: ${u.full_name || '-'}
+  - rol: ${u.role} ${u.is_admin ? '(admin: ve todos los CAE)' : '(usuario: solo los suyos)'}
+
+CAE EN LA BASE DE DATOS:
+  - Total global: ${c.total_en_db}
+  - Visibles para vos: ${c.visibles_para_este_user}
+
+ULTIMOS 5 CAE EN DB:
+${ult}
+
+DB: ${d.db_url}
+Empaquetado: ${d.frozen ? 'SI (ejecutable)' : 'NO (modo desarrollo)'}`;
+
+            console.log('Diagnostic response:', d);
+            alert(msg);
+        } catch (err) {
+            App.toast('Error al ejecutar diagnostico: ' + err.message, 'error');
         }
     },
 
