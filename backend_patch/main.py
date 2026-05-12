@@ -677,20 +677,30 @@ async def create_subscription(data: SubscribeRequest, db: Session = Depends(get_
         plan_id = plan_result["response"]["id"]
         _set_setting(db, "mp_subscription_plan_id", plan_id)
 
-    # Crear suscripción para el usuario
-    sub_result = sdk.preapproval().create({
+    # Generar URL de checkout del plan SIN crear preapproval del lado backend.
+    # Desde mediados de 2024, MercadoPago exige `card_token_id` cuando se crea
+    # un preapproval con SDK (POST /preapproval) — requiere tokenizar la tarjeta
+    # en el frontend con MercadoPago.js.
+    #
+    # La forma simple (sin tokenización, que MP usa históricamente) es redirigir
+    # al cliente al `init_point` del PLAN. MP captura los datos de tarjeta en su
+    # sitio, crea la suscripción y dispara el webhook con el preapproval_id real.
+    #
+    # Documentación:
+    #   https://www.mercadopago.com.ar/developers/es/docs/subscriptions/integration-configuration/plan
+    import urllib.parse as _urlparse
+    qs = _urlparse.urlencode({
         "preapproval_plan_id": plan_id,
-        "reason": f"ARCA Sync Mensual — CUIT {cuit_clean}",
         "external_reference": cuit_clean,
         "payer_email": data.email,
-        "back_url": f"{SITE_URL}/arca_factusol/?suscripcion=ok&cuit={cuit_clean}",
-        "notification_url": f"{SITE_URL}/arca_factusol/api/licenses/mp-subscription-webhook",
+        # back_url se respeta del PLAN; se pueden pasar querys extras y MP los devuelve.
     })
-    if sub_result["status"] not in (200, 201):
-        raise HTTPException(status_code=500, detail="Error al crear suscripción")
+    init_point = f"https://www.mercadopago.com.ar/subscriptions/checkout?{qs}"
 
-    sub = sub_result["response"]
-    return {"init_point": sub["init_point"]}
+    logger.info(
+        f"[subscribe] plan={plan_id} cuit={cuit_clean} email={data.email} -> {init_point}"
+    )
+    return {"init_point": init_point}
 
 
 @app.post("/licenses/mp-subscription-webhook")

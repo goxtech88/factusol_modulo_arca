@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contratar Módulo ARCA — GoxTech</title>
+<meta name="description" content="Contratá el Módulo ARCA Sync — Plan Mensual o Vitalicio. Pago seguro con MercadoPago.">
+<style>
+    :root {
+        --bg: #f5f7fa;
+        --card: #ffffff;
+        --primary: #c8102e;
+        --primary-dark: #a00d24;
+        --text: #1a1a1a;
+        --text-muted: #6b7280;
+        --border: #e5e7eb;
+        --success: #16a34a;
+        --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8edf4 100%);
+        min-height: 100vh;
+        color: var(--text);
+        line-height: 1.5;
+        padding: 20px;
+    }
+    .container {
+        max-width: 720px;
+        margin: 20px auto;
+        background: var(--card);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+    .topbar {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: white;
+        padding: 24px 32px;
+    }
+    .topbar a { color: white; text-decoration: none; font-size: 14px; opacity: 0.9; }
+    .topbar a:hover { opacity: 1; }
+    .topbar h1 { font-size: 24px; margin-top: 8px; }
+    .topbar p { opacity: 0.9; font-size: 14px; margin-top: 4px; }
+
+    .content { padding: 32px; }
+
+    .plans {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    @media (max-width: 600px) {
+        .plans { grid-template-columns: 1fr; }
+    }
+    .plan {
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        position: relative;
+    }
+    .plan:hover { border-color: #d4d9e0; }
+    .plan.selected {
+        border-color: var(--primary);
+        background: rgba(200, 16, 46, 0.03);
+    }
+    .plan.selected::before {
+        content: "✓";
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        width: 22px;
+        height: 22px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: bold;
+    }
+    .plan .badge {
+        display: inline-block;
+        background: var(--primary);
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+    }
+    .plan h3 {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+    .plan .price {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--primary);
+        margin: 8px 0;
+    }
+    .plan .price-usd {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+    .plan .period {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+    }
+    .plan ul {
+        list-style: none;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .plan ul li::before { content: "✓ "; color: var(--success); font-weight: bold; }
+
+    .form-section { margin-top: 8px; }
+    .form-section h2 {
+        font-size: 18px;
+        margin-bottom: 16px;
+    }
+    .field { margin-bottom: 14px; }
+    .field label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .field label .req { color: var(--primary); }
+    .field input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .field input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
+    }
+    .btn-pay {
+        width: 100%;
+        padding: 14px 16px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 16px;
+        transition: background 0.15s;
+    }
+    .btn-pay:hover:not(:disabled) { background: var(--primary-dark); }
+    .btn-pay:disabled { opacity: 0.6; cursor: not-allowed; }
+    .mp-notice {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-align: center;
+        margin-top: 12px;
+    }
+    .alert {
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        display: none;
+    }
+    .alert.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
+    .footer-back {
+        text-align: center;
+        margin-top: 16px;
+        font-size: 13px;
+    }
+    .footer-back a { color: var(--text-muted); text-decoration: none; }
+    .footer-back a:hover { color: var(--primary); }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="topbar">
+        <a href="https://goxtech.com.ar/modulo-arca/">← Volver al sitio</a>
+        <h1>Contratar Módulo ARCA Sync</h1>
+        <p>Elegí tu plan y pagá con MercadoPago. Tu licencia queda activa al instante.</p>
+    </div>
+
+    <div class="content">
+        <div class="plans" id="plans">
+            <div class="plan" data-plan="monthly" onclick="selectPlan('monthly')">
+                <span class="badge">Más popular</span>
+                <h3>Plan Mensual</h3>
+                <div class="price" id="price-monthly">Cargando...</div>
+                <div class="price-usd" id="price-monthly-usd">—</div>
+                <div class="period">Suscripción mes a mes</div>
+                <ul>
+                    <li>Comprobantes ilimitados</li>
+                    <li>Soporte por WhatsApp</li>
+                    <li>Actualizaciones incluidas</li>
+                    <li>Cancelás cuando quieras</li>
+                </ul>
+            </div>
+
+            <div class="plan" data-plan="lifetime" onclick="selectPlan('lifetime')">
+                <h3>Plan Vitalicio</h3>
+                <div class="price" id="price-lifetime">Cargando...</div>
+                <div class="price-usd" id="price-lifetime-usd">—</div>
+                <div class="period">Pago único, licencia para siempre</div>
+                <ul>
+                    <li>Todo lo del plan Mensual</li>
+                    <li>Sin cuotas mensuales</li>
+                    <li>Actualizaciones por 1 año</li>
+                    <li>Soporte por WhatsApp</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <div class="form-section">
+            <h2>Tus datos</h2>
+            <form id="checkout-form" novalidate>
+                <div class="field">
+                    <label for="cuit">CUIT <span class="req">*</span></label>
+                    <input type="text" id="cuit" required inputmode="numeric" maxlength="13" placeholder="20-12345678-9">
+                </div>
+                <div class="field">
+                    <label for="email">Email <span class="req">*</span></label>
+                    <input type="email" id="email" required maxlength="200" placeholder="vos@empresa.com">
+                </div>
+                <button type="submit" class="btn-pay" id="btn-pay">
+                    Pagar con MercadoPago
+                </button>
+                <p class="mp-notice">
+                    🔒 Pago seguro con MercadoPago. Aceptamos tarjeta de crédito, débito y cuenta MP.
+                </p>
+            </form>
+        </div>
+
+        <div class="footer-back">
+            <a href="https://goxtech.com.ar/arca_factusol/">¿Querés probarlo gratis primero?</a>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = "https://goxtech.com.ar/arca_factusol/api";
+let selectedPlan = "monthly";
+
+function isValidCuit(cuit) {
+    const c = (cuit || "").replace(/\D/g, "");
+    if (c.length !== 11) return false;
+    const m = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+    let total = 0;
+    for (let i = 0; i < 10; i++) total += parseInt(c[i], 10) * m[i];
+    let exp = 11 - (total % 11);
+    if (exp === 11) exp = 0;
+    else if (exp === 10) return false;
+    return parseInt(c[10], 10) === exp;
+}
+
+function selectPlan(plan) {
+    selectedPlan = plan;
+    document.querySelectorAll(".plan").forEach(p => {
+        p.classList.toggle("selected", p.dataset.plan === plan);
+    });
+}
+
+function showError(msg) {
+    const el = document.getElementById("alert");
+    el.className = "alert error";
+    el.textContent = msg;
+}
+
+// Cargar precios
+fetch(`${API}/licenses/prices`).then(r => r.json()).then(data => {
+    const fmt = (n) => n != null ? "$ " + Number(n).toLocaleString("es-AR") : "Consultar";
+    const fmtUsd = (n) => n != null ? "USD " + Number(n).toLocaleString("es-AR") : "";
+    document.getElementById("price-monthly").textContent = fmt(data?.monthly?.ars);
+    document.getElementById("price-monthly-usd").textContent = fmtUsd(data?.monthly?.usd);
+    document.getElementById("price-lifetime").textContent = fmt(data?.lifetime?.ars);
+    document.getElementById("price-lifetime-usd").textContent = fmtUsd(data?.lifetime?.usd);
+}).catch(() => {
+    document.getElementById("price-monthly").textContent = "Consultar";
+    document.getElementById("price-lifetime").textContent = "Consultar";
+});
+
+// Plan default seleccionado
+selectPlan("monthly");
+
+// Submit
+document.getElementById("checkout-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    document.getElementById("alert").className = "alert";
+
+    const cuit = document.getElementById("cuit").value.trim();
+    const email = document.getElementById("email").value.trim();
+
+    if (!isValidCuit(cuit)) {
+        return showError("CUIT inválido. Verificá que tenga 11 dígitos y dígito verificador correcto.");
+    }
+    if (!email || !email.includes("@") || !(email.split("@")[1] || "").includes(".")) {
+        return showError("Email inválido");
+    }
+
+    const btn = document.getElementById("btn-pay");
+    btn.disabled = true;
+    btn.textContent = "Procesando...";
+
+    try {
+        const endpoint = selectedPlan === "lifetime" ? "/licenses/checkout" : "/licenses/subscribe";
+        const resp = await fetch(`${API}${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                cuit: cuit.replace(/\D/g, ""),
+                email,
+            }),
+        });
+
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+            const msg = (data && data.detail) || `Error ${resp.status}`;
+            throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+        }
+
+        // Redirigir al checkout de MercadoPago
+        const redirectUrl = data.init_point || data.checkout_url || data.url || data.preference_url;
+        if (!redirectUrl) {
+            throw new Error("El servidor no devolvió URL de pago. Probá de nuevo o contactá por WhatsApp.");
+        }
+        window.location.href = redirectUrl;
+    } catch (err) {
+        showError(err.message || "Error de red. Verificá tu conexión.");
+        btn.disabled = false;
+        btn.textContent = "Pagar con MercadoPago";
+    }
+});
+</script>
+
+</body>
+</html>
