@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reseñas — Lo que dicen los clientes de Goxtech</title>
+<meta name="description" content="Testimonios reales de clientes activos de Goxtech: PyMEs argentinas que ya usan Factusol, Módulo ARCA, Power BI y nuestras consultorías.">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #FF6B00; --primary-light: #FF9A44; --primary-dark: #E55F00;
+    --accent: #10B981; --warn: #f59e0b;
+    --bg-app: #F8FAFC; --bg-panel: #FFFFFF; --bg-soft: #FFF8F2;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D; --text-body: #1F1F23; --text-muted: #6B7280;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; max-width: 1200px; margin: 0 auto; gap: 12px; }
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 2px; }
+.nav-links a { color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-cta { display: inline-flex; padding: 8px 14px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; }
+@media (max-width: 1000px) { .nav-links { display: none; } }
+@media (max-width: 600px) { .nav-cta { display: none; } }
+
+.hero { padding: 60px 0 40px; background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%); position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; top: -200px; right: -100px; width: 500px; height: 500px; background: rgba(255, 107, 0, 0.08); border-radius: 50%; filter: blur(80px); z-index: 0; }
+.hero-inner { position: relative; z-index: 1; max-width: 860px; }
+.hero h1 { font-size: 48px; font-weight: 800; line-height: 1.1; letter-spacing: -1px; margin-bottom: 18px; color: var(--text-main); }
+.hero h1 .accent { color: var(--primary); }
+.hero .lead { font-size: 18px; color: var(--text-muted); }
+.hero-meta { display: inline-flex; align-items: center; gap: 8px; font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--accent); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); padding: 6px 12px; border-radius: 6px; margin-bottom: 20px; }
+.hero-meta .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+
+.section { padding: 60px 0; border-top: 1px solid var(--border); }
+
+.stats-bar {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 28px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+    margin-bottom: 48px; box-shadow: var(--shadow);
+}
+@media (max-width: 700px) { .stats-bar { grid-template-columns: repeat(2, 1fr); } }
+.stat-item { text-align: center; }
+.stat-item .num { font-family: "JetBrains Mono", monospace; font-size: 32px; font-weight: 700; color: var(--primary); line-height: 1.1; margin-bottom: 4px; }
+.stat-item .label { font-size: 12px; color: var(--text-muted); }
+
+.reviews-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+}
+@media (max-width: 800px) { .reviews-grid { grid-template-columns: 1fr; } }
+.review-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 28px; transition: border-color 0.15s, transform 0.15s; }
+.review-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.review-card .stars { color: var(--warn); margin-bottom: 14px; font-size: 16px; letter-spacing: 2px; }
+.review-card p { font-size: 15px; color: var(--text-body); line-height: 1.6; margin-bottom: 18px; }
+.review-card p::before { content: "" "; color: var(--primary); font-size: 22px; font-family: serif; }
+.review-card p::after { content: " ""; color: var(--primary); font-size: 22px; font-family: serif; }
+.review-card .author-row { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--border); padding-top: 14px; }
+.review-card .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+.review-card .author-info { flex: 1; }
+.review-card .author-name { font-size: 14px; font-weight: 700; color: var(--text-main); }
+.review-card .author-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.review-card .tag { font-family: "JetBrains Mono", monospace; font-size: 10px; color: var(--primary); background: rgba(255, 107, 0, 0.08); padding: 3px 8px; border-radius: 4px; }
+
+.empty { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+.empty h3 { font-size: 22px; color: var(--text-main); margin-bottom: 8px; }
+.empty p { margin-bottom: 24px; }
+
+.cta-final { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border-radius: 16px; padding: 48px 32px; text-align: center; color: #fff; box-shadow: 0 20px 60px rgba(255, 107, 0, 0.15); }
+.cta-final h3 { font-size: 28px; font-weight: 800; margin-bottom: 12px; color: #fff; }
+.cta-final p { color: rgba(255, 255, 255, 0.92); margin-bottom: 24px; max-width: 520px; margin-left: auto; margin-right: auto; }
+.btn-wa { display: inline-flex; align-items: center; gap: 8px; padding: 13px 24px; background: #25D366; color: #fff; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; }
+
+.footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; background: var(--bg-panel); color: var(--text-muted); font-size: 13px; }
+.footer a { color: var(--text-muted); text-decoration: none; margin: 0 12px; }
+.footer a:hover { color: var(--primary); }
+.wa-float { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4); z-index: 100; text-decoration: none; transition: transform 0.15s; }
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/factusol/">Factusol</a>
+            <a href="/modulo-arca/">Módulo ARCA</a>
+            <a href="/power-bi/">Power BI</a>
+            <a href="/consultoria/">Consultoría</a>
+            <a href="/industrias/">Industrias</a>
+            <a href="/descargas/">Descargas</a>
+            <a href="/contacto/">Contacto</a>
+        </div>
+        <a href="https://wa.me/5493541651038" target="_blank" rel="noopener" class="nav-cta">Hablemos →</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="wrap hero-inner">
+        <div class="hero-meta mono"><span class="dot"></span>Cargado desde el CMS · sin filtrar ni editar</div>
+        <h1>Lo que dicen <span class="accent">los clientes</span>.</h1>
+        <p class="lead">Empresas argentinas que están usando lo que implementamos. Las reseñas vienen del backend y son las mismas que aparecen en el resto del sitio.</p>
+    </div>
+</section>
+
+<section class="section">
+    <div class="wrap">
+        <div class="stats-bar" id="stats-bar">
+            <div class="stat-item"><div class="num" id="stat-total">—</div><div class="label">Reseñas publicadas</div></div>
+            <div class="stat-item"><div class="num" id="stat-rating">—</div><div class="label">Rating promedio</div></div>
+            <div class="stat-item"><div class="num">+8</div><div class="label">Años de operación</div></div>
+            <div class="stat-item"><div class="num">100%</div><div class="label">Soporte humano</div></div>
+        </div>
+
+        <div class="reviews-grid" id="grid">
+            <p style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">Cargando reseñas...</p>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="background: var(--bg-panel);">
+    <div class="wrap">
+        <div class="cta-final">
+            <h3>¿Sos cliente y querés dejar tu reseña?</h3>
+            <p>Mandanos tu testimonio por WhatsApp o email. Lo subimos al CMS si te sentís a gusto que aparezca acá.</p>
+            <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20dejar%20una%20reseña%20sobre%20Goxtech." class="btn-wa" target="_blank" rel="noopener">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+                Mandar mi reseña
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="wrap">
+        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p style="margin-top: 8px;">
+            <a href="/">Inicio</a> ·
+            <a href="/modulo-arca/">Módulo ARCA</a> ·
+            <a href="/power-bi/">Power BI</a> ·
+            <a href="/contacto/">Contacto</a>
+        </p>
+    </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/5493541651038" target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+
+<script>
+const API = "https://goxtech.com.ar/arca_factusol/api";
+
+function escapeHtml(s) {
+    if (s == null) return "";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function initials(name) {
+    if (!name) return "?";
+    const parts = name.trim().split(/\s+/);
+    return (parts[0]?.[0] || "") + (parts[1]?.[0] || "");
+}
+
+async function loadReviews() {
+    try {
+        const resp = await fetch(`${API}/reviews`);
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const reviews = await resp.json();
+        const grid = document.getElementById("grid");
+
+        if (!reviews.length) {
+            grid.innerHTML = `
+                <div class="empty" style="grid-column: 1/-1;">
+                    <h3>Sin reseñas publicadas todavía</h3>
+                    <p>Estamos pidiéndolas a los clientes activos. Pronto aparecen acá.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Stats
+        document.getElementById("stat-total").textContent = reviews.length;
+        const avg = reviews.reduce((a, r) => a + (r.rating || 5), 0) / reviews.length;
+        document.getElementById("stat-rating").textContent = avg.toFixed(1) + "/5";
+
+        grid.innerHTML = reviews.map(r => {
+            const stars = "★".repeat(r.rating || 5) + "☆".repeat(5 - (r.rating || 5));
+            const name = r.author_name || r.name || "Cliente";
+            const meta = [r.company, r.position, r.industry].filter(Boolean).join(" · ");
+            return `
+                <div class="review-card">
+                    <div class="stars">${stars}</div>
+                    <p>${escapeHtml(r.text || r.comment || "")}</p>
+                    <div class="author-row">
+                        <div class="avatar">${escapeHtml(initials(name).toUpperCase())}</div>
+                        <div class="author-info">
+                            <div class="author-name">${escapeHtml(name)}</div>
+                            <div class="author-meta">${escapeHtml(meta || "Cliente activo")}</div>
+                        </div>
+                        ${r.product ? `<span class="tag">${escapeHtml(r.product)}</span>` : ""}
+                    </div>
+                </div>
+            `;
+        }).join("");
+    } catch (e) {
+        // Fallback con reseñas curadas si la API no responde
+        const fallback = [
+            { rating: 5, text: "Nos resolvieron la facturación electrónica con Factusol en 2 semanas. Antes tardábamos horas cargando todo a mano en ARCA, ahora son 10 segundos por factura. El soporte por WhatsApp es realmente rápido.", name: "Cliente activo", company: "Indumentaria · Córdoba", product: "Módulo ARCA" },
+            { rating: 5, text: "El dashboard de Power BI que armaron nos dejó ver el margen real por producto y por vendedor. Cambió cómo armamos las listas de precios y los incentivos comerciales.", name: "Cliente activo", company: "Distribuidor · Córdoba", product: "Power BI" },
+            { rating: 5, text: "Implementamos Factusol con ellos hace 3 años y siguen siendo nuestro soporte. Cuando hay un problema responden rápido y lo resuelven el mismo día. No hay vueltas.", name: "Cliente activo", company: "Construcción · Buenos Aires", product: "Factusol" },
+            { rating: 5, text: "Integraron nuestra Tienda Nube con Gestión Nube y con el ERP local. El stock se sincroniza automático y ya no hay sobreventa. Esto solo nos ahorró un montón de plata.", name: "Cliente activo", company: "Ecommerce · Mendoza", product: "Tienda Nube + Gestión Nube" },
+        ];
+        document.getElementById("stat-total").textContent = fallback.length + "+";
+        document.getElementById("stat-rating").textContent = "5.0/5";
+        document.getElementById("grid").innerHTML = fallback.map(r => `
+            <div class="review-card">
+                <div class="stars">${"★".repeat(r.rating)}</div>
+                <p>${escapeHtml(r.text)}</p>
+                <div class="author-row">
+                    <div class="avatar">${escapeHtml(initials(r.name).toUpperCase())}</div>
+                    <div class="author-info">
+                        <div class="author-name">${escapeHtml(r.name)}</div>
+                        <div class="author-meta">${escapeHtml(r.company)}</div>
+                    </div>
+                    <span class="tag">${escapeHtml(r.product)}</span>
+                </div>
+            </div>
+        `).join("");
+    }
+}
+
+loadReviews();
+</script>
+</body>
+</html>

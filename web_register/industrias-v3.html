@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Industrias — Sectores con casos reales | Goxtech</title>
+<meta name="description" content="Goxtech trabaja con indumentaria, construcción, distribuidores, importadores, fábricas e inmobiliarias. Casos reales de Factusol, ARCA y Power BI.">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #FF6B00; --primary-light: #FF9A44; --primary-dark: #E55F00;
+    --accent: #10B981; --warn: #f59e0b;
+    --bg-app: #F8FAFC; --bg-panel: #FFFFFF; --bg-soft: #FFF8F2;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D; --text-body: #1F1F23; --text-muted: #6B7280;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; max-width: 1200px; margin: 0 auto; gap: 12px; }
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 2px; }
+.nav-links a { color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-links a.active { color: var(--primary); background: rgba(255, 107, 0, 0.1); }
+.nav-cta { display: inline-flex; padding: 8px 14px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; }
+@media (max-width: 1000px) { .nav-links { display: none; } }
+@media (max-width: 600px) { .nav-cta { display: none; } }
+
+.hero { padding: 60px 0 40px; background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%); position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; top: -200px; right: -100px; width: 500px; height: 500px; background: rgba(255, 107, 0, 0.08); border-radius: 50%; filter: blur(80px); }
+.hero-inner { position: relative; z-index: 1; max-width: 860px; }
+.hero h1 { font-size: 48px; font-weight: 800; line-height: 1.1; letter-spacing: -1px; margin-bottom: 18px; color: var(--text-main); }
+.hero h1 .accent { color: var(--primary); }
+.hero .lead { font-size: 18px; color: var(--text-muted); max-width: 720px; }
+
+.section { padding: 60px 0; border-top: 1px solid var(--border); }
+.section-header { max-width: 760px; margin-bottom: 40px; }
+.section-eyebrow { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.section h2 { font-size: 32px; font-weight: 800; line-height: 1.2; letter-spacing: -0.5px; color: var(--text-main); margin-bottom: 12px; }
+.section h2 .accent { color: var(--primary); }
+.section-lead { font-size: 16px; color: var(--text-muted); }
+
+/* Sectors grid */
+.sectors-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+}
+@media (max-width: 800px) { .sectors-grid { grid-template-columns: 1fr; } }
+.sector-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 32px;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    text-decoration: none; color: inherit;
+    position: relative;
+}
+.sector-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow); }
+.sector-card .num {
+    position: absolute; top: 24px; right: 24px;
+    font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-muted);
+}
+.sector-card .icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--bg-soft), rgba(255, 107, 0, 0.1));
+    border: 1px solid rgba(255, 107, 0, 0.15);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; margin-bottom: 18px;
+    color: var(--primary);
+}
+.sector-card h3 { font-size: 22px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; }
+.sector-card .tagline { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--primary); margin-bottom: 14px; }
+.sector-card p.desc { font-size: 15px; color: var(--text-body); margin-bottom: 18px; line-height: 1.6; }
+.sector-card .specs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.sector-card .spec { font-family: "JetBrains Mono", monospace; font-size: 11px; background: var(--bg-soft); color: var(--text-body); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); }
+.sector-card h5 { font-size: 12px; font-family: "JetBrains Mono", monospace; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.sector-card ul { list-style: none; margin-bottom: 16px; }
+.sector-card li { font-size: 13.5px; color: var(--text-body); padding: 4px 0 4px 22px; position: relative; }
+.sector-card li::before { content: "→"; color: var(--primary); font-weight: 700; position: absolute; left: 0; top: 4px; }
+.sector-card .link { color: var(--primary); font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; transition: gap 0.15s; }
+.sector-card:hover .link { gap: 8px; }
+
+.badge-available { display: inline-flex; align-items: center; gap: 6px; font-family: "JetBrains Mono", monospace; font-size: 10px; color: var(--accent); background: rgba(16, 185, 129, 0.1); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2); margin-bottom: 12px; }
+
+.cta-final { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border-radius: 16px; padding: 48px 32px; text-align: center; color: #fff; box-shadow: 0 20px 60px rgba(255, 107, 0, 0.15); }
+.cta-final h3 { font-size: 28px; font-weight: 800; margin-bottom: 12px; color: #fff; }
+.cta-final p { color: rgba(255, 255, 255, 0.92); margin-bottom: 24px; max-width: 540px; margin-left: auto; margin-right: auto; }
+.btn-wa { display: inline-flex; align-items: center; gap: 8px; padding: 13px 24px; background: #25D366; color: #fff; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; }
+
+.footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; background: var(--bg-panel); color: var(--text-muted); font-size: 13px; }
+.footer a { color: var(--text-muted); text-decoration: none; margin: 0 12px; }
+.footer a:hover { color: var(--primary); }
+.wa-float { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4); z-index: 100; text-decoration: none; transition: transform 0.15s; }
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/factusol/">Factusol</a>
+            <a href="/modulo-arca/">Módulo ARCA</a>
+            <a href="/power-bi/">Power BI</a>
+            <a href="/consultoria/">Consultoría</a>
+            <a href="/industrias/" class="active">Industrias</a>
+            <a href="/descargas/">Descargas</a>
+            <a href="/contacto/">Contacto</a>
+        </div>
+        <a href="https://wa.me/5493541651038" target="_blank" rel="noopener" class="nav-cta">Hablemos →</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="wrap hero-inner">
+        <h1>Industrias donde tenemos <span class="accent">casos reales</span>.</h1>
+        <p class="lead">No vendemos "soluciones para cualquier sector". Estos son los rubros donde ya implementamos, aprendimos los detalles operativos y hoy mantenemos clientes activos.</p>
+    </div>
+</section>
+
+<section class="section" style="background: var(--bg-panel);">
+    <div class="wrap">
+
+        <div class="sectors-grid">
+            <a href="/industrias/indumentaria/" class="sector-card">
+                <span class="num">01</span>
+                <div class="icon">👕</div>
+                <span class="badge-available"><span style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></span> Página dedicada</span>
+                <h3>Indumentaria</h3>
+                <div class="tagline mono">▸ talle · color · temporada · curva</div>
+                <p class="desc">Marcas, mayoristas y tiendas con catálogo variable. Manejamos curvas por talle, control de temporada y multi-canal (presencial + Tienda Nube + Mercado Libre).</p>
+                <div class="specs">
+                    <span class="spec">Gestión Moda</span>
+                    <span class="spec">Tienda Nube</span>
+                    <span class="spec">Power BI por curva</span>
+                </div>
+                <h5>Casos típicos</h5>
+                <ul>
+                    <li>Multi-talle / multi-color en un mismo SKU</li>
+                    <li>Lista de precios por canal (mayorista, retail, online)</li>
+                    <li>Análisis de venta por temporada vs stock remanente</li>
+                    <li>Reportes de mejores y peores SKUs por curva</li>
+                </ul>
+                <span class="link">Ver página completa →</span>
+            </a>
+
+            <a href="/industrias/construccion/" class="sector-card">
+                <span class="num">02</span>
+                <div class="icon">🏗</div>
+                <span class="badge-available"><span style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></span> Página dedicada</span>
+                <h3>Construcción</h3>
+                <div class="tagline mono">▸ corralones · obras · cuenta corriente</div>
+                <p class="desc">Corralones de materiales, contratistas y empresas constructoras. Costeo por proyecto, control de pedidos por obra, integración de pagos.</p>
+                <div class="specs">
+                    <span class="spec">Multi-depósito</span>
+                    <span class="spec">Costos x obra</span>
+                    <span class="spec">Cuenta corriente</span>
+                </div>
+                <h5>Casos típicos</h5>
+                <ul>
+                    <li>Presupuesto + remito + factura con trazabilidad</li>
+                    <li>Cuenta corriente compleja por cliente</li>
+                    <li>Control de cobranzas vencidas</li>
+                    <li>Listas por tipo de cliente (público / empresa / obra grande)</li>
+                </ul>
+                <span class="link">Ver página completa →</span>
+            </a>
+
+            <div class="sector-card">
+                <span class="num">03</span>
+                <div class="icon">📦</div>
+                <h3>Distribuidores</h3>
+                <div class="tagline mono">▸ ruteros · multi-depósito · canal</div>
+                <p class="desc">Empresas con vendedores en calle, multi-depósito y listas de precios diferenciadas por canal o zona. Pedidos desde el celular del rutero.</p>
+                <div class="specs">
+                    <span class="spec">App móvil pedidos</span>
+                    <span class="spec">Multi-lista precio</span>
+                    <span class="spec">Geo-zonas</span>
+                </div>
+                <h5>Casos típicos</h5>
+                <ul>
+                    <li>Carga de pedidos desde el celular en ruta</li>
+                    <li>Hoja de ruta diaria del vendedor</li>
+                    <li>Stock por depósito + reservas</li>
+                    <li>Dashboard de venta por vendedor + zona</li>
+                </ul>
+                <a href="https://wa.me/5493541651038?text=Hola!%20Tengo%20una%20distribuidora%20y%20quiero%20info." target="_blank" rel="noopener" class="link">Consultanos →</a>
+            </div>
+
+            <div class="sector-card">
+                <span class="num">04</span>
+                <div class="icon">🚢</div>
+                <h3>Importadores</h3>
+                <div class="tagline mono">▸ usd/ars · despachos · margen real</div>
+                <p class="desc">Empresas que importan productos terminados o insumos. Costeo en USD, conversión a ARS, gastos de despacho y márgenes reales sobre costo desembarcado.</p>
+                <div class="specs">
+                    <span class="spec">Multi-moneda</span>
+                    <span class="spec">Costos despacho</span>
+                    <span class="spec">Rotación SKU</span>
+                </div>
+                <h5>Casos típicos</h5>
+                <ul>
+                    <li>Cálculo de costo final (USD + IVA + flete + despacho)</li>
+                    <li>Análisis de margen real por SKU</li>
+                    <li>Dashboard de rotación de inventario</li>
+                    <li>Conversión automática USD/ARS al precio del día</li>
+                </ul>
+                <a href="https://wa.me/5493541651038?text=Hola!%20Soy%20importador%20y%20quiero%20info." target="_blank" rel="noopener" class="link">Consultanos →</a>
+            </div>
+
+            <div class="sector-card">
+                <span class="num">05</span>
+                <div class="icon">🏭</div>
+                <h3>Fábricas</h3>
+                <div class="tagline mono">▸ ordenes producción · escandallos · mrp</div>
+                <p class="desc">Fábricas chicas y medianas con producción a pedido o por lote. Escandallos de insumos, órdenes de producción, costeo por unidad fabricada.</p>
+                <div class="specs">
+                    <span class="spec">Escandallos</span>
+                    <span class="spec">Ord. producción</span>
+                    <span class="spec">Costo unitario</span>
+                </div>
+                <h5>Casos típicos</h5>
+                <ul>
+                    <li>Receta/escandallo por producto terminado</li>
+                    <li>Descuento automático de insumos al producir</li>
+                    <li>Cálculo de costo real por lote</li>
+                    <li>MRP básico (qué falta comprar para producir el pedido X)</li>
+                </ul>
+                <a href="https://wa.me/5493541651038?text=Hola!%20Tengo%20una%20fábrica%20y%20quiero%20info." target="_blank" rel="noopener" class="link">Consultanos →</a>
+            </div>
+
+            <div class="sector-card">
+                <span class="num">06</span>
+                <div class="icon">🏠</div>
+                <h3>Inmobiliaria</h3>
+                <div class="tagline mono">▸ alquileres · expensas · propietarios</div>
+                <p class="desc">Administraciones de propiedades. Cuenta corriente de cada propietario, cobranza de alquileres, expensas y liquidación periódica.</p>
+                <div class="specs">
+                    <span class="spec">Liquidación</span>
+                    <span class="spec">CC propietario</span>
+                    <span class="spec">Vencimientos</span>
+                </div>
+                <h5>Casos típicos</h5>
+                <ul>
+                    <li>Cobro mensual de alquileres + expensas</li>
+                    <li>Liquidación al propietario (neto descontando gastos)</li>
+                    <li>Recordatorios automáticos de vencimientos</li>
+                    <li>Histórico de pagos por unidad</li>
+                </ul>
+                <a href="https://wa.me/5493541651038?text=Hola!%20Tengo%20una%20inmobiliaria%20y%20quiero%20info." target="_blank" rel="noopener" class="link">Consultanos →</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Tu sector no está acá</div>
+            <h2>¿Y si tenés <span class="accent">otro rubro</span>?</h2>
+            <p class="section-lead">Estos son los sectores donde tenemos más casos. Pero el stack que usamos (Factusol, Power BI, Python, APIs) se adapta a casi cualquier operación con datos estructurados — comercios mayoristas, mineras, agro, servicios profesionales, etc.</p>
+        </div>
+
+        <div class="cta-final">
+            <h3>Contanos tu operación.</h3>
+            <p>30 minutos por WhatsApp. Vos describís cómo funciona hoy tu empresa, nosotros decimos si lo que ofrecemos aplica — o no.</p>
+            <a href="https://wa.me/5493541651038?text=Hola!%20Mi%20empresa%20es%20de%20[sector]%20y%20quiero%20info." class="btn-wa" target="_blank" rel="noopener">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+                Hablemos
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="wrap">
+        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p style="margin-top: 8px;">
+            <a href="/">Inicio</a> ·
+            <a href="/factusol/">Factusol</a> ·
+            <a href="/modulo-arca/">Módulo ARCA</a> ·
+            <a href="/power-bi/">Power BI</a> ·
+            <a href="/contacto/">Contacto</a>
+        </p>
+    </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/5493541651038" target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Factusol — ERP completo para PyMEs argentinas | Goxtech</title>
+<meta name="description" content="Implementación, soporte y módulos custom para Factusol adaptado a Argentina. Factura electrónica AFIP, multi-PV, módulos a medida. 8+ años de experiencia.">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #FF6B00; --primary-light: #FF9A44; --primary-dark: #E55F00;
+    --accent: #10B981; --warn: #f59e0b;
+    --bg-app: #F8FAFC; --bg-panel: #FFFFFF; --bg-soft: #FFF8F2;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D; --text-body: #1F1F23; --text-muted: #6B7280;
+    --code-bg: #1F1F23; --code-text: #E5E7EB;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; max-width: 1200px; margin: 0 auto; gap: 12px; }
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 2px; }
+.nav-links a { color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-links a.active { color: var(--primary); background: rgba(255, 107, 0, 0.1); }
+.nav-cta { display: inline-flex; padding: 8px 14px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; }
+@media (max-width: 1000px) { .nav-links { display: none; } }
+@media (max-width: 600px) { .nav-cta { display: none; } }
+
+.hero { padding: 80px 0 60px; background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%); position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; top: -200px; right: -100px; width: 500px; height: 500px; background: rgba(255, 107, 0, 0.08); border-radius: 50%; filter: blur(80px); }
+.hero-inner { position: relative; z-index: 1; max-width: 860px; }
+.hero h1 { font-size: 52px; font-weight: 800; line-height: 1.05; letter-spacing: -1.5px; margin-bottom: 18px; color: var(--text-main); }
+@media (max-width: 700px) { .hero h1 { font-size: 38px; } }
+.hero h1 .accent { color: var(--primary); }
+.hero .lead { font-size: 18px; color: var(--text-muted); margin-bottom: 28px; max-width: 720px; }
+.hero-meta { display: inline-flex; align-items: center; gap: 8px; font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--accent); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); padding: 6px 12px; border-radius: 6px; margin-bottom: 24px; }
+.hero-meta .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+.hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform 0.1s, box-shadow 0.15s; box-shadow: 0 4px 14px rgba(255, 107, 0, 0.25); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(255, 107, 0, 0.35); }
+.btn-secondary { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; background: var(--bg-panel); color: var(--text-body); border: 1px solid var(--border); border-radius: 10px; font-size: 15px; font-weight: 700; text-decoration: none; transition: border-color 0.15s, color 0.15s; }
+.btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+.section { padding: 70px 0; border-top: 1px solid var(--border); }
+.section-header { max-width: 760px; margin-bottom: 40px; }
+.section-eyebrow { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.section h2 { font-size: 32px; font-weight: 800; line-height: 1.2; letter-spacing: -0.5px; color: var(--text-main); margin-bottom: 12px; }
+.section h2 .accent { color: var(--primary); }
+.section-lead { font-size: 16px; color: var(--text-muted); }
+
+/* Módulos grid */
+.modules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+@media (max-width: 900px) { .modules-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .modules-grid { grid-template-columns: 1fr; } }
+.module-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 24px; transition: border-color 0.15s, transform 0.15s; }
+.module-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.module-card .icon { width: 44px; height: 44px; background: linear-gradient(135deg, var(--bg-soft), rgba(255, 107, 0, 0.1)); border: 1px solid rgba(255, 107, 0, 0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary); margin-bottom: 14px; }
+.module-card h4 { font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+.module-card p { font-size: 13.5px; color: var(--text-muted); }
+.module-card .tag { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: 10px; color: var(--accent); background: rgba(16, 185, 129, 0.1); padding: 2px 8px; border-radius: 4px; margin-top: 10px; }
+
+/* Service two-col */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+.feat-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 28px; }
+.feat-card h3 { font-size: 20px; font-weight: 700; color: var(--text-main); margin-bottom: 10px; }
+.feat-card .desc { color: var(--text-muted); font-size: 14px; margin-bottom: 16px; }
+.feat-card ul { list-style: none; }
+.feat-card li { font-size: 14px; color: var(--text-body); padding: 6px 0 6px 22px; position: relative; border-bottom: 1px solid var(--border); }
+.feat-card li:last-child { border-bottom: 0; }
+.feat-card li::before { content: "✓"; color: var(--accent); font-weight: 700; position: absolute; left: 0; top: 6px; }
+
+/* Code reference */
+.code-block { background: var(--code-bg); color: var(--code-text); border-radius: 12px; padding: 24px; font-family: "JetBrains Mono", monospace; font-size: 13px; overflow-x: auto; box-shadow: var(--shadow); margin-top: 24px; }
+.code-block .label { color: #8b94a8; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+.code-block .kw { color: #79c0ff; }
+.code-block .fn { color: #d2a8ff; }
+.code-block .num { color: #f2c811; }
+
+/* FAQ */
+.faq-grid { display: grid; gap: 12px; }
+.faq-item { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; transition: border-color 0.15s; }
+.faq-item:hover { border-color: var(--primary); }
+.faq-item summary { cursor: pointer; font-weight: 700; color: var(--text-main); font-size: 15px; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: "+"; color: var(--primary); font-size: 22px; font-weight: 400; line-height: 1; transition: transform 0.15s; }
+.faq-item[open] summary::after { content: "−"; }
+.faq-item p { font-size: 14px; color: var(--text-muted); margin-top: 12px; line-height: 1.6; }
+
+.cta-final { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border-radius: 16px; padding: 48px 32px; text-align: center; color: #fff; box-shadow: 0 20px 60px rgba(255, 107, 0, 0.15); }
+.cta-final h3 { font-size: 28px; font-weight: 800; margin-bottom: 12px; color: #fff; }
+.cta-final p { color: rgba(255, 255, 255, 0.92); margin-bottom: 24px; max-width: 540px; margin-left: auto; margin-right: auto; }
+.btn-wa { display: inline-flex; align-items: center; gap: 8px; padding: 13px 24px; background: #25D366; color: #fff; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; }
+
+.footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; background: var(--bg-panel); color: var(--text-muted); font-size: 13px; }
+.footer a { color: var(--text-muted); text-decoration: none; margin: 0 12px; }
+.footer a:hover { color: var(--primary); }
+.wa-float { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4); z-index: 100; text-decoration: none; transition: transform 0.15s; }
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/factusol/" class="active">Factusol</a>
+            <a href="/modulo-arca/">Módulo ARCA</a>
+            <a href="/power-bi/">Power BI</a>
+            <a href="/consultoria/">Consultoría</a>
+            <a href="/industrias/">Industrias</a>
+            <a href="/descargas/">Descargas</a>
+            <a href="/contacto/">Contacto</a>
+        </div>
+        <a href="https://wa.me/5493541651038" target="_blank" rel="noopener" class="nav-cta">Hablemos →</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="wrap hero-inner">
+        <div class="hero-meta mono"><span class="dot"></span>+8 años implementando Factusol en Argentina</div>
+        <h1>Factusol, <span class="accent">adaptado</span> a la realidad argentina.</h1>
+        <p class="lead">Es un ERP español robusto y económico. Nosotros lo adaptamos para AFIP, multi-PV, importadores y exportadores, multi-moneda y módulos custom. Lo implementamos desde cero o lo retomamos si ya lo tenés con problemas.</p>
+        <div class="hero-cta">
+            <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20info%20sobre%20Factusol." class="btn-primary" target="_blank" rel="noopener">
+                Pedí una demo →
+            </a>
+            <a href="/modulo-arca/" class="btn-secondary">Ver Módulo ARCA</a>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="background: var(--bg-panel);">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Módulos · qué cubre el sistema</div>
+            <h2>Lo que <span class="accent">incluye</span> Factusol.</h2>
+            <p class="section-lead">Es un ERP completo. No es solo facturación: gestiona stock, compras, clientes, proveedores, agentes comerciales y conecta con AFIP.</p>
+        </div>
+
+        <div class="modules-grid">
+            <div class="module-card">
+                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
+                <h4>Facturación</h4>
+                <p>A, B, C, M, E + presupuestos, remitos, recibos, notas crédito/débito. Multi-PV.</p>
+                <span class="tag">+ ARCA Sync</span>
+            </div>
+            <div class="module-card">
+                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
+                <h4>Stock</h4>
+                <p>Multi-depósito, control de mínimos, alertas, listas de precios por canal, escandallos.</p>
+            </div>
+            <div class="module-card">
+                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                <h4>Compras</h4>
+                <p>Pedidos a proveedores, recepciones, control de calidad, cuenta corriente, vencimientos.</p>
+            </div>
+            <div class="module-card">
+                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                <h4>CRM</h4>
+                <p>Clientes, contactos, oportunidades, agentes comerciales, segmentación, recordatorios.</p>
+            </div>
+            <div class="module-card">
+                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></div>
+                <h4>ARCA Sync</h4>
+                <p>Facturación electrónica AFIP integrada. CAE en 10s, QR + código de barras, RG 1361.</p>
+                <span class="tag">Producto propio</span>
+            </div>
+            <div class="module-card">
+                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 00-4-4H4m0 0V8a4 4 0 014-4h12a4 4 0 014 4v8a4 4 0 01-4 4h-4l-4 4z"></path></svg></div>
+                <h4>Reportes</h4>
+                <p>Listados configurables, exportación a Excel/PDF, integración nativa con Power BI.</p>
+                <span class="tag">+ Power BI</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Servicios · cómo te ayudamos</div>
+            <h2>Implementación y <span class="accent">soporte</span>.</h2>
+        </div>
+
+        <div class="two-col">
+            <div class="feat-card">
+                <h3>Implementación nueva</h3>
+                <p class="desc">Si arrancás de cero o venís de otro ERP, te llevamos a Factusol funcionando en 4 a 6 semanas.</p>
+                <ul>
+                    <li>Análisis de tu operación actual</li>
+                    <li>Parametrización completa (IVA, PV, cuentas)</li>
+                    <li>Migración de datos legados (clientes, stock, saldos)</li>
+                    <li>Carga inicial de catálogo</li>
+                    <li>Capacitación al equipo (4-8 hs)</li>
+                    <li>Activación del Módulo ARCA</li>
+                    <li>1 mes de hipercuidado post go-live</li>
+                </ul>
+            </div>
+            <div class="feat-card">
+                <h3>Soporte técnico</h3>
+                <p class="desc">Para empresas que ya usan Factusol. Resolvemos lo urgente y mejoramos lo importante.</p>
+                <ul>
+                    <li>Soporte por WhatsApp (mismo día hábil)</li>
+                    <li>Actualizaciones de versión</li>
+                    <li>Reparación de bases corruptas</li>
+                    <li>Optimización de performance</li>
+                    <li>Backups automáticos</li>
+                    <li>Configuración multi-PV / multi-usuario</li>
+                    <li>Conexiones a Power BI</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="background: var(--bg-panel);">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Bajo el capó · cómo está hecho</div>
+            <h2>La base de datos <span class="accent">queda tuya</span>.</h2>
+            <p class="section-lead">Factusol usa MS Access (.mdb). Eso significa que <strong>vos sos dueño de tus datos</strong> — los podemos leer desde Power BI, Python o cualquier herramienta con ODBC. Cero lock-in.</p>
+        </div>
+
+        <div class="code-block">
+            <div class="label">— ejemplo: extraer ventas del último mes con pyodbc</div>
+            <span class="kw">import</span> pyodbc<br>
+            conn = pyodbc.<span class="fn">connect</span>(<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a5d6ff;">r"Driver={Microsoft Access Driver (*.mdb, *.accdb)};"</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a5d6ff;">r"DBQ=C:\Factusol\datos\FAC.mdb;"</span><br>
+            )<br>
+            cur = conn.<span class="fn">cursor</span>()<br>
+            cur.<span class="fn">execute</span>(<span style="color:#a5d6ff;">"SELECT NUMFAC, FECFAC, CLIFAC, TOTFAC "</span><br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a5d6ff;">"FROM F_FAC WHERE FECFAC &gt;= ?"</span><span class="mono">,</span> ultimo_mes)<br>
+            <span class="kw">for</span> row <span class="kw">in</span> cur:<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="fn">print</span>(row.NUMFAC<span class="mono">,</span> row.CLIFAC<span class="mono">,</span> row.TOTFAC)
+        </div>
+
+        <p style="margin-top: 24px; color: var(--text-muted); font-size: 14px;">
+            Si tu equipo necesita extender Factusol — automatizar emails, exportar a SQL Server, conectar a Tienda Nube — el camino existe y nosotros lo conocemos. <a href="/consultoria/#labs" style="color: var(--primary);">Ver Goxtech Labs →</a>
+        </p>
+    </div>
+</section>
+
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">FAQ · lo más preguntado</div>
+            <h2>Preguntas <span class="accent">frecuentes</span>.</h2>
+        </div>
+
+        <div class="faq-grid">
+            <details class="faq-item">
+                <summary>¿Cuánto cuesta Factusol?</summary>
+                <p>Factusol tiene una versión <strong>Evolution gratuita</strong> (limitada en clientes/artículos) y versiones de pago de Sage. Nosotros cobramos por la <strong>implementación, soporte y módulos custom</strong>. La licencia se paga aparte directo a Sage si pasás a la versión paga.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Funciona con facturación electrónica AFIP?</summary>
+                <p>Sí — con el <a href="/modulo-arca/" style="color: var(--primary);">Módulo ARCA Sync</a> que desarrollamos. Validás la factura desde Factusol y el CAE + QR + código de barras vuelve automáticamente al sistema en menos de 10 segundos. Sin Token Fiscal, sin doble tipeo.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Cuántos puntos de venta soporta?</summary>
+                <p>Tantos como necesites. Configuramos hasta 99 PV con numeradores independientes. El Módulo ARCA gestiona los CAE de cada PV por separado.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Es multi-usuario en red?</summary>
+                <p>Sí. Compartís la base en red (servidor o NAS) y configurás permisos por usuario. Si la operación crece, te recomendamos pasar la base a SQL Server (Factusol soporta ambos motores).</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Se conecta con Tienda Nube o Mercado Libre?</summary>
+                <p>Vía API. No es una integración nativa de Factusol, pero la podemos armar como módulo custom: cada pedido del ecommerce se factura automáticamente desde Factusol y el stock se sincroniza.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Puedo migrar desde Tango / Bejerman / sistema propio?</summary>
+                <p>Sí. Migramos artículos, clientes, proveedores, saldos contables y movimientos históricos. El proceso lleva 1-2 semanas según el sistema origen y el volumen de datos.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Hay soporte oficial Sage en Argentina?</summary>
+                <p>Sage opera desde España y el soporte oficial está limitado para AR. Por eso somos partners locales: cubrimos lo que el soporte oficial no cubre + adaptaciones argentinas + módulos custom.</p>
+            </details>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="background: var(--bg-panel);">
+    <div class="wrap">
+        <div class="cta-final">
+            <h3>¿Querés una demo de Factusol?</h3>
+            <p>30 minutos por video llamada. Te mostramos la pantalla de facturación, cómo se conecta a ARCA y resolvemos las dudas concretas que tengas.</p>
+            <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20una%20demo%20de%20Factusol." class="btn-wa" target="_blank" rel="noopener">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+                Pedir demo
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="wrap">
+        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p style="margin-top: 8px;">
+            <a href="/">Inicio</a> ·
+            <a href="/modulo-arca/">Módulo ARCA</a> ·
+            <a href="/power-bi/">Power BI</a> ·
+            <a href="/descargas/">Descargas</a> ·
+            <a href="/contacto/">Contacto</a>
+        </p>
+    </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/5493541651038" target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+</body>
+</html>

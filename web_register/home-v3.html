@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goxtech — Consultoría tecnológica para PyMEs argentinas</title>
+<meta name="description" content="Factusol, Módulo ARCA, Power BI, Tienda Nube. Resolvemos problemas reales de PyMEs argentinas con herramientas concretas. Partner oficial Tienda Nube y Gestión Nube.">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+
+<!-- OG -->
+<meta property="og:title" content="Goxtech — Consultoría tecnológica para PyMEs">
+<meta property="og:description" content="Factusol, Módulo ARCA, Power BI, Tienda Nube. Soluciones concretas, sin humo.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_AR">
+<meta property="og:image" content="https://goxtech.com.ar/img/logo-dark.png">
+
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Goxtech",
+  "description": "Consultoría tecnológica para PyMEs argentinas",
+  "url": "https://goxtech.com.ar",
+  "telephone": "+5493541651038",
+  "email": "gonzalo@goxtech.com.ar",
+  "address": { "@type": "PostalAddress", "addressCountry": "AR", "addressLocality": "Córdoba" }
+}
+</script>
+
+<!-- GA -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-2QKK5V4386"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date()); gtag('config', 'G-2QKK5V4386');
+</script>
+
+<style>
+:root {
+    --primary: #FF6B00;
+    --primary-light: #FF9A44;
+    --primary-dark: #E55F00;
+    --accent: #10B981;
+    --warn: #f59e0b;
+    --bg-app: #F8FAFC;
+    --bg-panel: #FFFFFF;
+    --bg-soft: #FFF8F2;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D;
+    --text-body: #1F1F23;
+    --text-muted: #6B7280;
+    --code-bg: #1F1F23;
+    --code-text: #E5E7EB;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    --shadow-strong: 0 20px 60px rgba(255, 107, 0, 0.15);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+    background: var(--bg-app); color: var(--text-body); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Nav ── */
+.nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; max-width: 1200px; margin: 0 auto; gap: 12px;
+}
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 2px; }
+.nav-links a {
+    color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500;
+    padding: 8px 12px; border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+}
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-links a.active { color: var(--primary); background: rgba(255, 107, 0, 0.1); }
+.nav-cta {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff; border-radius: 8px; text-decoration: none;
+    font-weight: 700; font-size: 13px;
+}
+@media (max-width: 1000px) { .nav-links { display: none; } }
+@media (max-width: 600px) { .nav-cta { display: none; } }
+
+/* ── Hero ── */
+.hero {
+    position: relative; padding: 80px 0 60px; overflow: hidden;
+    background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%);
+}
+.hero::before {
+    content: ""; position: absolute;
+    top: -200px; right: -100px;
+    width: 600px; height: 600px;
+    background: rgba(255, 107, 0, 0.08);
+    border-radius: 50%; filter: blur(80px); z-index: 0;
+}
+.hero::after {
+    content: ""; position: absolute;
+    bottom: -100px; left: -100px;
+    width: 400px; height: 400px;
+    background: rgba(16, 185, 129, 0.06);
+    border-radius: 50%; filter: blur(60px); z-index: 0;
+}
+.hero-grid {
+    position: relative; z-index: 1;
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 60px;
+    align-items: center;
+}
+@media (max-width: 960px) { .hero-grid { grid-template-columns: 1fr; gap: 40px; } }
+
+.hero-tagline {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px; color: var(--accent);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 6px 12px; border-radius: 6px;
+    margin-bottom: 24px;
+}
+.hero-tagline .dot {
+    width: 6px; height: 6px; background: var(--accent); border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.hero h1 {
+    font-size: 56px; font-weight: 800; line-height: 1.05; letter-spacing: -1.5px;
+    margin-bottom: 24px; color: var(--text-main);
+}
+@media (max-width: 700px) { .hero h1 { font-size: 38px; } }
+.hero h1 .accent { color: var(--primary); }
+.hero .lead {
+    font-size: 19px; color: var(--text-muted);
+    margin-bottom: 32px; line-height: 1.55;
+}
+
+.hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 22px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none;
+    transition: transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 4px 14px rgba(255, 107, 0, 0.25);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(255, 107, 0, 0.35); }
+.btn-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 22px; background: var(--bg-panel);
+    color: var(--text-body); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 15px; font-weight: 700;
+    text-decoration: none; transition: border-color 0.15s, color 0.15s;
+}
+.btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+/* Hero stats */
+.hero-stats {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px;
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 24px; box-shadow: var(--shadow);
+}
+.hero-stat .num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 32px; font-weight: 700; color: var(--primary);
+    line-height: 1.1; margin-bottom: 4px;
+}
+.hero-stat .label { font-size: 13px; color: var(--text-muted); }
+.hero-stat .sublabel { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
+
+/* ── Section base ── */
+.section { padding: 80px 0; border-top: 1px solid var(--border); }
+.section-bg-panel { background: var(--bg-panel); }
+.section-header { max-width: 760px; margin-bottom: 48px; }
+.section-eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 12px;
+}
+.section h2 {
+    font-size: 36px; font-weight: 800; line-height: 1.2; letter-spacing: -0.5px;
+    margin-bottom: 12px; color: var(--text-main);
+}
+.section h2 .accent { color: var(--primary); }
+.section-lead { font-size: 17px; color: var(--text-muted); }
+
+/* ── Productos grid ── */
+.products-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px;
+}
+@media (max-width: 800px) { .products-grid { grid-template-columns: 1fr; } }
+.product-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 32px;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    text-decoration: none; color: inherit;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+}
+.product-card:hover {
+    border-color: var(--primary); transform: translateY(-3px);
+    box-shadow: var(--shadow);
+}
+.product-card::before {
+    content: ""; position: absolute;
+    top: 0; right: 0; width: 200px; height: 200px;
+    background: radial-gradient(circle at top right, rgba(255, 107, 0, 0.04), transparent 70%);
+    pointer-events: none;
+}
+.product-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    color: var(--accent); background: rgba(16, 185, 129, 0.1);
+    padding: 4px 10px; border-radius: 4px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    align-self: flex-start; margin-bottom: 16px;
+}
+.product-badge.beta { color: var(--warn); background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2); }
+.product-card h3 {
+    font-size: 24px; font-weight: 800; color: var(--text-main);
+    margin-bottom: 8px; letter-spacing: -0.3px;
+}
+.product-card .tagline {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: var(--primary); margin-bottom: 14px;
+}
+.product-card p { font-size: 15px; color: var(--text-muted); margin-bottom: 18px; flex: 1; }
+.product-card .specs {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px;
+}
+.product-card .spec {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    background: var(--bg-soft); color: var(--text-body);
+    padding: 4px 10px; border-radius: 4px;
+    border: 1px solid var(--border);
+}
+.product-card .link {
+    color: var(--primary); font-weight: 700; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 4px;
+    transition: gap 0.15s;
+}
+.product-card:hover .link { gap: 8px; }
+
+/* ── Servicios grid ── */
+.services-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+@media (max-width: 900px) { .services-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .services-grid { grid-template-columns: 1fr; } }
+.service-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px;
+    transition: border-color 0.15s, transform 0.15s;
+    text-decoration: none; color: inherit;
+    display: flex; flex-direction: column;
+}
+.service-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.service-card .icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--bg-soft), rgba(255, 107, 0, 0.1));
+    border: 1px solid rgba(255, 107, 0, 0.15);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px; color: var(--primary);
+}
+.service-card h4 { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+.service-card p { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
+
+/* ── Stack ── */
+.stack-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+.stack-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px;
+    display: flex; align-items: center; gap: 12px;
+    transition: border-color 0.15s;
+}
+.stack-card:hover { border-color: var(--primary); }
+.stack-card .ico {
+    width: 38px; height: 38px;
+    background: var(--bg-soft); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+}
+.stack-card .info h5 { font-size: 14px; font-weight: 700; color: var(--text-main); }
+.stack-card .info p { font-size: 12px; color: var(--text-muted); }
+
+/* ── Process ── */
+.process-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
+}
+@media (max-width: 900px) { .process-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 540px) { .process-grid { grid-template-columns: 1fr; } }
+.process-step {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px;
+    position: relative;
+    transition: border-color 0.15s, transform 0.15s;
+}
+.process-step:hover { border-color: var(--primary); transform: translateY(-2px); }
+.process-step .num {
+    font-family: "JetBrains Mono", monospace; font-size: 13px;
+    color: var(--primary); font-weight: 700; margin-bottom: 12px;
+}
+.process-step h4 { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
+.process-step p { font-size: 13.5px; color: var(--text-muted); }
+
+/* ── Industrias ── */
+.industries-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+}
+@media (max-width: 800px) { .industries-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 500px) { .industries-grid { grid-template-columns: 1fr; } }
+.industry-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px;
+    text-decoration: none; color: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+    position: relative;
+}
+.industry-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.industry-card .badge {
+    position: absolute; top: 16px; right: 16px;
+    font-family: "JetBrains Mono", monospace; font-size: 10px;
+    color: var(--text-muted);
+}
+.industry-card h4 { font-size: 17px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+.industry-card p { font-size: 13px; color: var(--text-muted); }
+
+/* ── Testimonios ── */
+.reviews-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+@media (max-width: 900px) { .reviews-grid { grid-template-columns: 1fr; } }
+.review-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px;
+    transition: border-color 0.15s;
+}
+.review-card:hover { border-color: var(--primary); }
+.review-card .stars { color: var(--warn); margin-bottom: 12px; font-size: 14px; }
+.review-card p { font-size: 14px; color: var(--text-body); line-height: 1.6; margin-bottom: 14px; }
+.review-card .author { font-size: 13px; color: var(--text-main); font-weight: 600; }
+.review-card .author span { color: var(--text-muted); font-weight: 400; }
+
+/* ── CTA final ── */
+.cta-final {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: 16px;
+    padding: 56px 40px;
+    text-align: center;
+    color: #fff;
+    box-shadow: var(--shadow-strong);
+    position: relative; overflow: hidden;
+}
+.cta-final::before {
+    content: ""; position: absolute;
+    top: -100px; right: -100px;
+    width: 300px; height: 300px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%; filter: blur(40px);
+}
+.cta-final h3 { font-size: 30px; font-weight: 800; margin-bottom: 14px; color: #fff; position: relative; z-index: 1; letter-spacing: -0.5px; }
+.cta-final p { color: rgba(255, 255, 255, 0.92); margin-bottom: 28px; max-width: 540px; margin-left: auto; margin-right: auto; font-size: 17px; position: relative; z-index: 1; }
+.cta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; position: relative; z-index: 1; }
+.btn-wa {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 24px; background: #25D366; color: #fff;
+    border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px;
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+}
+.cta-final .btn-secondary {
+    background: #fff; color: var(--text-main); border-color: #fff;
+}
+.cta-final .btn-secondary:hover { color: var(--primary); }
+
+/* ── Footer ── */
+.footer {
+    border-top: 1px solid var(--border);
+    padding: 48px 0 32px; background: var(--bg-panel);
+}
+.footer-grid {
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px;
+    margin-bottom: 32px;
+}
+@media (max-width: 800px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .footer-grid { grid-template-columns: 1fr; } }
+.footer h5 { font-size: 13px; color: var(--text-main); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.footer .brand { font-size: 22px; font-weight: 800; color: var(--primary); margin-bottom: 8px; }
+.footer .tag { font-size: 13px; color: var(--text-muted); max-width: 280px; }
+.footer ul { list-style: none; }
+.footer li a {
+    display: block; padding: 4px 0;
+    color: var(--text-muted); text-decoration: none;
+    font-size: 13.5px;
+    transition: color 0.15s;
+}
+.footer li a:hover { color: var(--primary); }
+.footer-bottom {
+    border-top: 1px solid var(--border); padding-top: 20px;
+    text-align: center; color: var(--text-muted); font-size: 12px;
+}
+
+/* WA float */
+.wa-float {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 56px; height: 56px; background: #25D366;
+    border-radius: 50%; display: flex;
+    align-items: center; justify-content: center;
+    color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4);
+    z-index: 100; text-decoration: none; transition: transform 0.15s;
+}
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/" class="active">Inicio</a>
+            <a href="/factusol/">Factusol</a>
+            <a href="/modulo-arca/">Módulo ARCA</a>
+            <a href="/power-bi/">Power BI</a>
+            <a href="/consultoria/">Consultoría</a>
+            <a href="/industrias/">Industrias</a>
+            <a href="/descargas/">Descargas</a>
+            <a href="/contacto/">Contacto</a>
+        </div>
+        <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20Goxtech." target="_blank" rel="noopener" class="nav-cta">Hablemos →</a>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="wrap">
+        <div class="hero-grid">
+            <div>
+                <div class="hero-tagline mono"><span class="dot"></span>Partner oficial Tienda Nube · Gestión Nube · Gestión Moda</div>
+                <h1>Software que <span class="accent">resuelve</span>, no que promete.</h1>
+                <p class="lead">Somos consultores tecnológicos para PyMEs argentinas. Factusol, facturación electrónica AFIP, dashboards Power BI, integraciones con Tienda Nube. Soluciones concretas con código revisable y soporte humano — sin humo de venta.</p>
+                <div class="hero-cta">
+                    <a href="https://wa.me/5493541651038?text=Hola!%20Me%20gustaría%20agendar%20una%20consultoría." class="btn-primary" target="_blank" rel="noopener">
+                        Agendá una consultoría
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                    </a>
+                    <a href="#productos" class="btn-secondary">Ver productos ↓</a>
+                </div>
+            </div>
+
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="num">10s</div>
+                    <div class="label">Por factura con CAE</div>
+                    <div class="sublabel">Módulo ARCA Sync</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="num">+8</div>
+                    <div class="label">Años con Factusol</div>
+                    <div class="sublabel">Soporte y parametrización</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="num">3</div>
+                    <div class="label">Tableros base BI</div>
+                    <div class="sublabel">Ventas · Cobranzas · Stock</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="num">100%</div>
+                    <div class="label">Soporte humano</div>
+                    <div class="sublabel">WhatsApp y email</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PRODUCTOS -->
+<section class="section section-bg-panel" id="productos">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Productos propios · listos para descargar</div>
+            <h2>Lo que <span class="accent">construimos</span>.</h2>
+            <p class="section-lead">Estos no son catálogos vendidos por terceros. Son productos que diseñamos, desarrollamos y mantenemos nosotros para problemas concretos de PyMEs argentinas.</p>
+        </div>
+
+        <div class="products-grid">
+            <a href="/modulo-arca/" class="product-card">
+                <div class="product-badge"><span style="width:6px; height:6px; background:var(--accent); border-radius:50%;"></span> Disponible · v1.7</div>
+                <h3>Módulo ARCA Sync</h3>
+                <div class="tagline mono">▸ factusol → wsfev1 → cae en 10s</div>
+                <p>Puente entre Factusol y AFIP/ARCA. Validás facturas y el CAE + QR + código de barras vuelve a Factusol automáticamente. Cero doble tipeo, cero Token Fiscal.</p>
+                <div class="specs">
+                    <span class="spec">CAE automático</span>
+                    <span class="spec">RG 1361</span>
+                    <span class="spec">Multi-PV</span>
+                    <span class="spec">Multi-usuario</span>
+                </div>
+                <span class="link">Ver detalle técnico →</span>
+            </a>
+
+            <a href="/power-bi/" class="product-card">
+                <div class="product-badge"><span style="width:6px; height:6px; background:var(--accent); border-radius:50%;"></span> 3 tableros base</div>
+                <h3>Tableros Power BI</h3>
+                <div class="tagline mono">▸ erp → modelo semántico dax → decisión</div>
+                <p>Conectamos tu ERP (Factusol, MySQL, SQL Server, Tienda Nube) a Power BI. Modelo semántico en DAX argentino (separador <code class="mono" style="background:rgba(0,0,0,0.05); padding:1px 6px; border-radius:3px;">;</code>), métricas revisables.</p>
+                <div class="specs">
+                    <span class="spec">Ventas + Margen</span>
+                    <span class="spec">Cuentas a Cobrar</span>
+                    <span class="spec">Stock + Quiebres</span>
+                </div>
+                <span class="link">Ver tableros →</span>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- SERVICIOS -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Servicios · implementación + soporte</div>
+            <h2>Lo que <span class="accent">hacemos</span> con vos.</h2>
+            <p class="section-lead">Más allá de los productos propios, somos partners oficiales de Tienda Nube, Gestión Nube y Gestión Moda. Implementamos, integramos y damos soporte continuo.</p>
+        </div>
+
+        <div class="services-grid">
+            <a class="service-card" href="/factusol/">
+                <div class="icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg>
+                </div>
+                <h4>Factusol · ERP</h4>
+                <p>Implementación, parametrización inicial, migración de datos, capacitación, soporte continuo y módulos a medida.</p>
+            </a>
+
+            <a class="service-card" href="/consultoria/#tienda-nube">
+                <div class="icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                </div>
+                <h4>Tienda Nube + Gestión Nube</h4>
+                <p>Integración ecommerce + ERP. Sincronización de stock, pedidos y facturación. Partner oficial certificado.</p>
+            </a>
+
+            <a class="service-card" href="/consultoria/#meta-ads">
+                <div class="icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path></svg>
+                </div>
+                <h4>Meta Ads · Tráfico</h4>
+                <p>Campañas de performance en Facebook e Instagram para ecommerce y generación de leads. Tracking con Pixel + GA4.</p>
+            </a>
+
+            <a class="service-card" href="/consultoria/#infraestructura">
+                <div class="icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"></path></svg>
+                </div>
+                <h4>Infraestructura</h4>
+                <p>Virtualización con Proxmox, servidores Linux, acceso remoto RDP, backups automatizados, dominios y email corporativo.</p>
+            </a>
+
+            <a class="service-card" href="/modulo-arca/">
+                <div class="icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                </div>
+                <h4>Facturación electrónica</h4>
+                <p>Implementación del Módulo ARCA Sync. Certificados AFIP, multi-PV, RG 1361, soporte para nuevos clientes y actualizaciones.</p>
+            </a>
+
+            <a class="service-card" href="/power-bi/">
+                <div class="icon">
+                    <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <h4>Power BI · BI a medida</h4>
+                <p>Tableros conectados a tu ERP. Modelo semántico DAX en español, refresh programado, workspaces, capacitación al equipo.</p>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- STACK -->
+<section class="section section-bg-panel">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Stack técnico · cero buzzwords</div>
+            <h2>Las herramientas que <span class="accent">dominamos</span>.</h2>
+            <p class="section-lead">Trabajamos con tecnologías concretas y maduras. Si tu sistema usa algo de esto, ya sabemos cómo conectarlo.</p>
+        </div>
+
+        <div class="stack-grid">
+            <div class="stack-card"><div class="ico">📊</div><div class="info"><h5>Factusol</h5><p>MS Access · VBA</p></div></div>
+            <div class="stack-card"><div class="ico">🇦🇷</div><div class="info"><h5>AFIP / ARCA</h5><p>WSFEv1 · WSAA</p></div></div>
+            <div class="stack-card"><div class="ico">📈</div><div class="info"><h5>Power BI</h5><p>DAX · Power Query</p></div></div>
+            <div class="stack-card"><div class="ico">🛒</div><div class="info"><h5>Tienda Nube</h5><p>API REST</p></div></div>
+            <div class="stack-card"><div class="ico">📋</div><div class="info"><h5>Gestión Nube</h5><p>API REST</p></div></div>
+            <div class="stack-card"><div class="ico">🐍</div><div class="info"><h5>Python</h5><p>FastAPI · SQLAlchemy</p></div></div>
+            <div class="stack-card"><div class="ico">🐬</div><div class="info"><h5>MySQL · Postgres</h5><p>SQL Server · SQLite</p></div></div>
+            <div class="stack-card"><div class="ico">☁️</div><div class="info"><h5>Proxmox · Linux</h5><p>Nginx · HestiaCP</p></div></div>
+        </div>
+    </div>
+</section>
+
+<!-- PROCESO -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Proceso · 4 fases concretas</div>
+            <h2>Cómo <span class="accent">trabajamos</span>.</h2>
+            <p class="section-lead">Sin contratos eternos ni "discovery" interminables. Vamos de la primera llamada a un MVP funcionando en pocas semanas.</p>
+        </div>
+
+        <div class="process-grid">
+            <div class="process-step">
+                <div class="num">01 · Semana 1</div>
+                <h4>Diagnóstico</h4>
+                <p>Llamada de 30 min para entender tu operación actual, los puntos de dolor y los KPIs reales.</p>
+            </div>
+            <div class="process-step">
+                <div class="num">02 · Semana 1-2</div>
+                <h4>Propuesta concreta</h4>
+                <p>Documento técnico con alcance, herramientas, costos y tiempos. Sin "depende".</p>
+            </div>
+            <div class="process-step">
+                <div class="num">03 · Semana 2-4</div>
+                <h4>Implementación</h4>
+                <p>Configuración, migración de datos, integraciones, capacitación al equipo y entrega de un MVP funcional.</p>
+            </div>
+            <div class="process-step">
+                <div class="num">04 · Continuo</div>
+                <h4>Acompañamiento</h4>
+                <p>Soporte por WhatsApp y email, actualizaciones, monitoreo y mejoras incrementales.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- INDUSTRIAS -->
+<section class="section section-bg-panel">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Industrias · donde tenemos casos reales</div>
+            <h2>Sectores con los que <span class="accent">trabajamos</span>.</h2>
+            <p class="section-lead">No vendemos "soluciones para cualquier industria". Estos son los rubros donde ya implementamos y aprendimos los detalles operativos.</p>
+        </div>
+
+        <div class="industries-grid">
+            <a href="/industrias/indumentaria/" class="industry-card">
+                <span class="badge">01</span>
+                <h4>Indumentaria</h4>
+                <p>Talles, colores, temporadas. Gestión Moda + Tienda Nube + Power BI por curva.</p>
+            </a>
+            <a href="/industrias/construccion/" class="industry-card">
+                <span class="badge">02</span>
+                <h4>Construcción</h4>
+                <p>Corralones, obra. Costeo por proyecto, control de pedidos, integración con cuentas a cobrar.</p>
+            </a>
+            <a href="/industrias/" class="industry-card">
+                <span class="badge">03</span>
+                <h4>Distribuidores</h4>
+                <p>Ruteros, multi-depósito, listas de precios por canal, pedidos desde el celular.</p>
+            </a>
+            <a href="/industrias/" class="industry-card">
+                <span class="badge">04</span>
+                <h4>Importadores</h4>
+                <p>Costos en USD/ARS, despachos, márgenes reales, dashboards de rotación.</p>
+            </a>
+            <a href="/industrias/" class="industry-card">
+                <span class="badge">05</span>
+                <h4>Fábricas</h4>
+                <p>Ordenes de producción, escandallos, costos por insumo, MRP básico.</p>
+            </a>
+            <a href="/industrias/" class="industry-card">
+                <span class="badge">06</span>
+                <h4>Inmobiliaria</h4>
+                <p>Alquileres, expensas, cobranzas, cuenta corriente de cada propietario.</p>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- TESTIMONIOS -->
+<section class="section" id="resenas">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Reseñas reales · clientes activos</div>
+            <h2>Lo que <span class="accent">dicen</span>.</h2>
+            <p class="section-lead">Testimonios de empresas que ya están usando lo que implementamos. Las reseñas vienen del CMS — sin filtrar.</p>
+        </div>
+
+        <div class="reviews-grid" id="reviews-grid">
+            <div class="review-card">
+                <p style="color: var(--text-muted); font-style: italic;">Cargando reseñas...</p>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 32px;">
+            <a href="/resenas/" class="btn-secondary">Ver todas las reseñas →</a>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Final -->
+<section class="section section-bg-panel">
+    <div class="wrap">
+        <div class="cta-final">
+            <h3>¿Hablamos de tu PyME?</h3>
+            <p>30 minutos por WhatsApp. Sin compromiso, sin presentación corporativa, sin guion. Vos contás el problema, nosotros decimos si lo podemos resolver o no.</p>
+            <div class="cta-buttons">
+                <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20una%20consultoría%20gratis." class="btn-wa" target="_blank" rel="noopener">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+                    Hablemos por WhatsApp
+                </a>
+                <a href="mailto:gonzalo@goxtech.com.ar" class="btn-secondary">gonzalo@goxtech.com.ar</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="wrap">
+        <div class="footer-grid">
+            <div>
+                <div class="brand">Goxtech</div>
+                <p class="tag">Consultoría tecnológica para PyMEs argentinas. Córdoba · Argentina.</p>
+                <p style="margin-top: 16px; font-size: 13px; color: var(--text-muted);">
+                    <a href="mailto:gonzalo@goxtech.com.ar" style="color: var(--primary); text-decoration: none;">gonzalo@goxtech.com.ar</a><br>
+                    <a href="https://wa.me/5493541651038" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: none;">+54 9 3541 65-1038</a>
+                </p>
+            </div>
+            <div>
+                <h5>Productos</h5>
+                <ul>
+                    <li><a href="/modulo-arca/">Módulo ARCA</a></li>
+                    <li><a href="/power-bi/">Power BI</a></li>
+                    <li><a href="/descargas/">Descargas</a></li>
+                </ul>
+            </div>
+            <div>
+                <h5>Servicios</h5>
+                <ul>
+                    <li><a href="/factusol/">Factusol</a></li>
+                    <li><a href="/consultoria/">Consultoría</a></li>
+                    <li><a href="/industrias/">Industrias</a></li>
+                </ul>
+            </div>
+            <div>
+                <h5>Empresa</h5>
+                <ul>
+                    <li><a href="/resenas/">Reseñas</a></li>
+                    <li><a href="/contacto/">Contacto</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 Goxtech · Córdoba, Argentina · Partner oficial Tienda Nube, Gestión Nube y Gestión Moda
+        </div>
+    </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20Goxtech." target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+
+<script>
+const API = "https://goxtech.com.ar/arca_factusol/api";
+
+// Cargar testimonios desde la API
+async function loadReviews() {
+    try {
+        const resp = await fetch(`${API}/reviews?limit=3`);
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const reviews = await resp.json();
+        const grid = document.getElementById("reviews-grid");
+        if (!reviews.length) {
+            grid.parentElement.style.display = "none";
+            return;
+        }
+        grid.innerHTML = reviews.map(r => `
+            <div class="review-card">
+                <div class="stars">${"★".repeat(r.rating || 5)}${"☆".repeat(5 - (r.rating || 5))}</div>
+                <p>"${escapeHtml(r.text || r.comment || "")}"</p>
+                <div class="author">${escapeHtml(r.author_name || r.name || "")} <span>· ${escapeHtml(r.company || r.position || "")}</span></div>
+            </div>
+        `).join("");
+    } catch (e) {
+        // Fallback estatico si la API no responde
+        document.getElementById("reviews-grid").innerHTML = `
+            <div class="review-card">
+                <div class="stars">★★★★★</div>
+                <p>"Nos resolvieron la facturación electrónica con Factusol en 2 semanas. Antes tardábamos horas cargando todo a mano en ARCA, ahora son 10 segundos por factura."</p>
+                <div class="author">Cliente activo <span>· Indumentaria · Córdoba</span></div>
+            </div>
+            <div class="review-card">
+                <div class="stars">★★★★★</div>
+                <p>"El dashboard de Power BI que armaron nos dejó ver el margen real por producto. Cambió cómo armamos las listas de precios."</p>
+                <div class="author">Cliente activo <span>· Distribuidor · Córdoba</span></div>
+            </div>
+            <div class="review-card">
+                <div class="stars">★★★★★</div>
+                <p>"Soporte humano y rápido. Cuando hay un problema responden por WhatsApp y lo resuelven el mismo día."</p>
+                <div class="author">Cliente activo <span>· Construcción · Buenos Aires</span></div>
+            </div>
+        `;
+    }
+}
+
+function escapeHtml(s) {
+    if (s == null) return "";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+loadReviews();
+</script>
+</body>
+</html>

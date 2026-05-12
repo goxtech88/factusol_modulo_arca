@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contacto — Goxtech | WhatsApp, email y consultoría</title>
+<meta name="description" content="Contactá a Goxtech: WhatsApp +54 9 3541 65-1038, email gonzalo@goxtech.com.ar. Consultoría tecnológica para PyMEs argentinas.">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #FF6B00; --primary-light: #FF9A44; --primary-dark: #E55F00;
+    --accent: #10B981; --warn: #f59e0b; --error: #dc2626;
+    --bg-app: #F8FAFC; --bg-panel: #FFFFFF; --bg-soft: #FFF8F2;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D; --text-body: #1F1F23; --text-muted: #6B7280;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; max-width: 1200px; margin: 0 auto; gap: 12px; }
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 2px; }
+.nav-links a { color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-links a.active { color: var(--primary); background: rgba(255, 107, 0, 0.1); }
+.nav-cta { display: inline-flex; padding: 8px 14px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; }
+@media (max-width: 1000px) { .nav-links { display: none; } }
+@media (max-width: 600px) { .nav-cta { display: none; } }
+
+.hero { padding: 60px 0 40px; background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%); position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; top: -200px; right: -100px; width: 500px; height: 500px; background: rgba(255, 107, 0, 0.08); border-radius: 50%; filter: blur(80px); z-index: 0; }
+.hero-inner { position: relative; z-index: 1; max-width: 860px; }
+.hero h1 { font-size: 48px; font-weight: 800; line-height: 1.1; letter-spacing: -1px; margin-bottom: 18px; color: var(--text-main); }
+.hero h1 .accent { color: var(--primary); }
+.hero .lead { font-size: 18px; color: var(--text-muted); max-width: 720px; }
+
+.section { padding: 60px 0; border-top: 1px solid var(--border); }
+
+.contact-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    align-items: start;
+}
+@media (max-width: 880px) { .contact-grid { grid-template-columns: 1fr; } }
+
+.contact-channels {
+    display: grid; gap: 12px;
+}
+.channel-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px;
+    display: flex; gap: 18px; align-items: center;
+    text-decoration: none; color: inherit;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.channel-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
+.channel-card .icon {
+    width: 52px; height: 52px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 22px;
+    background: linear-gradient(135deg, var(--bg-soft), rgba(255, 107, 0, 0.1));
+    border: 1px solid rgba(255, 107, 0, 0.15);
+    color: var(--primary);
+}
+.channel-card.wa .icon { background: #25D366; color: #fff; border-color: #25D366; }
+.channel-card .info { flex: 1; }
+.channel-card .label { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.channel-card .value { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 2px; }
+.channel-card .sub { font-size: 13px; color: var(--text-muted); }
+.channel-card .arrow { color: var(--text-muted); font-size: 20px; transition: color 0.15s, transform 0.15s; }
+.channel-card:hover .arrow { color: var(--primary); transform: translateX(4px); }
+
+.form-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 28px;
+    box-shadow: var(--shadow);
+}
+.form-card h2 { font-size: 24px; font-weight: 800; color: var(--text-main); margin-bottom: 6px; letter-spacing: -0.3px; }
+.form-card .sub { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+
+label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; margin-top: 14px; }
+input, textarea, select { width: 100%; padding: 11px 13px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-body); border-radius: 8px; font-family: inherit; font-size: 14px; transition: border-color 0.15s, box-shadow 0.15s; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.15); }
+textarea { min-height: 100px; resize: vertical; }
+.btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform 0.1s, box-shadow 0.15s; box-shadow: 0 4px 14px rgba(255, 107, 0, 0.25); margin-top: 18px; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(255, 107, 0, 0.35); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.form-msg { margin-top: 14px; padding: 12px 16px; border-radius: 8px; font-size: 13px; display: none; }
+.form-msg.ok { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #047857; }
+.form-msg.err { background: rgba(220, 38, 38, 0.1); border: 1px solid rgba(220, 38, 38, 0.3); color: var(--error); }
+
+.info-box {
+    background: var(--bg-soft); border-left: 3px solid var(--primary);
+    padding: 18px 20px; border-radius: 0 10px 10px 0;
+    margin-top: 24px;
+}
+.info-box h4 { font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+.info-box p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+.section-header { max-width: 720px; margin-bottom: 36px; }
+.section-eyebrow { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.section h2.title { font-size: 32px; font-weight: 800; line-height: 1.2; color: var(--text-main); margin-bottom: 12px; }
+.section h2.title .accent { color: var(--primary); }
+.section .lead-text { font-size: 16px; color: var(--text-muted); }
+
+.faq-grid { display: grid; gap: 12px; }
+.faq-item { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; transition: border-color 0.15s; }
+.faq-item:hover { border-color: var(--primary); }
+.faq-item summary { cursor: pointer; font-weight: 700; color: var(--text-main); font-size: 15px; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: "+"; color: var(--primary); font-size: 22px; font-weight: 400; line-height: 1; transition: transform 0.15s; }
+.faq-item[open] summary::after { content: "−"; }
+.faq-item p { font-size: 14px; color: var(--text-muted); margin-top: 12px; line-height: 1.6; }
+
+.footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; background: var(--bg-panel); color: var(--text-muted); font-size: 13px; }
+.footer a { color: var(--text-muted); text-decoration: none; margin: 0 12px; }
+.footer a:hover { color: var(--primary); }
+.wa-float { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4); z-index: 100; text-decoration: none; transition: transform 0.15s; }
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/factusol/">Factusol</a>
+            <a href="/modulo-arca/">Módulo ARCA</a>
+            <a href="/power-bi/">Power BI</a>
+            <a href="/consultoria/">Consultoría</a>
+            <a href="/industrias/">Industrias</a>
+            <a href="/descargas/">Descargas</a>
+            <a href="/contacto/" class="active">Contacto</a>
+        </div>
+        <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20Goxtech." target="_blank" rel="noopener" class="nav-cta">Hablemos →</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="wrap hero-inner">
+        <h1>Hablemos <span class="accent">en serio</span>.</h1>
+        <p class="lead">El canal más rápido es WhatsApp. Si preferís email o querés mandarnos los detalles del proyecto, llená el formulario. Respondemos el mismo día hábil.</p>
+    </div>
+</section>
+
+<section class="section">
+    <div class="wrap">
+        <div class="contact-grid">
+            <div class="contact-channels">
+                <a class="channel-card wa" href="https://wa.me/5493541651038?text=Hola!%20Quiero%20una%20consultoría%20gratis." target="_blank" rel="noopener">
+                    <div class="icon">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+                    </div>
+                    <div class="info">
+                        <div class="label">WhatsApp · canal preferido</div>
+                        <div class="value">+54 9 3541 65-1038</div>
+                        <div class="sub">Lun a Vie · 9 a 18 hs (Córdoba)</div>
+                    </div>
+                    <span class="arrow">→</span>
+                </a>
+
+                <a class="channel-card" href="mailto:gonzalo@goxtech.com.ar">
+                    <div class="icon">📧</div>
+                    <div class="info">
+                        <div class="label">Email</div>
+                        <div class="value">gonzalo@goxtech.com.ar</div>
+                        <div class="sub">Respondemos en menos de 24 hs hábiles</div>
+                    </div>
+                    <span class="arrow">→</span>
+                </a>
+
+                <div class="channel-card" style="cursor: default;">
+                    <div class="icon">📍</div>
+                    <div class="info">
+                        <div class="label">Ubicación</div>
+                        <div class="value">Córdoba, Argentina</div>
+                        <div class="sub">Trabajamos remoto · visitas según necesidad</div>
+                    </div>
+                </div>
+
+                <div class="channel-card" style="cursor: default;">
+                    <div class="icon">⏱</div>
+                    <div class="info">
+                        <div class="label">Tiempo de respuesta</div>
+                        <div class="value">Mismo día hábil</div>
+                        <div class="sub">WhatsApp en minutos · email &lt; 24 hs</div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h4>¿Sos cliente activo?</h4>
+                    <p>Si ya tenés un servicio contratado o un producto instalado, escribinos por WhatsApp y mencionalo en el primer mensaje — vas a la fila de soporte (prioridad alta).</p>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <h2>Mandanos los detalles</h2>
+                <p class="sub">Cuanto más concreto, mejor. Te respondemos con un plan inicial o una hora de llamada.</p>
+
+                <form id="contact-form">
+                    <label>Nombre y apellido *</label>
+                    <input type="text" name="name" required placeholder="Juan Pérez">
+
+                    <label>Empresa</label>
+                    <input type="text" name="company" placeholder="Razón social o nombre comercial">
+
+                    <label>Email *</label>
+                    <input type="email" name="email" required placeholder="vos@empresa.com">
+
+                    <label>WhatsApp / Teléfono</label>
+                    <input type="tel" name="phone" placeholder="+54 9 ...">
+
+                    <label>¿En qué te podemos ayudar? *</label>
+                    <select name="interest" required>
+                        <option value="">Elegí una opción</option>
+                        <option>Implementar Factusol</option>
+                        <option>Módulo ARCA Sync (facturación electrónica)</option>
+                        <option>Tableros Power BI</option>
+                        <option>Tienda Nube + Gestión Nube</option>
+                        <option>Campañas Meta Ads</option>
+                        <option>Infraestructura / Servidores</option>
+                        <option>Otro</option>
+                    </select>
+
+                    <label>Contanos un poco más</label>
+                    <textarea name="message" placeholder="¿Qué ERP usás hoy? ¿Cuántos puntos de venta? ¿Cuál es el problema concreto?"></textarea>
+
+                    <button type="submit" class="btn-primary" id="submit-btn">
+                        Mandar mensaje
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                    </button>
+
+                    <div class="form-msg ok" id="form-ok">✓ Mensaje enviado. Te respondemos hoy mismo.</div>
+                    <div class="form-msg err" id="form-err">Hubo un problema. Probá por WhatsApp.</div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="background: var(--bg-panel);">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">FAQ · lo que más nos preguntan</div>
+            <h2 class="title">Preguntas <span class="accent">frecuentes</span>.</h2>
+        </div>
+
+        <div class="faq-grid">
+            <details class="faq-item">
+                <summary>¿La consultoría inicial tiene costo?</summary>
+                <p>No. La primera llamada (30 min) es gratuita. Ahí entendemos qué necesitás y te decimos si lo podemos resolver, cuánto sale y cuánto tarda. Si no es un fit, te lo decimos sin vueltas.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Trabajan solo con Factusol?</summary>
+                <p>No. Factusol es uno de los ERPs con los que más experiencia tenemos, pero también trabajamos con Gestión Nube, Tango, ERPs custom y bases SQL Server / MySQL / PostgreSQL. Si tu sistema tiene una base accesible, lo conectamos.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Atienden en todo el país?</summary>
+                <p>Sí. Estamos en Córdoba pero trabajamos remoto en toda Argentina. Las visitas presenciales se coordinan según necesidad del proyecto.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿El Módulo ARCA es gratis?</summary>
+                <p>Tiene un plan gratuito (registrándote con CUIT en <a href="/arca_factusol/" style="color: var(--primary);">/arca_factusol/</a>) y un plan mensual para empresas con mayor volumen. La diferencia está documentada en la <a href="/modulo-arca/" style="color: var(--primary);">página del producto</a>.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Cuánto tarda implementar un dashboard de Power BI?</summary>
+                <p>Entre 2 y 4 semanas según el ERP de origen. Día 1-2: auditoría de datos. Día 3-7: modelo semántico y medidas DAX. Día 8-12: tablero MVP. Día 13+: publicación y capacitación.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Firman acuerdo de confidencialidad?</summary>
+                <p>Sí, sin problema. Si tu proyecto requiere NDA, lo firmamos antes de empezar el discovery.</p>
+            </details>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="wrap">
+        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p style="margin-top: 8px;">
+            <a href="/">Inicio</a> ·
+            <a href="/modulo-arca/">Módulo ARCA</a> ·
+            <a href="/power-bi/">Power BI</a> ·
+            <a href="/descargas/">Descargas</a>
+        </p>
+    </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20Goxtech." target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+
+<script>
+const API = "https://goxtech.com.ar/arca_factusol/api";
+
+document.getElementById("contact-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const btn = document.getElementById("submit-btn");
+    const ok = document.getElementById("form-ok");
+    const err = document.getElementById("form-err");
+    ok.style.display = "none"; err.style.display = "none";
+    btn.disabled = true; btn.innerHTML = "Enviando...";
+
+    const fd = new FormData(ev.target);
+    const payload = Object.fromEntries(fd.entries());
+    payload.source = "contacto_page";
+
+    try {
+        const resp = await fetch(`${API}/contacts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        ok.style.display = "block";
+        ev.target.reset();
+    } catch (e) {
+        err.style.display = "block";
+        err.innerHTML = `Hubo un problema. <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20(form%20no%20envió)." target="_blank" style="color: var(--primary); font-weight: 700;">Probá por WhatsApp →</a>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Mandar mensaje <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>';
+    }
+});
+</script>
+</body>
+</html>

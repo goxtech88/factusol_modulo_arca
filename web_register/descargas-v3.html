@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Descargas — Productos Goxtech | Módulo ARCA y más</title>
+<meta name="description" content="Descargas gratis de Goxtech: Módulo ARCA Sync para Factusol, tableros Power BI base, herramientas y utilidades.">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #FF6B00; --primary-light: #FF9A44; --primary-dark: #E55F00;
+    --accent: #10B981; --warn: #f59e0b;
+    --bg-app: #F8FAFC; --bg-panel: #FFFFFF; --bg-soft: #FFF8F2;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D; --text-body: #1F1F23; --text-muted: #6B7280;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; max-width: 1200px; margin: 0 auto; gap: 12px; }
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 2px; }
+.nav-links a { color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-links a.active { color: var(--primary); background: rgba(255, 107, 0, 0.1); }
+.nav-cta { display: inline-flex; padding: 8px 14px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; }
+@media (max-width: 1000px) { .nav-links { display: none; } }
+@media (max-width: 600px) { .nav-cta { display: none; } }
+
+.hero { padding: 60px 0 40px; background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%); position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; top: -200px; right: -100px; width: 500px; height: 500px; background: rgba(255, 107, 0, 0.08); border-radius: 50%; filter: blur(80px); z-index: 0; }
+.hero-inner { position: relative; z-index: 1; max-width: 860px; }
+.hero h1 { font-size: 48px; font-weight: 800; line-height: 1.1; letter-spacing: -1px; margin-bottom: 18px; color: var(--text-main); }
+.hero h1 .accent { color: var(--primary); }
+.hero .lead { font-size: 18px; color: var(--text-muted); margin-bottom: 24px; }
+.hero-meta { display: inline-flex; align-items: center; gap: 8px; font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--accent); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); padding: 6px 12px; border-radius: 6px; margin-bottom: 24px; }
+.hero-meta .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+
+.filters { display: flex; gap: 8px; margin-top: 24px; flex-wrap: wrap; }
+.filter-btn { padding: 8px 14px; border: 1px solid var(--border); background: var(--bg-panel); color: var(--text-body); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: border-color 0.15s, color 0.15s; }
+.filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+.filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.section { padding: 60px 0; border-top: 1px solid var(--border); }
+.downloads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+.download-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 24px; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; display: flex; flex-direction: column; }
+.download-card:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: var(--shadow); }
+.download-card .category { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.download-card h3 { font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 6px; }
+.download-card .version { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+.download-card p { font-size: 14px; color: var(--text-muted); margin-bottom: 16px; flex: 1; }
+.download-card .meta { display: flex; gap: 12px; margin-bottom: 16px; font-size: 12px; color: var(--text-muted); font-family: "JetBrains Mono", monospace; }
+.download-card .actions { display: flex; gap: 8px; }
+.btn-primary { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform 0.1s, box-shadow 0.15s; box-shadow: 0 2px 8px rgba(255, 107, 0, 0.25); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255, 107, 0, 0.35); }
+.btn-secondary { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; background: var(--bg-panel); color: var(--text-body); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; transition: border-color 0.15s, color 0.15s; }
+.btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+.empty { text-align: center; padding: 80px 20px; color: var(--text-muted); }
+
+.footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; background: var(--bg-panel); color: var(--text-muted); font-size: 13px; }
+.footer a { color: var(--text-muted); text-decoration: none; margin: 0 12px; }
+.footer a:hover { color: var(--primary); }
+.wa-float { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4); z-index: 100; text-decoration: none; transition: transform 0.15s; }
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/factusol/">Factusol</a>
+            <a href="/modulo-arca/">Módulo ARCA</a>
+            <a href="/power-bi/">Power BI</a>
+            <a href="/consultoria/">Consultoría</a>
+            <a href="/industrias/">Industrias</a>
+            <a href="/descargas/" class="active">Descargas</a>
+            <a href="/contacto/">Contacto</a>
+        </div>
+        <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20Goxtech." target="_blank" rel="noopener" class="nav-cta">Hablemos →</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="wrap hero-inner">
+        <div class="hero-meta mono"><span class="dot"></span>Catálogo cargado desde el backend en vivo</div>
+        <h1>Descargas <span class="accent">disponibles</span>.</h1>
+        <p class="lead">Productos propios para PyMEs argentinas. Cada descarga incluye instalador, documentación y soporte por WhatsApp. Algunas requieren registro previo (gratuito) para activar la licencia.</p>
+        <div class="filters" id="filters">
+            <button class="filter-btn active" data-cat="">Todos</button>
+            <button class="filter-btn" data-cat="modulo">Módulos</button>
+            <button class="filter-btn" data-cat="dashboard">Dashboards BI</button>
+            <button class="filter-btn" data-cat="utility">Utilidades</button>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="wrap">
+        <div class="downloads-grid" id="grid">
+            <p style="grid-column: 1 / -1; text-align:center; color: var(--text-muted);">Cargando productos...</p>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="wrap">
+        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p style="margin-top: 8px;">
+            <a href="/">Inicio</a> ·
+            <a href="/modulo-arca/">Módulo ARCA</a> ·
+            <a href="/power-bi/">Power BI</a> ·
+            <a href="/contacto/">Contacto</a>
+        </p>
+    </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20descargas%20de%20Goxtech." target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+
+<script>
+const API = "https://goxtech.com.ar/arca_factusol/api";
+let ALL = [];
+let CURRENT_CAT = "";
+
+async function loadDownloads() {
+    try {
+        const resp = await fetch(`${API}/downloads`);
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        ALL = await resp.json();
+        render();
+    } catch (e) {
+        document.getElementById("grid").innerHTML = `<p style="grid-column:1/-1; text-align:center; color: var(--text-muted);">No se pudieron cargar las descargas en este momento. Probá <a href="https://wa.me/5493541651038?text=Hola!%20El%20catálogo%20de%20descargas%20no%20carga." target="_blank" style="color: var(--primary);">por WhatsApp</a>.</p>`;
+    }
+}
+
+function escapeHtml(s) {
+    if (s == null) return "";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function categoryLabel(c) {
+    return { "modulo": "Módulo", "dashboard": "Dashboard BI", "utility": "Utilidad" }[c] || (c || "Producto");
+}
+
+function render() {
+    const grid = document.getElementById("grid");
+    const items = CURRENT_CAT
+        ? ALL.filter(d => (d.category || "").toLowerCase().includes(CURRENT_CAT))
+        : ALL;
+
+    if (!items.length) {
+        grid.innerHTML = `<div class="empty" style="grid-column:1/-1;">Sin productos en esta categoría.</div>`;
+        return;
+    }
+
+    grid.innerHTML = items.map(d => {
+        const cat = categoryLabel(d.category);
+        const ver = d.version ? `v${escapeHtml(d.version)}` : "";
+        const desc = escapeHtml(d.description || d.tagline || "");
+        const size = d.file_size_mb ? `${d.file_size_mb} MB` : (d.file_size ? `${(d.file_size/1048576).toFixed(1)} MB` : "—");
+        const cnt = (d.downloads_count != null) ? `${d.downloads_count.toLocaleString("es-AR")} descargas` : "";
+        const slug = d.slug || "";
+        const hasLanding = ["modulo-arca","power-bi","dashboard-ventas","dashboard-deudores","dashboard-stock"].includes(slug);
+        const requiresRegister = d.requires_login;
+        const downloadHref = requiresRegister
+            ? `/arca_factusol/?download=${d.id}`
+            : `${API}/downloads/file/${d.id}`;
+
+        return `
+            <div class="download-card" data-cat="${escapeHtml(d.category || "")}">
+                <div class="category">${escapeHtml(cat)}</div>
+                <h3>${escapeHtml(d.title || d.name || "Sin titulo")}</h3>
+                <div class="version">${ver}${ver && slug ? " · " : ""}${escapeHtml(slug)}</div>
+                <p>${desc}</p>
+                <div class="meta">
+                    <span>📦 ${size}</span>
+                    ${cnt ? `<span>⬇ ${cnt}</span>` : ""}
+                </div>
+                <div class="actions">
+                    <a href="${downloadHref}" class="btn-primary">
+                        ${requiresRegister ? "Registrarme y descargar" : "Descargar"}
+                        ↓
+                    </a>
+                    ${hasLanding ? `<a href="/${slug.startsWith("dashboard") ? "power-bi" : slug}/" class="btn-secondary">Ver detalle</a>` : ""}
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+document.getElementById("filters").addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".filter-btn");
+    if (!btn) return;
+    CURRENT_CAT = btn.dataset.cat || "";
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b === btn));
+    render();
+});
+
+loadDownloads();
+</script>
+</body>
+</html>

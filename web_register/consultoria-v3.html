@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consultoría — Servicios tecnológicos para PyMEs | Goxtech</title>
+<meta name="description" content="Servicios concretos de Goxtech: Factusol, Tienda Nube + Gestión Nube, Meta Ads, infraestructura Proxmox, ERPs custom. Partner oficial.">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #FF6B00; --primary-light: #FF9A44; --primary-dark: #E55F00;
+    --accent: #10B981; --warn: #f59e0b;
+    --bg-app: #F8FAFC; --bg-panel: #FFFFFF; --bg-soft: #FFF8F2;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D; --text-body: #1F1F23; --text-muted: #6B7280;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+.nav { position: sticky; top: 0; z-index: 50; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; max-width: 1200px; margin: 0 auto; gap: 12px; }
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 2px; }
+.nav-links a { color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-links a.active { color: var(--primary); background: rgba(255, 107, 0, 0.1); }
+.nav-cta { display: inline-flex; padding: 8px 14px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 13px; }
+@media (max-width: 1000px) { .nav-links { display: none; } }
+@media (max-width: 600px) { .nav-cta { display: none; } }
+
+.hero { padding: 60px 0 40px; background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%); position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; top: -200px; right: -100px; width: 500px; height: 500px; background: rgba(255, 107, 0, 0.08); border-radius: 50%; filter: blur(80px); }
+.hero-inner { position: relative; z-index: 1; max-width: 860px; }
+.hero h1 { font-size: 48px; font-weight: 800; line-height: 1.1; letter-spacing: -1px; margin-bottom: 18px; color: var(--text-main); }
+.hero h1 .accent { color: var(--primary); }
+.hero .lead { font-size: 18px; color: var(--text-muted); max-width: 720px; }
+
+.section { padding: 70px 0; border-top: 1px solid var(--border); }
+.section-header { max-width: 760px; margin-bottom: 40px; }
+.section-eyebrow { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px; }
+.section h2 { font-size: 32px; font-weight: 800; line-height: 1.2; letter-spacing: -0.5px; color: var(--text-main); margin-bottom: 12px; }
+.section h2 .accent { color: var(--primary); }
+.section-lead { font-size: 16px; color: var(--text-muted); }
+
+/* Service detail blocks */
+.service-block {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px; margin-bottom: 24px;
+    display: grid; grid-template-columns: 1fr 2fr; gap: 36px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.service-block:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+@media (max-width: 800px) { .service-block { grid-template-columns: 1fr; gap: 24px; padding: 28px; } }
+
+.service-block .head .icon { width: 56px; height: 56px; background: linear-gradient(135deg, var(--bg-soft), rgba(255, 107, 0, 0.1)); border: 1px solid rgba(255, 107, 0, 0.15); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--primary); margin-bottom: 16px; }
+.service-block .head h3 { font-size: 24px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; letter-spacing: -0.3px; }
+.service-block .head .tagline { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--primary); margin-bottom: 16px; }
+.service-block .head .badge { display: inline-flex; align-items: center; gap: 6px; font-family: "JetBrains Mono", monospace; font-size: 10px; color: var(--accent); background: rgba(16, 185, 129, 0.1); padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.2); margin-bottom: 16px; }
+
+.service-block .body p.desc { font-size: 15px; color: var(--text-body); margin-bottom: 18px; line-height: 1.6; }
+.service-block .body h4 { font-size: 12px; font-family: "JetBrains Mono", monospace; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; margin-top: 16px; }
+.service-block .body ul { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 500px) { .service-block .body ul { grid-template-columns: 1fr; } }
+.service-block .body li { font-size: 14px; color: var(--text-body); padding-left: 22px; position: relative; }
+.service-block .body li::before { content: "✓"; color: var(--accent); font-weight: 700; position: absolute; left: 0; top: 0; }
+.service-block .cta { margin-top: 20px; }
+.btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform 0.1s, box-shadow 0.15s; box-shadow: 0 2px 8px rgba(255, 107, 0, 0.25); }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255, 107, 0, 0.35); }
+.btn-link { color: var(--primary); font-size: 14px; font-weight: 700; text-decoration: none; margin-left: 12px; }
+.btn-link:hover { text-decoration: underline; }
+
+/* Process */
+.process-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+@media (max-width: 880px) { .process-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 540px) { .process-grid { grid-template-columns: 1fr; } }
+.process-step { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 22px; transition: border-color 0.15s, transform 0.15s; }
+.process-step:hover { border-color: var(--primary); transform: translateY(-2px); }
+.process-step .num { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--primary); font-weight: 700; margin-bottom: 12px; }
+.process-step h4 { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
+.process-step p { font-size: 13.5px; color: var(--text-muted); }
+
+/* CTA */
+.cta-final { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border-radius: 16px; padding: 48px 32px; text-align: center; color: #fff; box-shadow: 0 20px 60px rgba(255, 107, 0, 0.15); }
+.cta-final h3 { font-size: 28px; font-weight: 800; margin-bottom: 12px; color: #fff; }
+.cta-final p { color: rgba(255, 255, 255, 0.92); margin-bottom: 24px; max-width: 540px; margin-left: auto; margin-right: auto; }
+.btn-wa { display: inline-flex; align-items: center; gap: 8px; padding: 13px 24px; background: #25D366; color: #fff; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; }
+
+.footer { border-top: 1px solid var(--border); padding: 40px 0; text-align: center; background: var(--bg-panel); color: var(--text-muted); font-size: 13px; }
+.footer a { color: var(--text-muted); text-decoration: none; margin: 0 12px; }
+.footer a:hover { color: var(--primary); }
+.wa-float { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4); z-index: 100; text-decoration: none; transition: transform 0.15s; }
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/factusol/">Factusol</a>
+            <a href="/modulo-arca/">Módulo ARCA</a>
+            <a href="/power-bi/">Power BI</a>
+            <a href="/consultoria/" class="active">Consultoría</a>
+            <a href="/industrias/">Industrias</a>
+            <a href="/descargas/">Descargas</a>
+            <a href="/contacto/">Contacto</a>
+        </div>
+        <a href="https://wa.me/5493541651038" target="_blank" rel="noopener" class="nav-cta">Hablemos →</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="wrap hero-inner">
+        <h1>Consultoría <span class="accent">concreta</span>.</h1>
+        <p class="lead">Estos son los servicios que ofrecemos. No es una grilla genérica de "transformación digital" — son trabajos puntuales con alcance, costos y tiempos definidos. Hacé scroll y elegí el que aplica a vos.</p>
+    </div>
+</section>
+
+<section class="section" style="background: var(--bg-panel);">
+    <div class="wrap">
+
+        <!-- Tienda Nube + Gestión Nube -->
+        <div class="service-block" id="tienda-nube">
+            <div class="head">
+                <div class="icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                </div>
+                <span class="badge"><span style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></span> Partner oficial</span>
+                <h3>Tienda Nube + Gestión Nube</h3>
+                <div class="tagline mono">▸ ecommerce + erp · stock unificado</div>
+            </div>
+            <div class="body">
+                <p class="desc">Conectamos tu tienda online con tu ERP. El stock se sincroniza solo, las facturas se emiten desde un solo lado y los pedidos del ecommerce caen automáticamente en tu sistema de gestión.</p>
+                <h4>Lo que incluye</h4>
+                <ul>
+                    <li>Setup completo de la tienda</li>
+                    <li>Diseño + plantilla responsive</li>
+                    <li>Integración con Gestión Nube</li>
+                    <li>Carga inicial del catálogo</li>
+                    <li>Sincronización de stock</li>
+                    <li>Medios de pago + envíos</li>
+                    <li>Tracking GA4 + Meta Pixel</li>
+                    <li>Capacitación al equipo</li>
+                </ul>
+                <div class="cta">
+                    <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20info%20de%20Tienda%20Nube%20%2B%20Gestión%20Nube." target="_blank" rel="noopener" class="btn-primary">Quiero esto →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Factusol -->
+        <div class="service-block" id="factusol">
+            <div class="head">
+                <div class="icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg>
+                </div>
+                <h3>Factusol · ERP español adaptado a AR</h3>
+                <div class="tagline mono">▸ implementacion + soporte + modulos custom</div>
+            </div>
+            <div class="body">
+                <p class="desc">Factusol es un ERP español robusto que adaptamos para la operación argentina (impuestos, facturación electrónica AFIP, importadores, multi-moneda). Lo implementamos desde cero o lo retomamos si ya lo tenés con problemas.</p>
+                <h4>Lo que incluye</h4>
+                <ul>
+                    <li>Análisis de tu operación actual</li>
+                    <li>Instalación y parametrización</li>
+                    <li>Migración de datos legados</li>
+                    <li>Capacitación a usuarios</li>
+                    <li>Módulo ARCA Sync (AFIP)</li>
+                    <li>Configuración multi-PV / multi-usuario</li>
+                    <li>Soporte continuo por WhatsApp</li>
+                    <li>Actualizaciones y backups</li>
+                </ul>
+                <div class="cta">
+                    <a href="/factusol/" class="btn-primary">Ver detalle Factusol</a>
+                    <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20info%20sobre%20Factusol." target="_blank" rel="noopener" class="btn-link">o por WhatsApp →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meta Ads -->
+        <div class="service-block" id="meta-ads">
+            <div class="head">
+                <div class="icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path></svg>
+                </div>
+                <h3>Meta Ads · tráfico de performance</h3>
+                <div class="tagline mono">▸ facebook + instagram · pixel + ga4 · roas trackeado</div>
+            </div>
+            <div class="body">
+                <p class="desc">Campañas de Facebook e Instagram para ecommerce y generación de leads. Configuramos Pixel, eventos de conversión y tableros de seguimiento. Optimizamos cada 7-14 días con datos reales — no con "vibes".</p>
+                <h4>Lo que incluye</h4>
+                <ul>
+                    <li>Auditoría de cuenta publicitaria</li>
+                    <li>Setup de Pixel + Conversions API</li>
+                    <li>Eventos de conversión estándar</li>
+                    <li>Estructura de campañas (TOFU/MOFU/BOFU)</li>
+                    <li>Creatividades base (estáticas/video)</li>
+                    <li>A/B testing semanal</li>
+                    <li>Reporte mensual con ROAS real</li>
+                    <li>Dashboard Power BI opcional</li>
+                </ul>
+                <div class="cta">
+                    <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20info%20de%20Meta%20Ads." target="_blank" rel="noopener" class="btn-primary">Quiero esto →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Power BI -->
+        <div class="service-block" id="power-bi">
+            <div class="head">
+                <div class="icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <h3>Power BI · tableros a medida</h3>
+                <div class="tagline mono">▸ erp → dax (es-ar) → decisión</div>
+            </div>
+            <div class="body">
+                <p class="desc">Conectamos tu ERP (Factusol, Gestión Nube, SQL Server, MySQL, etc.) a Power BI. Modelo semántico documentado, métricas DAX en español argentino, refresh programado, workspaces con permisos por rol.</p>
+                <h4>Lo que incluye</h4>
+                <ul>
+                    <li>Auditoría de datos fuente</li>
+                    <li>Modelo semántico estrella</li>
+                    <li>Medidas DAX documentadas</li>
+                    <li>3 tableros base (Ventas/Cobros/Stock)</li>
+                    <li>Tableros custom a pedido</li>
+                    <li>Refresh programado (gateway)</li>
+                    <li>Workspace + permisos</li>
+                    <li>Capacitación a usuarios</li>
+                </ul>
+                <div class="cta">
+                    <a href="/power-bi/" class="btn-primary">Ver tableros base</a>
+                    <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20info%20de%20tableros%20Power%20BI." target="_blank" rel="noopener" class="btn-link">o por WhatsApp →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Infraestructura -->
+        <div class="service-block" id="infraestructura">
+            <div class="head">
+                <div class="icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"></path></svg>
+                </div>
+                <h3>Infraestructura · servidores y RDP</h3>
+                <div class="tagline mono">▸ proxmox · linux · backups · acceso remoto</div>
+            </div>
+            <div class="body">
+                <p class="desc">Servidores propios o en la nube, virtualización con Proxmox, acceso remoto seguro vía RDP, backups automatizados y monitoreo. Ideal cuando tu Factusol crece y necesita estar siempre disponible.</p>
+                <h4>Lo que incluye</h4>
+                <ul>
+                    <li>Diagnóstico y diseño</li>
+                    <li>Setup Proxmox / VPS</li>
+                    <li>Configuración RDP segura</li>
+                    <li>Backups automáticos diarios</li>
+                    <li>Reverse proxy + SSL (Nginx, Hestia)</li>
+                    <li>Email corporativo</li>
+                    <li>Dominios + DNS</li>
+                    <li>Soporte y monitoreo</li>
+                </ul>
+                <div class="cta">
+                    <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20info%20de%20infraestructura." target="_blank" rel="noopener" class="btn-primary">Quiero esto →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Goxtech Labs -->
+        <div class="service-block" id="labs">
+            <div class="head">
+                <div class="icon">
+                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                </div>
+                <span class="badge"><span style="width:6px;height:6px;background:var(--warn);border-radius:50%;"></span> Software a medida</span>
+                <h3>Goxtech Labs · desarrollos custom</h3>
+                <div class="tagline mono">▸ python · fastapi · sqlalchemy · sqlite/postgres</div>
+            </div>
+            <div class="body">
+                <p class="desc">Cuando lo que necesitás no existe en el mercado, lo construimos. APIs internas, automatizaciones, scrapers, módulos para Factusol, integraciones con AFIP/ARCA. Stack moderno y código revisable.</p>
+                <h4>Casos típicos</h4>
+                <ul>
+                    <li>Módulos custom para Factusol</li>
+                    <li>Integraciones API (AFIP, MP, etc.)</li>
+                    <li>Automatización de procesos</li>
+                    <li>Scrapers + ETLs</li>
+                    <li>CRMs internos a medida</li>
+                    <li>Bots de WhatsApp</li>
+                    <li>Apps de escritorio (PyWebView)</li>
+                    <li>APIs REST FastAPI</li>
+                </ul>
+                <div class="cta">
+                    <a href="https://wa.me/5493541651038?text=Hola!%20Tengo%20un%20proyecto%20a%20medida." target="_blank" rel="noopener" class="btn-primary">Contame tu proyecto →</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Proceso · cómo arrancamos</div>
+            <h2>Del primer mensaje al <span class="accent">MVP</span>.</h2>
+            <p class="section-lead">Sin contratos eternos. Empezamos chico, validamos, escalamos.</p>
+        </div>
+
+        <div class="process-grid">
+            <div class="process-step">
+                <div class="num">01 · Día 0</div>
+                <h4>WhatsApp / email</h4>
+                <p>Contás lo que necesitás. Si es algo que hacemos, agendamos una llamada de 30 min.</p>
+            </div>
+            <div class="process-step">
+                <div class="num">02 · Semana 1</div>
+                <h4>Discovery</h4>
+                <p>Vemos tu operación, datos, KPIs y restricciones. Salimos con un plan inicial.</p>
+            </div>
+            <div class="process-step">
+                <div class="num">03 · Semana 1-4</div>
+                <h4>Propuesta</h4>
+                <p>Documento técnico con alcance, hitos, costos y tiempos. Si va, firmamos.</p>
+            </div>
+            <div class="process-step">
+                <div class="num">04 · Mes 1-2</div>
+                <h4>Entrega</h4>
+                <p>MVP funcionando con vos. Después: soporte continuo y mejoras incrementales.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section" style="background: var(--bg-panel);">
+    <div class="wrap">
+        <div class="cta-final">
+            <h3>¿No estás seguro qué necesitás?</h3>
+            <p>Llámanos sin formato. 30 minutos por WhatsApp y te decimos qué servicio aplica — o si no aplica ninguno.</p>
+            <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20una%20consultoría%20gratis%20para%20entender%20qué%20necesito." class="btn-wa" target="_blank" rel="noopener">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+                Hablemos por WhatsApp
+            </a>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="wrap">
+        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p style="margin-top: 8px;">
+            <a href="/">Inicio</a> ·
+            <a href="/factusol/">Factusol</a> ·
+            <a href="/modulo-arca/">Módulo ARCA</a> ·
+            <a href="/power-bi/">Power BI</a> ·
+            <a href="/contacto/">Contacto</a>
+        </p>
+    </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/5493541651038" target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+</body>
+</html>
