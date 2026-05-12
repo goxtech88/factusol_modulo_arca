@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin · Metadata Productos | Goxtech</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 :root {
     --primary: #FF6B00;
@@ -147,6 +148,13 @@ button.secondary:hover:not(:disabled) {
 .brand-bar .crumb {
     font-size: 13px; color: var(--text-muted);
 }
+
+/* Lucide base — coherencia con resto del proyecto */
+[data-lucide] { width: 1em; height: 1em; stroke-width: 2; vertical-align: middle; flex-shrink: 0; }
+.login-icon [data-lucide] { width: 32px; height: 32px; color: var(--primary); }
+header h1 [data-lucide] { width: 24px; height: 24px; color: var(--primary); }
+button [data-lucide] { width: 14px; height: 14px; stroke-width: 2.5; }
+header .warn [data-lucide], .info-icon [data-lucide] { width: 16px; height: 16px; }
 </style>
 </head>
 <body>
@@ -156,7 +164,7 @@ button.secondary:hover:not(:disabled) {
     <!-- Login -->
     <div id="login-section" class="login-card">
         <div style="text-align: center; margin-bottom: 20px;">
-            <div style="font-size: 32px; margin-bottom: 8px;">🔒</div>
+            <div class="login-icon" style="margin-bottom: 8px;"><i data-lucide="lock-keyhole"></i></div>
             <h2>Admin · Productos</h2>
             <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
                 Editor de metadata para landings.
@@ -180,10 +188,10 @@ button.secondary:hover:not(:disabled) {
             <span class="crumb">/ Admin / Metadata productos</span>
         </div>
         <header>
-            <h1>📦 Metadata de productos</h1>
+            <h1><i data-lucide="package"></i> Metadata de productos</h1>
             <p>Cargá tagline, video demo, screenshots, requisitos y mensaje custom de WhatsApp para cada producto. Los datos aparecen automáticamente en las landings.</p>
             <div class="warn">
-                <strong>⚠ Heads up</strong> — Esta vista solo edita metadata visual (tagline, video, etc). Para crear/borrar productos, gestionar archivos ZIP o cargar imágenes, seguí usando el admin React principal.
+                <i data-lucide="triangle-alert" style="color: var(--warn); width: 16px; height: 16px; vertical-align: middle;"></i> <strong>Heads up</strong> — Esta vista solo edita metadata visual (tagline, video, etc). Para crear/borrar productos, gestionar archivos ZIP o cargar imágenes, seguí usando el admin React principal.
             </div>
         </header>
 
@@ -255,6 +263,7 @@ function renderProducts(products) {
     cont.innerHTML = products.map(p => `
         <div class="product-card" data-id="${p.id}">
             <h3>
+                <i data-lucide="box" style="width:18px;height:18px;color:var(--primary);vertical-align:middle;"></i>
                 ${escapeHtml(p.title)}
                 <span class="slug">/${escapeHtml(p.slug)}</span>
             </h3>
@@ -285,12 +294,13 @@ function renderProducts(products) {
             </div>
 
             <div class="actions-row">
-                <button class="secondary" onclick="cancelEdit(${p.id})">Cancelar</button>
-                <button onclick="saveProduct(${p.id})">Guardar</button>
+                <button class="secondary" onclick="cancelEdit(${p.id})"><i data-lucide="undo-2"></i> Cancelar</button>
+                <button onclick="saveProduct(${p.id})"><i data-lucide="check"></i> Guardar</button>
             </div>
         </div>
     `).join("");
     window._originals = products.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
+    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 function cancelEdit(id) {
@@ -356,7 +366,9 @@ async function saveProduct(id) {
     } catch (err) {
         toast("Error al guardar: " + err.message, "error");
     } finally {
-        btn.disabled = false; btn.textContent = "Guardar";
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="check"></i> Guardar';
+        if (typeof lucide !== "undefined") lucide.createIcons();
     }
 }
 
@@ -377,6 +389,9 @@ if (TOKEN) {
         })
         .catch(() => {});
 }
+
+// Render inicial de Lucide
+if (typeof lucide !== "undefined") lucide.createIcons();
 </script>
 </body>
 </html>
