@@ -51,6 +51,11 @@ def get_invoices(
     elif date_filter == "last7":
         fecha_desde = today - timedelta(days=6)
         fecha_hasta = today
+    elif date_filter == "this_week":
+        # Semana actual: lunes a domingo (semana ISO)
+        dow = today.weekday()  # 0 = lunes, 6 = domingo
+        fecha_desde = today - timedelta(days=dow)
+        fecha_hasta = fecha_desde + timedelta(days=6)
     elif date_filter == "this_month":
         fecha_desde = today.replace(day=1)
         fecha_hasta = today

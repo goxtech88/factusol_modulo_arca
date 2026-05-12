@@ -11,7 +11,7 @@ const InvoicesComponent = {
     _caeStatuses: {},       // caché de status CAE por "TIPFAC-CODFAC"
     _sortCol: 'CODFAC',
     _sortAsc: false,
-    _dateFilter: 'all',     // all | today | yesterday | last7
+    _dateFilter: 'today',   // all | today | yesterday | last7 | this_week | this_month | last_month | this_year
     _fopfacFilters: new Set(),  // códigos de formas de pago seleccionadas (vacío = todas)
     _paymentMethods: [],        // cache de formas de pago
     _fopfacAllSelected: true,   // si todas están tildadas

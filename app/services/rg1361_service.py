@@ -254,6 +254,111 @@ def _build_cabecera_tipo2(
     return line
 
 
+# ─── Archivo VENTAS (Libro IVA Ventas electronico) ──────────────────────────
+
+def _build_ventas_tipo1(
+    *,
+    fecha: date,
+    tipo_cbte: int,
+    pv: int,
+    nro_cbte: int,
+    cuit_cliente_raw: str,
+    razon_social: str,
+    imp_total: float,
+    imp_no_grav: float,
+    imp_neto: float,
+    alicuota_iva: float,    # porcentaje (ej 21.0)
+    imp_iva: float,
+    imp_exento: float,
+    cfecli: int,
+    cae: str,
+    cae_vto: str,
+) -> str:
+    """Registro tipo 1 del archivo VENTAS - 308 caracteres."""
+    cod_doc, nro_doc_12 = _normalize_doc(cuit_cliente_raw)
+    # VENTAS pide 20 chars para el numero de documento (no 12 como CABECERA)
+    nro_doc = str(int(nro_doc_12) if nro_doc_12.isdigit() else 0).zfill(20)
+
+    # Alicuota: 5 chars, 3 enteros + 2 decimales sin separador
+    # Ej: 21.00 -> "02100", 10.50 -> "01050", 0.00 -> "00000"
+    try:
+        a = float(alicuota_iva or 0)
+    except (TypeError, ValueError):
+        a = 0.0
+    alicuota_str = str(int(round(a * 100))).zfill(5)[-5:]
+
+    parts = [
+        "1",                                # 1) Tipo registro
+        _date_yyyymmdd(fecha),              # 2) Fecha cbte (8)
+        _num(tipo_cbte, 2),                 # 3) Tipo cbte
+        " ",                                # 4) Controlador fiscal
+        _num(pv, 4),                        # 5) Punto de venta
+        _num(nro_cbte, 8),                  # 6) Nro cbte desde
+        _num(nro_cbte, 8),                  # 7) Nro cbte hasta
+        cod_doc,                            # 8) Cod doc comprador (2)
+        nro_doc,                            # 9) Nro identif comprador (20)
+        _ascii(razon_social, 30),           # 10) Apellido/denominacion (30)
+        _amount(imp_total),                 # 11) Importe total operacion (15)
+        _amount(imp_no_grav),               # 12) Conceptos no gravados (15)
+        _amount(imp_neto),                  # 13) Neto gravado (15)
+        alicuota_str,                       # 14) Alicuota IVA (5)
+        _amount(imp_iva),                   # 15) Impuesto liquidado (15)
+        _amount(0),                         # 16) IVA RNI / No categorizados
+        _amount(imp_exento),                # 17) Operaciones exentas
+        _amount(0),                         # 18) Percepciones nacionales
+        _amount(0),                         # 19) Percepcion IIBB
+        _amount(0),                         # 20) Percepcion municipal
+        _amount(0),                         # 21) Impuestos internos
+        _resp_from_cfecli(cfecli),          # 22) Tipo responsable
+        "PES",                              # 23) Cod moneda
+        "0001000000",                       # 24) Tipo cambio (1.000000)
+        "1",                                # 25) Cant alicuotas IVA (1 char)
+        " ",                                # 26) Cod operacion
+        " " * 16,                           # 27) CAI (16 chars, no aplica para CAE)
+        _date_yyyymmdd(cae_vto),            # 28) Fecha vencimiento (8)
+        "0" * 8,                            # 29) Fecha anulacion (8)
+        " " * 20,                           # 30) Info adicional (20)
+    ]
+    line = "".join(parts)
+    # El registro debe tener 308 chars (pos 1-308)
+    if len(line) != 308:
+        line = line.ljust(308)[:308]
+    return line
+
+
+def _build_ventas_tipo2(
+    *,
+    periodo_yyyymm: str,
+    cant_tipo1: int,
+    cuit_emisor: str,
+    totales: dict,
+) -> str:
+    """Registro tipo 2 (resumen) del archivo VENTAS - 308 caracteres."""
+    parts = [
+        "2",                                      # 1) Tipo registro
+        periodo_yyyymm,                           # 2) Periodo AAAAMM (6)
+        " " * 11,                                 # 3) Relleno hasta pos 18
+        _num(cant_tipo1, 10),                     # 4) Cantidad registros tipo 1 (10)
+        " " * 8,                                  # 5) Relleno hasta pos 36
+        cuit_emisor.zfill(11),                    # 6) CUIT informante (11) pos 37-47
+        " " * 6,                                  # 7) Relleno hasta pos 53
+        _amount(totales.get("imp_total", 0)),     # 8) Total importe operacion
+        _amount(totales.get("imp_no_grav", 0)),   # 9) Total no gravado
+        _amount(totales.get("imp_neto", 0)),      # 10) Total neto gravado
+        " " * 6,                                  # 11) Relleno hasta pos 104
+        _amount(totales.get("imp_iva", 0)),       # 12) Total impuesto liquidado
+        _amount(0),                               # 13) Total IVA RNI
+        _amount(totales.get("imp_exento", 0)),    # 14) Total exento
+        _amount(0),                               # 15) Total percepciones nacionales
+        _amount(0),                               # 16) Total percepcion IIBB
+        _amount(0),                               # 17) Total percepcion municipal
+        _amount(0),                               # 18) Total impuestos internos
+    ]
+    line = "".join(parts)
+    line = line.ljust(308)[:308]  # padding al ancho del tipo 1
+    return line
+
+
 def _build_detalle_tipo1(
     *,
     fecha: date,
@@ -359,6 +464,7 @@ def generate_files(
 
     cabecera_lines: list[str] = []
     detalle_lines: list[str] = []
+    ventas_lines: list[str] = []
     totales = {"imp_total": 0.0, "imp_neto": 0.0, "imp_iva": 0.0, "imp_no_grav": 0.0, "imp_exento": 0.0}
 
     for log in logs:
@@ -459,6 +565,31 @@ def generate_files(
                 descripcion="Comprobante",
             ))
 
+        # ── VENTAS tipo 1: 1 registro por cbte (alicuota principal del log) ──
+        # Si neto > 0, calcular alicuota implicita; si no, asumir 0 (exento)
+        if imp_neto > 0:
+            alicuota_calc = round((imp_iva / imp_neto) * 100, 2)
+        else:
+            # Si no hay neto, usar la alicuota mas comun encontrada en lineas (si hay)
+            alicuota_calc = round(sorted(alicuotas_set)[0], 2) if alicuotas_set else 0.0
+        ventas_lines.append(_build_ventas_tipo1(
+            fecha=fecha_cbte,
+            tipo_cbte=log.tipo_comprobante,
+            pv=log.punto_venta,
+            nro_cbte=log.voucher_number,
+            cuit_cliente_raw=nif,
+            razon_social=razon,
+            imp_total=imp_total,
+            imp_no_grav=imp_no_grav,
+            imp_neto=imp_neto,
+            alicuota_iva=alicuota_calc,
+            imp_iva=imp_iva,
+            imp_exento=imp_exento,
+            cfecli=cfecli,
+            cae=log.cae or "",
+            cae_vto=log.cae_vto or "",
+        ))
+
         # Totales del tipo 2
         totales["imp_total"] += imp_total
         totales["imp_neto"] += imp_neto
@@ -473,16 +604,24 @@ def generate_files(
         cuit_emisor=cuit_emisor,
         totales=totales,
     ))
+    ventas_lines.append(_build_ventas_tipo2(
+        periodo_yyyymm=periodo,
+        cant_tipo1=len(logs),
+        cuit_emisor=cuit_emisor,
+        totales=totales,
+    ))
 
     # Unir con CRLF (0D0A) y agregar CRLF final tras cada registro
     cabecera_bytes = ("\r\n".join(cabecera_lines) + "\r\n").encode("ascii", errors="replace")
     detalle_bytes = ("\r\n".join(detalle_lines) + ("\r\n" if detalle_lines else "")).encode("ascii", errors="replace")
+    ventas_bytes = ("\r\n".join(ventas_lines) + "\r\n").encode("ascii", errors="replace")
 
     return {
         "periodo": periodo,
         "count": len(logs),
         "cabecera": cabecera_bytes,
         "detalle": detalle_bytes,
+        "ventas": ventas_bytes,
         "totales": totales,
         "cuit_emisor": cuit_emisor,
     }
@@ -497,8 +636,8 @@ def generate_zip(
     user_id: Optional[int] = None,
 ) -> tuple[bytes, str, int]:
     """
-    Empaqueta CABECERA_AAAAMM.txt y DETALLE_AAAAMM.txt en un ZIP en memoria.
-    Devuelve (zip_bytes, filename, count).
+    Empaqueta CABECERA_AAAAMM.txt + DETALLE_AAAAMM.txt + VENTAS_AAAAMM.txt
+    en un ZIP en memoria. Devuelve (zip_bytes, filename, count).
     """
     data = generate_files(db, year=year, month=month, pv=pv, user_id=user_id)
     periodo = data["periodo"]
@@ -507,6 +646,7 @@ def generate_zip(
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr(f"CABECERA_{periodo}.txt", data["cabecera"])
         zf.writestr(f"DETALLE_{periodo}.txt", data["detalle"])
+        zf.writestr(f"VENTAS_{periodo}.txt", data["ventas"])
 
     pv_suffix = f"_PV{pv:04d}" if pv else ""
     filename = f"RG1361_{periodo}{pv_suffix}.zip"

@@ -201,16 +201,16 @@
                             </div>
                             <div class="toolbar-center">
                                 <div class="date-segmenter">
-                                    <button class="date-pill" data-filter="today"
+                                    <button class="date-pill active" data-filter="today"
                                         onclick="InvoicesComponent.setDateFilter('today')">HOY</button>
+                                    <button class="date-pill" data-filter="this_week"
+                                        onclick="InvoicesComponent.setDateFilter('this_week')">ESTA SEMANA</button>
                                     <button class="date-pill" data-filter="this_month"
                                         onclick="InvoicesComponent.setDateFilter('this_month')">ESTE MES</button>
                                     <button class="date-pill" data-filter="last_month"
                                         onclick="InvoicesComponent.setDateFilter('last_month')">MES PASADO</button>
                                     <button class="date-pill" data-filter="this_year"
                                         onclick="InvoicesComponent.setDateFilter('this_year')">ESTE AÑO</button>
-                                    <button class="date-pill active" data-filter="all"
-                                        onclick="InvoicesComponent.setDateFilter('all')">TODO</button>
                                 </div>
                             </div>
                             <div class="toolbar-right">
@@ -417,8 +417,24 @@
                     <section id="section-cae-logs" class="section hidden">
                         <div class="toolbar">
                             <div class="toolbar-left">
-                                <label>Período:</label>
-                                <div id="cae-month-filter"></div>
+                                <div class="date-segmenter">
+                                    <button class="date-pill active" data-filter="today"
+                                        onclick="CAELogsComponent.setDateFilter('today')">HOY</button>
+                                    <button class="date-pill" data-filter="this_week"
+                                        onclick="CAELogsComponent.setDateFilter('this_week')">ESTA SEMANA</button>
+                                    <button class="date-pill" data-filter="this_month"
+                                        onclick="CAELogsComponent.setDateFilter('this_month')">ESTE MES</button>
+                                    <button class="date-pill" data-filter="last_month"
+                                        onclick="CAELogsComponent.setDateFilter('last_month')">MES PASADO</button>
+                                    <button class="date-pill" data-filter="this_year"
+                                        onclick="CAELogsComponent.setDateFilter('this_year')">ESTE AÑO</button>
+                                    <button class="date-pill" data-filter="all"
+                                        onclick="CAELogsComponent.setDateFilter('all')">TODO</button>
+                                </div>
+                                <input type="search" id="cae-search" class="select-styled"
+                                    placeholder="Buscar Nº, cliente, CAE..."
+                                    style="margin-left:8px; min-width:240px"
+                                    oninput="CAELogsComponent.setSearch(this.value)">
                             </div>
                             <div class="toolbar-right">
                                 <button class="btn btn-secondary" onclick="CAELogsComponent.load()" title="Recargar la lista de CAE Emitidos desde el servidor">
@@ -430,7 +446,7 @@
                                 <button class="btn btn-secondary" onclick="CAELogsComponent.exportRG1361()" title="Exportar CABECERA.txt y DETALLE.txt según RG (AFIP) 1361 - Duplicado Electrónico">
                                     <i data-lucide="file-down"></i> Exportar RG 1361
                                 </button>
-                                <input type="date" id="cae-cierre-date" class="select-styled">
+                                <input type="date" id="cae-cierre-date" class="select-styled" title="Fecha para el Informe Cierre Z">
                                 <button class="btn btn-primary" onclick="CAELogsComponent.printCierreZ()">
                                     <i data-lucide="printer"></i> Informe Cierre Z
                                 </button>

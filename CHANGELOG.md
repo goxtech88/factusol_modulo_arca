@@ -1,5 +1,25 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.6.5 (2026-05-12)
+
+### RG 1361 - Archivo VENTAS
+- **Tercer archivo agregado al exportador RG 1361: `VENTAS_AAAAMM.txt`** (Libro IVA Ventas electronico segun Anexo II RG 1361). Algunos validadores tributarios y portales de proveedores (ej PAMI ACE) lo requieren ademas de CABECERA y DETALLE.
+  - 30 campos / 308 chars por registro tipo 1 (1 linea por comprobante con alicuota IVA principal).
+  - Registro tipo 2 con resumen del periodo y totales.
+  - El ZIP que descarga el boton "Exportar RG 1361" ahora incluye los 3 archivos.
+
+### UX - Filtros y busqueda
+- **Nuevo filtro ESTA SEMANA en Facturas** (lunes a domingo de la semana actual).
+- **Default de Facturas cambiado a HOY** (antes mostraba todas las facturas — al abrir cargaba muchos datos y se sentia lento).
+- **Boton TODO removido de Facturas**: cargar el historico entero contra la base de Factusol (MS Access) congelaba la UI. La facturacion se usa como maximo durante la semana, asi que dejamos hasta "ESTE AÑO" como maximo.
+- **Filtros rapidos por fecha en CAE Emitidos**: HOY / ESTA SEMANA / ESTE MES / MES PASADO / ESTE AÑO / TODO (antes solo habia un dropdown por mes especifico). Default arranca en HOY. Se mantiene "TODO" en esta vista porque los CAE estan en SQLite local y son rapidos de listar.
+- **Buscador en CAE Emitidos**: por numero de factura (`tipfac-codfac`), nro de comprobante AFIP, CAE, nombre del cliente o CUIT/DNI. Filtra en vivo mientras tipeas.
+
+### Backend
+- `factusol_service.get_invoices()` ahora acepta `date_filter=this_week` (rango lunes-domingo de la semana actual).
+
+---
+
 ## v1.6.4 (2026-05-12)
 
 ### CRITICO - Bug fix de actualizacion

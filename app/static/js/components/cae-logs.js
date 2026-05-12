@@ -1,9 +1,11 @@
 /**
- * CAE Logs Component — Comprobantes validados con filtro por mes, totales por PV, posición IVA.
+ * CAE Logs Component — Comprobantes validados con filtros HOY/SEMANA/MES/AÑO/TODO,
+ * busqueda por Nº/cliente/CAE, totales por PV y posición IVA.
  */
 const CAELogsComponent = {
     _allLogs: [],
-    _monthFilter: '',  // '' = todos, '2026-03' = mes específico
+    _dateFilter: 'today',  // today | this_week | this_month | last_month | this_year | all
+    _search: '',           // texto libre para filtrar por nro, cliente, CAE
 
     init() {
         // Setear fecha de hoy en el date picker de Cierre Z
@@ -17,12 +19,26 @@ const CAELogsComponent = {
         try {
             const logs = await API.get('/api/arca/logs');
             this._allLogs = logs;
-            this._renderMonthSelector(logs);
             this._render();
             App.toast(`${logs.length} comprobante(s) cargado(s)`, logs.length === 0 ? 'warning' : 'success');
         } catch (err) {
             App.toast(err.message, 'error');
         }
+    },
+
+    // ── Filtro de fecha (pills HOY/SEMANA/MES/AÑO/TODO) ─────────────────
+    setDateFilter(filter) {
+        this._dateFilter = filter;
+        document.querySelectorAll('#section-cae-logs .date-pill').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+        this._render();
+    },
+
+    // ── Busqueda libre por Nº, cliente, CAE ──────────────────────────────
+    setSearch(text) {
+        this._search = (text || '').toLowerCase().trim();
+        this._render();
     },
 
     /**
@@ -64,46 +80,62 @@ Empaquetado: ${d.frozen ? 'SI (ejecutable)' : 'NO (modo desarrollo)'}`;
         }
     },
 
-    _renderMonthSelector(logs) {
-        const container = document.getElementById('cae-month-filter');
-        if (!container) return;
-
-        // Extraer meses únicos
-        const months = new Set();
-        logs.forEach(l => {
-            if (l.created_at) {
-                const d = new Date(l.created_at);
-                months.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    /**
+     * Devuelve el rango de fechas [desde, hasta] para el filtro activo.
+     * Misma logica que el backend factusol_service.get_invoices.
+     */
+    _getDateRange() {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        switch (this._dateFilter) {
+            case 'today':
+                return [today, new Date(today.getTime() + 86400000 - 1)];
+            case 'this_week': {
+                // Lunes a domingo
+                const dow = (today.getDay() + 6) % 7; // 0=lunes
+                const monday = new Date(today.getTime() - dow * 86400000);
+                const sunday = new Date(monday.getTime() + 7 * 86400000 - 1);
+                return [monday, sunday];
             }
-        });
-
-        const sorted = [...months].sort().reverse();
-        const current = this._monthFilter;
-
-        container.innerHTML = `
-            <select id="cae-month-select" class="select-styled" onchange="CAELogsComponent.setMonth(this.value)">
-                <option value="" ${!current ? 'selected' : ''}>Todos</option>
-                ${sorted.map(m => {
-                    const [y, mo] = m.split('-');
-                    const label = new Date(y, mo - 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
-                    return `<option value="${m}" ${current === m ? 'selected' : ''}>${label}</option>`;
-                }).join('')}
-            </select>
-        `;
-    },
-
-    setMonth(month) {
-        this._monthFilter = month;
-        this._render();
+            case 'this_month': {
+                const start = new Date(today.getFullYear(), today.getMonth(), 1);
+                const end = new Date(today.getFullYear(), today.getMonth() + 1, 1, 0, 0, 0, -1);
+                return [start, end];
+            }
+            case 'last_month': {
+                const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                const end = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, -1);
+                return [start, end];
+            }
+            case 'this_year':
+                return [new Date(today.getFullYear(), 0, 1), new Date(today.getFullYear() + 1, 0, 1, 0, 0, 0, -1)];
+            case 'all':
+            default:
+                return null;
+        }
     },
 
     _getFilteredLogs() {
-        if (!this._monthFilter) return this._allLogs;
+        const range = this._getDateRange();
+        const q = this._search;
         return this._allLogs.filter(l => {
-            if (!l.created_at) return false;
-            const d = new Date(l.created_at);
-            const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            return m === this._monthFilter;
+            // Filtro de fecha
+            if (range) {
+                if (!l.created_at) return false;
+                const d = new Date(l.created_at);
+                if (d < range[0] || d > range[1]) return false;
+            }
+            // Busqueda libre por Nº, cliente, CAE, voucher
+            if (q) {
+                const hay =
+                    `${l.tipfac}-${l.codfac}`.toLowerCase().includes(q) ||
+                    String(l.voucher_number || '').includes(q) ||
+                    String(l.cae || '').toLowerCase().includes(q) ||
+                    String(l.cliente_nombre || '').toLowerCase().includes(q) ||
+                    String(l.cliente_doc || '').toLowerCase().includes(q);
+                if (!hay) return false;
+            }
+            return true;
         });
     },
 
