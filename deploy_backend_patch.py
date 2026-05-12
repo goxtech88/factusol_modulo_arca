@@ -43,13 +43,24 @@ SERVICE_NAME = "goxtech-licenses"
 
 LOCAL_PATCH_DIR = os.path.join(os.path.dirname(__file__), "backend_patch")
 
-# Archivos que se van a deployar
+# Archivos que se van a deployar (top-level)
 PATCH_FILES = [
     "models.py",
     "database.py",
     "schemas.py",
     "main.py",
+    "requirements.txt",
 ]
+
+# Archivos dentro de routers/ (mismo nombre en local y remoto)
+PATCH_ROUTERS = [
+    "_uploads.py",
+    "admin_site.py",
+]
+
+# Si requirements.txt cambia, instalamos las nuevas deps en el venv del servicio
+# antes de reiniciar.
+PIP_INSTALL_AFTER_DEPLOY = True
 
 
 def jump_exec(jump, cmd: str, timeout: int = 60) -> tuple[str, str]:
@@ -118,11 +129,20 @@ def main():
     if "sshpass" not in out:
         print("      WARN: sshpass no disponible en jump host")
 
+    # Verificar que existan los archivos de routers tambien
+    routers_dir = os.path.join(LOCAL_PATCH_DIR, "routers")
+    missing_routers = [f for f in PATCH_ROUTERS if not os.path.exists(os.path.join(routers_dir, f))]
+    if missing_routers:
+        print(f"WARN: faltan routers en {routers_dir}: {missing_routers}")
+        # No falla — los routers son opcionales
+
     # 2) BACKUP de archivos .py y de la DB
     print(f"\n[2/6] Backup de archivos remotos...")
     backup_cmds = []
     for f in PATCH_FILES:
-        backup_cmds.append(f"cp {REMOTE_BACKEND_DIR}/{f} {REMOTE_BACKEND_DIR}/{f}.bak.{ts}")
+        backup_cmds.append(f"cp {REMOTE_BACKEND_DIR}/{f} {REMOTE_BACKEND_DIR}/{f}.bak.{ts} 2>/dev/null || true")
+    for f in PATCH_ROUTERS:
+        backup_cmds.append(f"cp {REMOTE_BACKEND_DIR}/routers/{f} {REMOTE_BACKEND_DIR}/routers/{f}.bak.{ts} 2>/dev/null || true")
     backup_cmds.append(f"cp {REMOTE_BACKEND_DIR}/licenses.db {REMOTE_BACKEND_DIR}/_backups/licenses.db.bak.{ts}")
     sudo_backup = " && ".join(backup_cmds)
     out = remote_sudo(jump, sudo_backup, timeout=60)
@@ -136,10 +156,20 @@ def main():
         remote_tmp = f"/tmp/_patch_{f}"
         sftp.put(local_path, remote_tmp)
         print(f"      jump:/tmp/_patch_{f} OK ({sftp.stat(remote_tmp).st_size:,} bytes)")
+    # Routers (con prefijo distinto para no chocar)
+    for f in PATCH_ROUTERS:
+        local_path = os.path.join(routers_dir, f)
+        if not os.path.exists(local_path):
+            continue
+        remote_tmp = f"/tmp/_patchrouter_{f}"
+        sftp.put(local_path, remote_tmp)
+        print(f"      jump:/tmp/_patchrouter_{f} OK ({sftp.stat(remote_tmp).st_size:,} bytes)")
     sftp.close()
 
     # scp -O del jump al destino
-    tmp_files_str = " ".join(f"/tmp/_patch_{f}" for f in PATCH_FILES)
+    tmp_files = [f"/tmp/_patch_{f}" for f in PATCH_FILES]
+    tmp_files += [f"/tmp/_patchrouter_{f}" for f in PATCH_ROUTERS if os.path.exists(os.path.join(routers_dir, f))]
+    tmp_files_str = " ".join(tmp_files)
     scp_cmd = (
         f"sshpass -p '{DEST_PASS}' scp -O -o StrictHostKeyChecking=no "
         f"{tmp_files_str} {DEST_USER}@{DEST_HOST}:/tmp/ 2>&1"
@@ -154,13 +184,29 @@ def main():
         move_cmds.append(f"cp /tmp/_patch_{f} {REMOTE_BACKEND_DIR}/{f}")
         move_cmds.append(f"chown www-data:www-data {REMOTE_BACKEND_DIR}/{f}")
         move_cmds.append(f"chmod 664 {REMOTE_BACKEND_DIR}/{f}")
-    move_cmds.append(f"rm -f /tmp/_patch_*.py")
-    move_cmds.append(f"ls -la {REMOTE_BACKEND_DIR}/*.py | head -10")
+    for f in PATCH_ROUTERS:
+        if not os.path.exists(os.path.join(routers_dir, f)):
+            continue
+        move_cmds.append(f"cp /tmp/_patchrouter_{f} {REMOTE_BACKEND_DIR}/routers/{f}")
+        move_cmds.append(f"chown www-data:www-data {REMOTE_BACKEND_DIR}/routers/{f}")
+        move_cmds.append(f"chmod 664 {REMOTE_BACKEND_DIR}/routers/{f}")
+    move_cmds.append(f"rm -f /tmp/_patch_*.py /tmp/_patch_*.txt /tmp/_patchrouter_*.py")
+    move_cmds.append(f"ls -la {REMOTE_BACKEND_DIR}/main.py {REMOTE_BACKEND_DIR}/routers/_uploads.py {REMOTE_BACKEND_DIR}/routers/admin_site.py 2>/dev/null")
     out = remote_sudo(jump, " && ".join(move_cmds), timeout=60)
     print(out)
 
     # Limpiar /tmp/ del jump
     jump_exec(jump, f"rm -f {tmp_files_str}")
+
+    # 4.5) Instalar nuevas deps si cambio requirements.txt
+    if PIP_INSTALL_AFTER_DEPLOY:
+        print(f"\n[4.5/6] Instalando deps de Python (Pillow, pillow-heif) en venv del servicio...")
+        pip_cmd = (
+            f"{REMOTE_BACKEND_DIR}/venv/bin/pip install --upgrade --quiet "
+            f"-r {REMOTE_BACKEND_DIR}/requirements.txt 2>&1 | tail -10"
+        )
+        out = remote_sudo(jump, pip_cmd, timeout=180)
+        print("      " + out.strip().replace("\n", "\n      "))
 
     # 5) Reiniciar servicio
     print(f"\n[5/6] Reiniciando servicio {SERVICE_NAME}...")

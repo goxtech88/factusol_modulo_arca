@@ -162,6 +162,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Servir uploads como archivos estaticos ────────────────────────────────
+# Nginx routea /arca_factusol/api/* -> este backend en :8001 (sin prefix).
+# Resultado: GET /arca_factusol/api/uploads/site/logo_main-XXX.png va a:
+#   - nginx: strip /arca_factusol/api/ -> /uploads/site/logo_main-XXX.png
+#   - backend: StaticFiles bajo "/uploads" -> sirve "uploads/site/logo_main-XXX.png"
+# La carpeta uploads/ esta junto al main.py (WorkingDirectory=/opt/goxtech_licenses).
+from fastapi.staticfiles import StaticFiles
+import os as _os
+_uploads_dir = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "uploads")
+_os.makedirs(_uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
+
 # Rate limiting con slowapi. Cada endpoint que quiera limitar debe importar
 # `limiter` desde aquí o usar `request.app.state.limiter` y aplicar el decorator.
 limiter = Limiter(key_func=get_remote_address)
