@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tableros Power BI a medida — Decisiones con datos reales | Goxtech</title>
+<meta name="description" content="Tableros Power BI conectados directo a tu ERP. Ventas, Cuentas a Cobrar, Stock. Modelo semántico DAX en español (Argentina, separador ;).">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #FF6B00;
+    --primary-light: #FF9A44;
+    --primary-dark: #E55F00;
+    --accent: #10B981;
+    --warn: #f59e0b;
+    --bg-app: #F8FAFC;
+    --bg-panel: #FFFFFF;
+    --bg-soft: #FFF8F2;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D;
+    --text-body: #1F1F23;
+    --text-muted: #6B7280;
+    --bi-yellow: #f2c811;     /* PBI brand signal */
+    --bi-blue: #3b82f6;
+    --bi-purple: #a855f7;
+    --code-bg: #1F1F23;
+    --code-text: #E5E7EB;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    --shadow-strong: 0 20px 60px rgba(255, 107, 0, 0.15);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+    background: var(--bg-app); color: var(--text-body); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Nav ── */
+.nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; max-width: 1200px; margin: 0 auto;
+}
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 4px; }
+.nav-links a {
+    color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500;
+    padding: 8px 12px; border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+}
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-links a.active { color: var(--primary); background: rgba(255, 107, 0, 0.1); }
+@media (max-width: 700px) { .nav-links { display: none; } }
+
+/* ── Hero ── */
+.hero {
+    position: relative; padding: 80px 0 60px; overflow: hidden;
+    background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%);
+}
+.hero::before {
+    content: ""; position: absolute;
+    top: -200px; left: -100px;
+    width: 500px; height: 500px;
+    background: rgba(255, 107, 0, 0.10); border-radius: 50%; filter: blur(80px); z-index: 0;
+}
+.hero::after {
+    content: ""; position: absolute;
+    bottom: -150px; right: -100px;
+    width: 400px; height: 400px;
+    background: rgba(242, 200, 17, 0.10); border-radius: 50%; filter: blur(60px); z-index: 0;
+}
+.hero-inner { position: relative; z-index: 1; max-width: 880px; }
+.hero-tagline {
+    display: inline-block; font-family: "JetBrains Mono", monospace;
+    font-size: 13px; color: var(--accent);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 6px 12px; border-radius: 6px; margin-bottom: 24px;
+}
+.hero-tagline::before { content: "▸ "; opacity: 0.7; }
+.hero h1 {
+    font-size: 52px; font-weight: 800; line-height: 1.1; letter-spacing: -1px;
+    margin-bottom: 20px; color: var(--text-main);
+}
+.hero h1 .accent { color: var(--primary); }
+.hero .lead { font-size: 19px; color: var(--text-muted); margin-bottom: 32px; max-width: 720px; }
+.hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer; text-decoration: none;
+    transition: transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 4px 14px rgba(255, 107, 0, 0.25);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(255, 107, 0, 0.35); }
+.btn-secondary {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; background: var(--bg-panel);
+    color: var(--text-body); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 15px; font-weight: 700;
+    text-decoration: none; transition: border-color 0.15s, color 0.15s;
+}
+.btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+/* ── Section base ── */
+.section { padding: 80px 0; border-top: 1px solid var(--border); }
+.section-header { max-width: 760px; margin-bottom: 48px; }
+.section-eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 12px;
+}
+.section h2 {
+    font-size: 36px; font-weight: 800; line-height: 1.2; letter-spacing: -0.5px;
+    margin-bottom: 12px; color: var(--text-main);
+}
+.section h2 .accent { color: var(--primary); }
+.section-lead { font-size: 17px; color: var(--text-muted); }
+
+/* ── Dashboards grid ── */
+.dashboards-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 24px;
+}
+.dash-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    display: flex; flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.dash-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+}
+.dash-preview {
+    aspect-ratio: 16 / 10; background: var(--bg-soft);
+    position: relative; overflow: hidden; border-bottom: 1px solid var(--border);
+}
+.dash-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dash-preview iframe { width: 100%; height: 100%; border: 0; }
+.dash-preview .placeholder {
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px;
+    color: var(--text-muted); font-size: 13px;
+    background: linear-gradient(135deg, var(--bg-soft) 0%, #FFFFFF 100%);
+}
+.dash-preview .placeholder .icon { font-size: 32px; opacity: 0.6; }
+.dash-body { padding: 24px; flex: 1; display: flex; flex-direction: column; }
+.dash-body .category {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    color: var(--primary); text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+.dash-body h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; color: var(--text-main); }
+.dash-body p { font-size: 14px; color: var(--text-muted); margin-bottom: 16px; flex: 1; }
+.dash-body .metrics {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+}
+.dash-body .metric {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    background: var(--bg-soft); color: var(--text-body);
+    padding: 4px 8px; border-radius: 4px;
+    border: 1px solid rgba(255, 107, 0, 0.18);
+}
+.dash-body .actions {
+    display: flex; gap: 8px; align-items: center;
+    border-top: 1px solid var(--border); padding-top: 16px;
+}
+.dash-body .actions a {
+    color: var(--primary); font-size: 13px; font-weight: 700;
+    text-decoration: none;
+}
+.dash-body .actions a:hover { color: var(--primary-dark); }
+
+/* ── Fuentes de datos ── */
+.sources-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+.source-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px;
+    display: flex; align-items: center; gap: 12px;
+    transition: border-color 0.15s, transform 0.15s;
+}
+.source-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+.source-card .logo {
+    width: 40px; height: 40px; background: var(--bg-soft);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+}
+.source-card .info h4 { font-size: 14px; font-weight: 700; color: var(--text-main); }
+.source-card .info p { font-size: 12px; color: var(--text-muted); }
+
+/* ── Process ── */
+.process-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px;
+}
+@media (max-width: 880px) { .process-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 540px) { .process-grid { grid-template-columns: 1fr; } }
+.process-step {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 22px;
+    position: relative;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.process-step:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
+.process-step .num {
+    font-family: "JetBrains Mono", monospace; font-size: 13px;
+    color: var(--primary); font-weight: 700; margin-bottom: 12px;
+}
+.process-step h4 { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
+.process-step p { font-size: 13px; color: var(--text-muted); }
+
+/* ── DAX evidence ── */
+.dax-block {
+    background: var(--code-bg); color: var(--code-text);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px;
+    font-family: "JetBrains Mono", monospace; font-size: 13px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+}
+.dax-block .label {
+    color: #8b94a8; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 12px; font-family: inherit;
+}
+.dax-block .kw { color: #79c0ff; }
+.dax-block .fn { color: #d2a8ff; }
+.dax-block .str { color: #a5d6ff; }
+.dax-block .num { color: var(--bi-yellow); }
+.dax-block .com { color: #8b94a8; font-style: italic; }
+
+/* ── CTA final ── */
+.cta-final {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: 16px;
+    padding: 48px;
+    text-align: center;
+    color: #fff;
+    box-shadow: var(--shadow-strong);
+}
+.cta-final h3 { font-size: 28px; font-weight: 800; margin-bottom: 12px; color: #fff; }
+.cta-final h3 .hl { color: var(--bi-yellow); }
+.cta-final p { color: rgba(255, 255, 255, 0.92); margin-bottom: 24px; max-width: 540px; margin-left: auto; margin-right: auto; }
+.cta-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn-wa {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; background: #25D366; color: #fff;
+    border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px;
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+}
+.btn-wa:hover { transform: translateY(-1px); }
+.cta-final .btn-secondary {
+    background: #fff; color: var(--text-main); border-color: #fff;
+}
+.cta-final .btn-secondary:hover { color: var(--primary); }
+
+/* ── Footer ── */
+.footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0; text-align: center;
+    color: var(--text-muted); font-size: 13px;
+    background: var(--bg-panel);
+}
+.footer a { color: var(--text-muted); text-decoration: none; margin: 0 12px; }
+.footer a:hover { color: var(--primary); }
+
+/* WA float */
+.wa-float {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 56px; height: 56px; background: #25D366;
+    border-radius: 50%; display: flex;
+    align-items: center; justify-content: center;
+    color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4);
+    z-index: 100; text-decoration: none; transition: transform 0.15s;
+}
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/modulo-arca/">Módulo ARCA</a>
+            <a href="/power-bi/" class="active">Power BI</a>
+            <a href="/descargas/">Descargas</a>
+            <a href="/contacto/">Contacto</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="wrap hero-inner">
+        <div class="hero-tagline mono">Datos reales · Modelo semántico DAX · Argentina (separador ;)</div>
+        <h1>Tableros que <span class="accent">deciden</span> por vos.</h1>
+        <p class="lead">Conectamos tu ERP a Power BI y entregamos tableros funcionales — no demos genéricos. Modelo semántico documentado, métricas en DAX revisables, refresh programado. Decisiones con datos en vez de estimaciones.</p>
+        <div class="hero-cta">
+            <a href="#dashboards" class="btn-primary">Ver tableros disponibles ↓</a>
+            <a id="hero-wa" href="https://wa.me/5493541651038?text=Hola!%20Quiero%20ver%20los%20tableros%20Power%20BI%20de%20Goxtech." class="btn-secondary" target="_blank" rel="noopener">Pedir una demo</a>
+        </div>
+    </div>
+</section>
+
+<!-- DASHBOARDS -->
+<section class="section" id="dashboards">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">3 tableros base · Listos para conectar</div>
+            <h2>Lo que <span class="accent">entregamos</span>.</h2>
+            <p class="section-lead">Cada tablero arranca con un modelo base y se adapta a tu ERP. No es plantilla muerta: medimos con vos qué KPIs necesitás, cargamos los datos reales y dejamos el dashboard productivo.</p>
+        </div>
+
+        <div class="dashboards-grid" id="dashboards-grid">
+            <!-- Card 1: Ventas y Rentabilidad -->
+            <div class="dash-card">
+                <div class="dash-preview" data-slug="dashboard-ventas">
+                    <div class="placeholder">
+                        <div class="icon">📊</div>
+                        <p>Captura próximamente</p>
+                    </div>
+                </div>
+                <div class="dash-body">
+                    <div class="category">Comercial</div>
+                    <h3>Ventas y Rentabilidad</h3>
+                    <p>Facturación por punto de venta, vendedor, producto y cliente. Margen real por línea descontando costos y bonificaciones.</p>
+                    <div class="metrics">
+                        <span class="metric">Ventas $</span>
+                        <span class="metric">% Margen</span>
+                        <span class="metric">Ticket promedio</span>
+                        <span class="metric">YoY%</span>
+                        <span class="metric">Top clientes</span>
+                    </div>
+                    <div class="actions">
+                        <a href="#" data-slug="dashboard-ventas" data-action="demo">▸ Ver demo</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Cuentas a Cobrar -->
+            <div class="dash-card">
+                <div class="dash-preview" data-slug="dashboard-deudores">
+                    <div class="placeholder">
+                        <div class="icon">💰</div>
+                        <p>Captura próximamente</p>
+                    </div>
+                </div>
+                <div class="dash-body">
+                    <div class="category">Finanzas</div>
+                    <h3>Cuentas a Cobrar</h3>
+                    <p>Análisis de deudores con aging (0-30, 31-60, 61-90, +90), vencidas, evolución de cobranzas y riesgo concentrado por cliente.</p>
+                    <div class="metrics">
+                        <span class="metric">Saldo abierto</span>
+                        <span class="metric">Aging buckets</span>
+                        <span class="metric">DSO</span>
+                        <span class="metric">Top deudores</span>
+                        <span class="metric">Mora%</span>
+                    </div>
+                    <div class="actions">
+                        <a href="#" data-slug="dashboard-deudores" data-action="demo">▸ Ver demo</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Stock y Quiebres -->
+            <div class="dash-card">
+                <div class="dash-preview" data-slug="dashboard-stock">
+                    <div class="placeholder">
+                        <div class="icon">📦</div>
+                        <p>Captura próximamente</p>
+                    </div>
+                </div>
+                <div class="dash-body">
+                    <div class="category">Operaciones</div>
+                    <h3>Stock y Quiebres</h3>
+                    <p>Stock real por depósito, días de cobertura por SKU, ABC clase, alertas de quiebre y obsolescencia (slow movers).</p>
+                    <div class="metrics">
+                        <span class="metric">Stock $</span>
+                        <span class="metric">Días cobertura</span>
+                        <span class="metric">Quiebres</span>
+                        <span class="metric">ABC clase</span>
+                        <span class="metric">Slow movers</span>
+                    </div>
+                    <div class="actions">
+                        <a href="#" data-slug="dashboard-stock" data-action="demo">▸ Ver demo</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- DAX evidence -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Modelo semántico · DAX</div>
+            <h2>El código <span class="accent">queda tuyo</span>.</h2>
+            <p class="section-lead">Cada medida documentada y versionada. Argentina = separador <code class="mono" style="background:var(--code-bg); padding:2px 6px; border-radius:4px; color:var(--bi-yellow);">;</code> y formato regional. Cero magia oculta.</p>
+        </div>
+
+        <div class="dax-block">
+            <div class="label">— measures/01_ventas.dax</div>
+            <span class="com">// Ventas netas del período seleccionado</span><br>
+            <span class="kw">VAR</span> _ventas_brutas = <span class="fn">SUMX</span>( Hechos[Ventas]<span class="mono">;</span>
+            <br>&nbsp;&nbsp;&nbsp;&nbsp;Hechos[cantidad] * Hechos[precio_unit] )<br>
+            <span class="kw">VAR</span> _bonif = <span class="fn">SUM</span>( Hechos[bonificacion] )<br>
+            <span class="kw">RETURN</span> _ventas_brutas - _bonif<br><br>
+            <span class="com">// % Margen sobre costo</span><br>
+            <span class="kw">VAR</span> _costo = <span class="fn">SUMX</span>( Hechos[Ventas]<span class="mono">;</span>
+            <br>&nbsp;&nbsp;&nbsp;&nbsp;Hechos[cantidad] * <span class="fn">RELATED</span>( Productos[costo] ) )<br>
+            <span class="kw">RETURN</span> <span class="fn">DIVIDE</span>( [Ventas netas] - _costo<span class="mono">;</span> [Ventas netas] )
+        </div>
+    </div>
+</section>
+
+<!-- FUENTES DE DATOS -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Conectividad</div>
+            <h2>Fuentes <span class="accent">soportadas</span>.</h2>
+            <p class="section-lead">Si tu sistema tiene una API, base de datos o exporta a CSV — lo conectamos. Estos son los conectores que más usamos.</p>
+        </div>
+
+        <div class="sources-grid">
+            <div class="source-card"><div class="logo">🗄</div><div class="info"><h4>Factusol</h4><p>MS Access (.mdb)</p></div></div>
+            <div class="source-card"><div class="logo">🐬</div><div class="info"><h4>MySQL / MariaDB</h4><p>ERPs propios</p></div></div>
+            <div class="source-card"><div class="logo">🐘</div><div class="info"><h4>PostgreSQL</h4><p>Backends modernos</p></div></div>
+            <div class="source-card"><div class="logo">🪟</div><div class="info"><h4>SQL Server</h4><p>SAP B1, Tango, Tiendo</p></div></div>
+            <div class="source-card"><div class="logo">🛒</div><div class="info"><h4>Tienda Nube</h4><p>API REST</p></div></div>
+            <div class="source-card"><div class="logo">📋</div><div class="info"><h4>Gestión Nube</h4><p>API REST</p></div></div>
+            <div class="source-card"><div class="logo">📊</div><div class="info"><h4>Excel / CSV</h4><p>Carpetas o SharePoint</p></div></div>
+            <div class="source-card"><div class="logo">☁</div><div class="info"><h4>APIs REST</h4><p>OAuth2 / API key</p></div></div>
+        </div>
+    </div>
+</section>
+
+<!-- PROCESS -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Implementación</div>
+            <h2>Cómo lo hacemos en <span class="accent">4 pasos</span>.</h2>
+        </div>
+
+        <div class="process-grid">
+            <div class="process-step">
+                <div class="num">01 · Día 1-2</div>
+                <h4>Auditoría de datos</h4>
+                <p>Conectamos a tu fuente, mapeamos tablas y relevamos KPIs reales con tu equipo.</p>
+            </div>
+            <div class="process-step">
+                <div class="num">02 · Día 3-7</div>
+                <h4>Modelo semántico</h4>
+                <p>Estrella + tablas calendario · medidas DAX documentadas · refresh programado.</p>
+            </div>
+            <div class="process-step">
+                <div class="num">03 · Día 8-12</div>
+                <h4>Tablero MVP</h4>
+                <p>Primera versión navegable con tus datos reales. Iteración con tu equipo.</p>
+            </div>
+            <div class="process-step">
+                <div class="num">04 · Día 13+</div>
+                <h4>Publicación</h4>
+                <p>Workspace + permisos · capacitación de usuarios · soporte continuo.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Final -->
+<section class="section">
+    <div class="wrap">
+        <div class="cta-final">
+            <h3>¿Querés ver un tablero con <span class="hl">tus</span> datos?</h3>
+            <p>En una reunión de 30 minutos te mostramos un MVP con datos de muestra y te decimos cuánto tarda armarlo con tu ERP real.</p>
+            <div class="cta-buttons">
+                <a id="cta-wa" href="https://wa.me/5493541651038?text=Hola!%20Quiero%20una%20demo%20de%20los%20tableros%20Power%20BI%20de%20Goxtech." class="btn-wa" target="_blank" rel="noopener">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+                    Pedir demo por WhatsApp
+                </a>
+                <a href="mailto:gonzalo@goxtech.com.ar" class="btn-secondary">Escribinos por email</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="wrap">
+        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p style="margin-top: 8px;">
+            <a href="/">Inicio</a> ·
+            <a href="/modulo-arca/">Módulo ARCA</a> ·
+            <a href="/power-bi/">Power BI</a> ·
+            <a href="/descargas/">Descargas</a> ·
+            <a href="/contacto/">Contacto</a>
+        </p>
+    </div>
+</footer>
+
+<a class="wa-float" id="wa-float" href="https://wa.me/5493541651038?text=Hola!%20Quiero%20una%20demo%20de%20los%20tableros%20Power%20BI%20de%20Goxtech." target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+
+<script>
+const API = "https://goxtech.com.ar/arca_factusol/api";
+const SLUGS = ["dashboard-ventas", "dashboard-deudores", "dashboard-stock"];
+
+// Carga metadata de cada dashboard desde DB. Si tiene screenshots o video_url (iframe),
+// reemplaza el placeholder del card. Si tiene whatsapp_message, ajusta el link "Ver demo".
+SLUGS.forEach(async (slug) => {
+    try {
+        const resp = await fetch(`${API}/downloads/by-slug/${slug}`);
+        if (!resp.ok) return;
+        const d = await resp.json();
+        const preview = document.querySelector(`.dash-preview[data-slug="${slug}"]`);
+        if (!preview) return;
+        if (d.video_url) {
+            let url = d.video_url;
+            const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+            if (yt) url = `https://www.youtube.com/embed/${yt[1]}`;
+            preview.innerHTML = `<iframe src="${url}" allowfullscreen></iframe>`;
+        } else if (d.screenshots_json) {
+            try {
+                const arr = JSON.parse(d.screenshots_json);
+                if (Array.isArray(arr) && arr[0]) {
+                    const url = arr[0].startsWith("/") ? `${API}${arr[0]}` : arr[0];
+                    preview.innerHTML = `<img src="${url}" alt="${d.title}">`;
+                }
+            } catch (_) {}
+        }
+        if (d.whatsapp_message) {
+            const waUrl = `https://wa.me/5493541651038?text=${encodeURIComponent(d.whatsapp_message)}`;
+            document.querySelectorAll(`a[data-slug="${slug}"]`).forEach(a => a.href = waUrl);
+        }
+    } catch (_) { /* silencioso */ }
+});
+
+// Click "Ver demo" sin metadata → fallback a WhatsApp generico
+document.querySelectorAll('a[data-action="demo"]').forEach(a => {
+    if (a.getAttribute("href") === "#") {
+        const slug = a.dataset.slug;
+        a.href = `https://wa.me/5493541651038?text=${encodeURIComponent(`Hola! Quiero ver una demo del tablero "${slug}".`)}`;
+        a.target = "_blank";
+        a.rel = "noopener";
+    }
+});
+</script>
+</body>
+</html>

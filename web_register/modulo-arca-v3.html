@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Módulo ARCA Sync — Factura electrónica AFIP para Factusol | Goxtech</title>
+<meta name="description" content="Inyección de CAE en Factusol en 10 segundos. Sin Token Fiscal, multi-PV, multi-usuario, facturación automatizada por forma de pago.">
+<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #FF6B00;
+    --primary-light: #FF9A44;
+    --primary-dark: #E55F00;
+    --accent: #10B981;
+    --warn: #f59e0b;
+    --bg-app: #F8FAFC;
+    --bg-panel: #FFFFFF;
+    --border: #E5E7EB;
+    --text-main: #0B0B0D;
+    --text-body: #1F1F23;
+    --text-muted: #6B7280;
+    --code-bg: #1F1F23;
+    --code-text: #E5E7EB;
+    --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    --shadow-strong: 0 20px 60px rgba(255, 107, 0, 0.15);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+    background: var(--bg-app);
+    color: var(--text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: "JetBrains Mono", monospace; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+/* ── Nav ── */
+.nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; max-width: 1200px; margin: 0 auto;
+}
+.nav-brand { font-weight: 800; font-size: 20px; color: var(--primary); text-decoration: none; }
+.nav-links { display: flex; gap: 4px; }
+.nav-links a {
+    color: var(--text-body); text-decoration: none; font-size: 14px; font-weight: 500;
+    padding: 8px 12px; border-radius: 6px;
+    transition: background 0.15s, color 0.15s;
+}
+.nav-links a:hover { background: rgba(255, 107, 0, 0.08); color: var(--primary); }
+.nav-links a.active { color: var(--primary); background: rgba(255, 107, 0, 0.1); }
+@media (max-width: 700px) { .nav-links { display: none; } }
+
+/* ── Hero ── */
+.hero {
+    position: relative; padding: 80px 0 60px; overflow: hidden;
+    background: linear-gradient(180deg, #FFF8F2 0%, var(--bg-app) 100%);
+}
+.hero::before {
+    content: ""; position: absolute;
+    top: -200px; right: -100px;
+    width: 500px; height: 500px;
+    background: rgba(255, 107, 0, 0.08);
+    border-radius: 50%; filter: blur(80px); z-index: 0;
+}
+.hero-grid {
+    position: relative; z-index: 1;
+    display: grid; grid-template-columns: 1.2fr 1fr; gap: 60px;
+    align-items: center;
+}
+@media (max-width: 960px) { .hero-grid { grid-template-columns: 1fr; gap: 30px; } }
+
+.hero h1 {
+    font-size: 52px; font-weight: 800; line-height: 1.1; letter-spacing: -1px;
+    margin-bottom: 20px; color: var(--text-main);
+}
+.hero h1 .accent { color: var(--primary); }
+.hero h1 .strike { text-decoration: line-through; color: var(--text-muted); font-weight: 600; }
+.hero-tagline {
+    display: inline-block;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px; color: var(--accent);
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    padding: 6px 12px; border-radius: 6px;
+    margin-bottom: 24px;
+}
+.hero-tagline::before { content: "▸ "; opacity: 0.7; }
+
+.hero-problema {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
+}
+.hero-problema h3 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--warn); margin-bottom: 6px; font-weight: 700;
+}
+.hero-problema.solucion h3 { color: var(--accent); }
+.hero-problema p { color: var(--text-body); font-size: 15px; }
+.hero-problema p strong { color: var(--text-main); }
+
+.hero-stats {
+    display: flex; gap: 32px; margin-top: 32px; flex-wrap: wrap;
+}
+.hero-stat .num {
+    font-size: 32px; font-weight: 800; color: var(--primary);
+    font-family: "JetBrains Mono", monospace;
+}
+.hero-stat .label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+/* Hero form */
+.hero-form-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px;
+    box-shadow: var(--shadow);
+}
+.hero-form-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--text-main); }
+.hero-form-card .sub { color: var(--text-muted); font-size: 13px; margin-bottom: 18px; }
+.field { margin-bottom: 10px; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+@media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
+.field label {
+    display: block; font-size: 11px; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+.field label .req { color: var(--primary); }
+.field input, .field select {
+    width: 100%; padding: 10px 12px; background: var(--bg-app);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text-main); font-size: 14px; font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field input:focus, .field select:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.15);
+    background: #fff;
+}
+.btn-primary {
+    width: 100%; padding: 13px 16px;
+    background: var(--primary); color: #fff;
+    border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-dark); transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(255, 107, 0, 0.3);
+}
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.legal { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px; }
+.alert {
+    padding: 10px 12px; border-radius: 8px; font-size: 13px;
+    margin-bottom: 12px; display: none;
+}
+.alert.error { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; display: block; }
+.success-panel {
+    text-align: center; padding: 20px 0; display: none;
+}
+.success-panel.show { display: block; }
+.success-icon {
+    width: 56px; height: 56px; background: var(--accent);
+    border-radius: 50%; display: inline-flex;
+    align-items: center; justify-content: center; margin-bottom: 12px;
+}
+.success-icon::after {
+    content: ""; width: 20px; height: 10px;
+    border-left: 3px solid #fff; border-bottom: 3px solid #fff;
+    transform: rotate(-45deg) translate(2px, -2px);
+}
+.success-panel h4 { color: var(--accent); font-size: 18px; margin-bottom: 6px; }
+.success-panel p { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+.btn-download {
+    display: inline-block; padding: 10px 20px;
+    background: var(--primary); color: #fff; text-decoration: none;
+    border-radius: 8px; font-weight: 700; font-size: 14px;
+}
+
+/* ── Section base ── */
+.section { padding: 80px 0; }
+.section-alt { background: var(--bg-panel); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.section-header { max-width: 720px; margin-bottom: 48px; }
+.section-eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: var(--primary); text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 12px;
+}
+.section h2 {
+    font-size: 36px; font-weight: 800; line-height: 1.2; letter-spacing: -0.5px;
+    margin-bottom: 12px; color: var(--text-main);
+}
+.section h2 .accent { color: var(--primary); }
+.section-lead { font-size: 17px; color: var(--text-muted); }
+
+/* ── Loop Cerrado diagram ── */
+.loop-diagram {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+}
+.loop-flow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+    min-width: 700px;
+    margin-bottom: 24px;
+}
+.loop-node {
+    background: var(--bg-app);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 16px;
+    text-align: center;
+    position: relative;
+}
+.loop-node.factusol { border-color: var(--primary); }
+.loop-node.arca { border-color: #3B82F6; }
+.loop-node .icon {
+    width: 48px; height: 48px;
+    background: var(--bg-panel);
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 8px;
+    border: 1px solid var(--border);
+}
+.loop-node h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: var(--text-main); }
+.loop-node p {
+    font-size: 11px; color: var(--text-muted);
+    font-family: "JetBrains Mono", monospace;
+}
+.loop-arrow {
+    color: var(--primary);
+    font-size: 24px;
+    font-weight: 800;
+    text-align: center;
+    position: relative;
+}
+.loop-arrow span {
+    display: block; font-size: 10px;
+    font-family: "JetBrains Mono", monospace;
+    color: var(--text-muted);
+    margin-top: -4px;
+    white-space: nowrap;
+}
+.loop-arrow.back { color: var(--accent); }
+
+.loop-codes {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-top: 24px;
+}
+@media (max-width: 700px) { .loop-codes { grid-template-columns: 1fr; } }
+.code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--text-body);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--code-text);
+    overflow-x: auto;
+}
+.code-block .label {
+    color: #9CA3AF; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px; font-family: inherit;
+}
+.code-block .kw { color: #FF9A44; }
+.code-block .str { color: #FFD7AB; }
+.code-block .com { color: #6B7280; }
+.code-block .ok { color: #34D399; }
+
+/* ── Video demo ── */
+.video-wrap {
+    position: relative;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    box-shadow: var(--shadow);
+}
+.video-wrap iframe { width: 100%; height: 100%; border: 0; }
+.video-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--text-muted);
+    text-align: center; padding: 32px;
+    background: linear-gradient(135deg, #FFF8F2, var(--bg-app));
+}
+.video-placeholder .icon {
+    width: 64px; height: 64px;
+    background: var(--bg-panel);
+    border-radius: 50%; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px; font-size: 24px; color: var(--primary);
+}
+.video-placeholder p { max-width: 420px; font-size: 14px; }
+.video-placeholder strong { color: var(--text-main); }
+
+/* ── Features grid ── */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+.feature-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.feature-card:hover {
+    border-color: var(--primary); transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(255, 107, 0, 0.12);
+}
+.feature-card .check {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; background: rgba(16, 185, 129, 0.1);
+    border-radius: 8px; margin-bottom: 12px; color: var(--accent);
+    font-size: 16px; font-weight: 800;
+}
+.feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
+.feature-card p { font-size: 14px; color: var(--text-muted); }
+
+/* ── Requirements ── */
+.req-grid {
+    display: grid; grid-template-columns: 2fr 1fr; gap: 32px;
+}
+@media (max-width: 880px) { .req-grid { grid-template-columns: 1fr; } }
+.req-list {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px; box-shadow: var(--shadow);
+}
+.req-list h4 {
+    font-size: 13px; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--primary);
+    margin-bottom: 16px; font-family: "JetBrains Mono", monospace;
+}
+.req-list ul { list-style: none; }
+.req-list li {
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    font-family: "JetBrains Mono", monospace; font-size: 13px;
+    color: var(--text-body);
+}
+.req-list li:last-child { border-bottom: none; }
+.req-list li::before {
+    content: "▸"; color: var(--accent); font-weight: 700; flex-shrink: 0;
+}
+
+.req-cta {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 12px; padding: 28px; color: #fff;
+}
+.req-cta h4 { font-size: 18px; margin-bottom: 8px; }
+.req-cta p { font-size: 14px; color: rgba(255,255,255,0.9); margin-bottom: 16px; }
+.btn-wa {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px; background: #fff; color: var(--primary);
+    border-radius: 8px; text-decoration: none; font-weight: 700;
+    font-size: 14px; transition: transform 0.1s;
+}
+.btn-wa:hover { transform: translateY(-1px); }
+
+/* ── Screenshots ── */
+.screenshots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+.screenshot-card {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 10;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: 13px;
+    box-shadow: var(--shadow);
+}
+.screenshot-card img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── Footer ── */
+.footer {
+    background: var(--text-main); color: #9CA3AF;
+    padding: 40px 0; text-align: center;
+    font-size: 13px;
+}
+.footer a { color: #9CA3AF; text-decoration: none; margin: 0 12px; }
+.footer a:hover { color: #fff; }
+
+/* WhatsApp float */
+.wa-float {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 56px; height: 56px; background: #25D366;
+    border-radius: 50%; display: flex;
+    align-items: center; justify-content: center;
+    color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4);
+    z-index: 100; text-decoration: none;
+    transition: transform 0.15s;
+}
+.wa-float:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+    <div class="nav-inner">
+        <a class="nav-brand" href="/">Goxtech</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/modulo-arca/" class="active">Módulo ARCA</a>
+            <a href="/power-bi/">Power BI</a>
+            <a href="/descargas/">Descargas</a>
+            <a href="/contacto/">Contacto</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="wrap hero-grid">
+        <div>
+            <div class="hero-tagline mono" id="hero-tagline">CAE en Factusol en 10 segundos</div>
+
+            <h1>
+                Dejá de <span class="strike">cargar a mano</span><br>
+                cada factura en <span class="accent">ARCA</span>.
+            </h1>
+
+            <div class="hero-problema">
+                <h3>El problema</h3>
+                <p>Cada venta en Factusol se carga 2 veces: una en tu ERP y otra en el portal de ARCA para sacar el CAE. Pegás los datos, copiás de vuelta el CAE al PDF, archivás. <strong>Tiempo perdido + errores humanos + lotes pendientes al cierre del día.</strong></p>
+            </div>
+
+            <div class="hero-problema solucion" style="border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.04);">
+                <h3>La solución</h3>
+                <p>El módulo <strong>lee Factusol → pide CAE a ARCA → escribe el resultado de vuelta en Factusol</strong>. Vos seguís facturando como siempre, la impresión y el PDF salen del mismo Factusol pero ya con CAE, QR y código de barras AFIP.</p>
+            </div>
+
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="num">~10s</div>
+                    <div class="label">por factura validada</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="num">0</div>
+                    <div class="label">cambios en tu flujo Factusol</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="num">100%</div>
+                    <div class="label">CAE + QR + barcode AFIP</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form CTA -->
+        <div class="hero-form-card" id="form-card">
+            <div id="form-panel">
+                <h3>Activá tu licencia gratis</h3>
+                <p class="sub">Registrate y descargá el módulo. Sin tarjeta, sin compromiso.</p>
+                <div id="form-alert" class="alert"></div>
+                <form id="arca-form" autocomplete="on" novalidate>
+                    <div class="field">
+                        <label>Razón social <span class="req">*</span></label>
+                        <input type="text" id="f-company" required maxlength="200" placeholder="Mi Empresa S.R.L.">
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label>CUIT <span class="req">*</span></label>
+                            <input type="text" id="f-cuit" required inputmode="numeric" maxlength="13" placeholder="20-12345678-9">
+                        </div>
+                        <div class="field">
+                            <label>Cond. IVA</label>
+                            <select id="f-cond">
+                                <option value="Responsable Inscripto">Resp. Inscripto</option>
+                                <option value="Monotributista">Monotributo</option>
+                                <option value="Exento">Exento</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Responsable <span class="req">*</span></label>
+                        <input type="text" id="f-contact" required maxlength="100" placeholder="Juan Pérez">
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label>Email <span class="req">*</span></label>
+                            <input type="email" id="f-email" required maxlength="200" placeholder="vos@empresa.com">
+                        </div>
+                        <div class="field">
+                            <label>WhatsApp <span class="req">*</span></label>
+                            <input type="tel" id="f-phone" required maxlength="40" placeholder="+54 9...">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Activar y descargar →</button>
+                    <p class="legal">Te enviamos los datos por email y WhatsApp para soporte técnico.</p>
+                </form>
+            </div>
+            <div id="success-panel" class="success-panel">
+                <div class="success-icon"></div>
+                <h4>Cuenta activada</h4>
+                <p>La descarga inicia en unos segundos.</p>
+                <a href="#" id="dl-link" class="btn-download">⬇ Descargar módulo</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- LOOP CERRADO -->
+<section class="section section-alt">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Arquitectura · Loop cerrado de datos</div>
+            <h2>El módulo es un <span class="accent">puente invisible</span> entre Factusol y ARCA.</h2>
+            <p class="section-lead">No hay que cambiar tu flujo. El módulo lee la factura recién creada en Factusol, le pide el CAE a ARCA y escribe el resultado de vuelta en tu base de datos. La impresión, el PDF y el Excel salen del mismo Factusol pero ya con todos los campos de AFIP.</p>
+        </div>
+
+        <div class="loop-diagram">
+            <div class="loop-flow">
+                <div class="loop-node factusol">
+                    <div class="icon">📊</div>
+                    <h4>Factusol</h4>
+                    <p>F_FAC</p>
+                </div>
+                <div class="loop-arrow">→<span>Lee factura nueva</span></div>
+                <div class="loop-node">
+                    <div class="icon">⚙</div>
+                    <h4>Módulo ARCA Sync</h4>
+                    <p>pyafipws · WSFEv1</p>
+                </div>
+                <div class="loop-arrow">→<span>FECAESolicitar</span></div>
+                <div class="loop-node arca">
+                    <div class="icon">🏛</div>
+                    <h4>ARCA / AFIP</h4>
+                    <p>servicios web</p>
+                </div>
+            </div>
+
+            <div class="loop-flow">
+                <div class="loop-node factusol" style="grid-column: 1 / 6; background: rgba(16, 185, 129, 0.04);">
+                    <div class="icon" style="color: var(--accent);">↩</div>
+                    <h4 style="color: var(--accent);">Escribe de vuelta en Factusol</h4>
+                    <p>BNOFAC = CAE  ·  PEDFAC = nro cbte  ·  IMGFAC = ruta QR  ·  AATFAC = código barras AFIP</p>
+                </div>
+            </div>
+
+            <div class="loop-codes">
+                <div class="code-block">
+                    <div class="label">— Antes (en F_FAC)</div>
+                    <span class="com"># sin validar</span><br>
+                    BNOFAC = <span class="str">""</span><br>
+                    PEDFAC = <span class="str">""</span><br>
+                    BNUFAC = <span class="str">""</span><br>
+                    AATFAC = <span class="str">""</span><br>
+                </div>
+                <div class="code-block">
+                    <div class="label">— Después (en F_FAC)</div>
+                    <span class="com"># CAE inyectado · 10s</span><br>
+                    BNOFAC = <span class="ok">"75183920334125"</span><br>
+                    PEDFAC = <span class="ok">"B-0002-00006486"</span><br>
+                    BNUFAC = <span class="ok">"2026-06-15"</span><br>
+                    AATFAC = <span class="ok">"30715183920..."</span><br>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- VIDEO DEMO -->
+<section class="section">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Demo · 30 segundos</div>
+            <h2>Mirá el flujo <span class="accent">en vivo</span>.</h2>
+            <p class="section-lead">Una factura sin CAE en Factusol → click validar → en 10 segundos tiene CAE, QR y código de barras AFIP impresos en el comprobante.</p>
+        </div>
+
+        <div class="video-wrap" id="video-wrap">
+            <div class="video-placeholder" id="video-placeholder">
+                <div class="icon">▶</div>
+                <p><strong>Video demo próximamente.</strong> Si querés verlo antes, pedinos uno por WhatsApp.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section section-alt">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Capacidades</div>
+            <h2>Pensado para <span class="accent">facturar más</span> con menos clicks.</h2>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="check">✓</div>
+                <h3>Multi punto de venta</h3>
+                <p>Configurás varios PV de AFIP (Factusol + TPV Sol) con tipos de comprobante A/B/C diferenciados.</p>
+            </div>
+            <div class="feature-card">
+                <div class="check">✓</div>
+                <h3>Multi usuario</h3>
+                <p>Usuarios con permisos por punto de venta. Cada uno valida solo lo que le corresponde.</p>
+            </div>
+            <div class="feature-card">
+                <div class="check">✓</div>
+                <h3>Auto-validación por forma de pago</h3>
+                <p>Background loop cada 60s detecta facturas nuevas y las valida solas (filtrable por forma de pago).</p>
+            </div>
+            <div class="feature-card">
+                <div class="check">✓</div>
+                <h3>Notas de Crédito</h3>
+                <p>NC A/B/C asociadas al comprobante original vía <span class="mono">AgregarCmpAsoc</span> de WSFEv1.</p>
+            </div>
+            <div class="feature-card">
+                <div class="check">✓</div>
+                <h3>QR + Código de Barras AFIP</h3>
+                <p>QR reglamentario y cadena CUIT+TipoCbte+PV+CAE+Vto se escriben en Factusol para imprimir.</p>
+            </div>
+            <div class="feature-card">
+                <div class="check">✓</div>
+                <h3>Sin Token Fiscal</h3>
+                <p>Autenticación con certificado PEM estándar de ARCA. No requiere hardware ni instalación de drivers.</p>
+            </div>
+            <div class="feature-card">
+                <div class="check">✓</div>
+                <h3>Auto-ajuste de fecha</h3>
+                <p>Si una factura tiene fecha fuera del rango AFIP (±5 días), el módulo la ajusta automáticamente.</p>
+            </div>
+            <div class="feature-card">
+                <div class="check">✓</div>
+                <h3>Updater automático</h3>
+                <p>El propio módulo descarga las versiones nuevas y se actualiza preservando tu config y licencias.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SCREENSHOTS -->
+<section class="section" id="screenshots-section" style="display:none;">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Interface</div>
+            <h2>Así <span class="accent">se ve</span> en tu pantalla.</h2>
+        </div>
+        <div class="screenshots-grid" id="screenshots-grid"></div>
+    </div>
+</section>
+
+<!-- REQUISITOS -->
+<section class="section section-alt">
+    <div class="wrap">
+        <div class="section-header">
+            <div class="section-eyebrow">Implementación rápida</div>
+            <h2>Requisitos <span class="accent">técnicos</span>.</h2>
+            <p class="section-lead">Si tu ambiente cumple estos puntos, lo instalamos en 30 minutos.</p>
+        </div>
+
+        <div class="req-grid">
+            <div class="req-list">
+                <h4>Stack mínimo</h4>
+                <ul id="req-list">
+                    <li>Factusol Evolution o Premium 2020+</li>
+                    <li>Base de datos MS Access (.mdb) accesible</li>
+                    <li>Certificado AFIP (.crt + .key PEM)</li>
+                    <li>Windows 10 / Server 2016 o superior</li>
+                    <li>Conexión a internet permanente</li>
+                    <li>Puerto HTTP libre (default 8765)</li>
+                </ul>
+            </div>
+            <div class="req-cta">
+                <h4>¿Tu ambiente cumple?</h4>
+                <p>Si no estás seguro, pasanos los datos por WhatsApp y te confirmamos en el día si podés instalarlo.</p>
+                <a href="#" id="wa-link" class="btn-wa" target="_blank" rel="noopener">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+                    Consultar por WhatsApp
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="wrap">
+        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p style="margin-top: 8px;">
+            <a href="/">Inicio</a> ·
+            <a href="/modulo-arca/">Módulo ARCA</a> ·
+            <a href="/power-bi/">Power BI</a> ·
+            <a href="/descargas/">Descargas</a> ·
+            <a href="/contacto/">Contacto</a>
+        </p>
+    </div>
+</footer>
+
+<a id="wa-float" class="wa-float" href="#" target="_blank" rel="noopener" aria-label="WhatsApp">
+    <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
+</a>
+
+<script>
+const API = "https://goxtech.com.ar/arca_factusol/api";
+const DOWNLOAD_URL = `${API}/downloads/file/2`;
+const DEFAULT_WA = "https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20el%20Módulo%20ARCA%20para%20Factusol.";
+
+fetch(`${API}/downloads/by-slug/modulo-arca`).then(r => r.ok ? r.json() : null).then(p => {
+    if (!p) {
+        document.getElementById("wa-link").href = DEFAULT_WA;
+        document.getElementById("wa-float").href = DEFAULT_WA;
+        return;
+    }
+    if (p.tagline) document.getElementById("hero-tagline").textContent = p.tagline;
+    if (p.video_url) {
+        let embed = p.video_url;
+        const ytMatch = embed.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+        if (ytMatch) embed = `https://www.youtube.com/embed/${ytMatch[1]}`;
+        document.getElementById("video-wrap").innerHTML = `<iframe src="${embed}" allowfullscreen></iframe>`;
+    }
+    if (p.screenshots_json) {
+        try {
+            const arr = JSON.parse(p.screenshots_json);
+            if (Array.isArray(arr) && arr.length > 0) {
+                const grid = document.getElementById("screenshots-grid");
+                grid.innerHTML = arr.map(url => `<div class="screenshot-card"><img src="${API}${url.startsWith("/") ? url : "/" + url}" alt="Screenshot"></div>`).join("");
+                document.getElementById("screenshots-section").style.display = "";
+            }
+        } catch(_) {}
+    }
+    if (p.requirements) {
+        const lines = p.requirements.split(/\n+/).map(l => l.replace(/^[-*]\s*/, "").trim()).filter(Boolean);
+        if (lines.length > 0) document.getElementById("req-list").innerHTML = lines.map(l => `<li>${l}</li>`).join("");
+    }
+    if (p.whatsapp_message) {
+        const url = `https://wa.me/5493541651038?text=${encodeURIComponent(p.whatsapp_message)}`;
+        document.getElementById("wa-link").href = url;
+        document.getElementById("wa-float").href = url;
+    } else {
+        document.getElementById("wa-link").href = DEFAULT_WA;
+        document.getElementById("wa-float").href = DEFAULT_WA;
+    }
+}).catch(() => {
+    document.getElementById("wa-link").href = DEFAULT_WA;
+    document.getElementById("wa-float").href = DEFAULT_WA;
+});
+
+function isValidCuit(c) {
+    c = (c || "").replace(/\D/g, "");
+    if (c.length !== 11) return false;
+    const m = [5,4,3,2,7,6,5,4,3,2];
+    let t = 0;
+    for (let i = 0; i < 10; i++) t += parseInt(c[i],10) * m[i];
+    let e = 11 - (t % 11);
+    if (e === 11) e = 0; else if (e === 10) return false;
+    return parseInt(c[10],10) === e;
+}
+function showErr(msg) { const el = document.getElementById("form-alert"); el.className = "alert error"; el.textContent = msg; }
+function clearErr() { document.getElementById("form-alert").className = "alert"; }
+function autoDownload() {
+    const a = document.createElement("a");
+    a.href = DOWNLOAD_URL; a.download = "";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+document.getElementById("arca-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearErr();
+    const company = document.getElementById("f-company").value.trim();
+    const cuit = document.getElementById("f-cuit").value.trim();
+    const cond = document.getElementById("f-cond").value;
+    const contact = document.getElementById("f-contact").value.trim();
+    const email = document.getElementById("f-email").value.trim();
+    const phone = document.getElementById("f-phone").value.trim();
+
+    if (!company) return showErr("Razón social es obligatoria");
+    if (!isValidCuit(cuit)) return showErr("CUIT inválido (verificá el dígito verificador)");
+    if (!contact) return showErr("Responsable obligatorio");
+    if (!email || !email.includes("@")) return showErr("Email inválido");
+    if (phone.replace(/\D/g,"").length < 8) return showErr("WhatsApp obligatorio");
+
+    const btn = e.target.querySelector(".btn-primary");
+    btn.disabled = true; btn.textContent = "Activando...";
+    try {
+        const resp = await fetch(`${API}/licenses/free`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                cuit: cuit.replace(/\D/g,""),
+                email, company_name: company, phone, contact_name: contact,
+                source: "modulo_arca_v3",
+            }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error((data && data.detail) || `Error ${resp.status}`);
+        document.getElementById("form-panel").style.display = "none";
+        document.getElementById("success-panel").classList.add("show");
+        document.getElementById("dl-link").href = DOWNLOAD_URL;
+        setTimeout(autoDownload, 1500);
+        try { if (window.dataLayer) window.dataLayer.push({event:"license_register",plan:"basica",source:"modulo_arca_v3"}); } catch(_) {}
+    } catch (err) {
+        showErr(err.message || "Error de red");
+        btn.disabled = false;
+        btn.textContent = "Activar y descargar →";
+    }
+});
+</script>
+</body>
+</html>
