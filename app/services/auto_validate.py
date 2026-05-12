@@ -244,6 +244,14 @@ def _validate_single_sync(
     if not detail:
         return None
 
+    # Filtrar lineas-leyenda (cantidad=0 Y precio=0): texto descriptivo de
+    # Factusol que no debe bloquear la validacion en ARCA.
+    raw_lines = detail.get("lines") or []
+    detail["lines"] = arca_service.filter_real_lines(raw_lines)
+    n_legends = len(raw_lines) - len(detail["lines"])
+    if n_legends > 0:
+        _add_log(f"📝 {tipfac}-{codfac}: omitidas {n_legends} linea(s) leyenda (cant=0 precio=0)")
+
     # Auto-ajustar fecha si esta fuera del rango AFIP (evita error 10016)
     fecha_orig = detail.get("header", {}).get("FECFAC")
     fecha_final, was_adjusted, ajuste_msg, _info = arca_service.auto_adjust_invoice_date(fecha_orig, concepto=1)

@@ -88,6 +88,17 @@ def validate_invoice(
             print(f"[FECHA] WARN: no pude actualizar FECFAC en F_FAC: {_e}")
             # Sigo de todos modos: pyafipws recibe la fecha ajustada del header
 
+    # Filtrar lineas-leyenda (cantidad=0 Y precio=0): Factusol las acepta como
+    # texto descriptivo dentro del listado de items, pero no son items reales.
+    # Si las dejamos pueden bloquear la validacion en ARCA (algunos validadores
+    # rechazan items con todo en cero). Las omitimos pero la factura sigue OK.
+    raw_lines = detail.get("lines") or []
+    filtered_lines = arca_service.filter_real_lines(raw_lines)
+    n_legends = len(raw_lines) - len(filtered_lines)
+    if n_legends > 0:
+        print(f"[LINEAS LEYENDA] {tipfac}-{codfac}: omitidas {n_legends} de {len(raw_lines)} (cant=0 precio=0)")
+    detail["lines"] = filtered_lines
+
     # Auto-enriquecimiento de padron desactivado (v1.5.1) — genera errores
     # al no ser datos oficiales. El CFECLI debe configurarse en Factusol.
     cliente = detail.get("cliente") or {}
@@ -337,6 +348,9 @@ def create_credit_note(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}")
+
+    # Filtrar lineas-leyenda (igual que en validate_invoice)
+    detail["lines"] = arca_service.filter_real_lines(detail.get("lines") or [])
 
     # Emitir NC en ARCA
     tipo_cbte_original = cae_original.tipo_comprobante

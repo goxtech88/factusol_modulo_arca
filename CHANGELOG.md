@@ -1,5 +1,19 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.6.7 (2026-05-12)
+
+### Lineas-leyenda de Factusol
+- Muchos usuarios usan lineas con cantidad=0 y precio=0 como **texto descriptivo / leyenda** dentro de la factura (observaciones, condiciones de venta, datos de envio, etc). Esas lineas no son items reales y antes podian bloquear la validacion en ARCA o ensuciar el archivo DETALLE de RG 1361.
+- **Nuevo helper `arca_service.is_legend_line`**: detecta lineas con `CANLFA=0 AND PRELFA=0 AND TOTLFA=0`. Estrictamente las tres condiciones — si la cantidad es 1 y el precio 0 (regalo/promo), se mantiene como item real.
+- **Filtro automatico aplicado en**:
+  - Validacion manual (`arca_router.validate_invoice`).
+  - Validacion en lote / auto-validador (`auto_validate._validate_single_sync`).
+  - Emision de Notas de Credito (`arca_router.create_credit_note`).
+  - Exportacion RG 1361 DETALLE (`rg1361_service.generate_files`).
+- **Log visible** cuando se filtran lineas: en consola/log de ARCA aparece `📝 1-100: omitidas 3 linea(s) leyenda (cant=0 precio=0)`.
+
+---
+
 ## v1.6.6 (2026-05-12)
 
 ### Fix critico - cache del WebView embebido

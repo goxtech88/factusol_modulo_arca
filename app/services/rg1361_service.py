@@ -470,8 +470,13 @@ def generate_files(
     for log in logs:
         # Datos del header de Factusol (para fecha emisión, no_grav, exento, etc.)
         try:
-            lines_fs, header_fs = _build_lines_from_factusol(log.tipfac, log.codfac)
+            raw_lines, header_fs = _build_lines_from_factusol(log.tipfac, log.codfac)
             cliente_fs = _build_cliente_from_factusol(log.tipfac, log.codfac)
+            # Descartar lineas-leyenda (cantidad=0 precio=0): son texto descriptivo
+            # que Factusol acepta como item pero no son items reales. Se omiten en
+            # el DETALLE para no generar ruido en el archivo RG 1361.
+            from app.services.arca_service import filter_real_lines
+            lines_fs = filter_real_lines(raw_lines)
         except Exception:
             lines_fs, header_fs, cliente_fs = [], {}, {}
 

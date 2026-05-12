@@ -339,6 +339,27 @@ def determine_tipo_comprobante(
 
 
 
+def is_legend_line(line: dict) -> bool:
+    """
+    Detecta lineas que el usuario carga en Factusol solo como leyendas / texto
+    descriptivo (cantidad=0 Y precio=0 Y total=0). Estas lineas no son items
+    reales y deben omitirse al validar la factura en ARCA y al exportar el
+    DETALLE de RG 1361.
+    """
+    try:
+        cant = float(line.get("CANLFA") or 0)
+        prec = float(line.get("PRELFA") or 0)
+        tot = float(line.get("TOTLFA") or 0)
+    except (TypeError, ValueError):
+        return False
+    return cant == 0 and prec == 0 and tot == 0
+
+
+def filter_real_lines(lines: list[dict]) -> list[dict]:
+    """Devuelve las lineas reales descartando las que son solo leyendas."""
+    return [ln for ln in (lines or []) if not is_legend_line(ln)]
+
+
 def build_voucher_data(
     invoice_header: dict,
     invoice_lines: list[dict],
@@ -401,9 +422,13 @@ def build_voucher_data(
                 "Importe": round(iva_imp, 2),
             })
 
-    # Si no pudimos extraer nada del header, fallback a las líneas
+    # Si no pudimos extraer nada del header, fallback a las líneas.
+    # Filtramos lineas-leyenda (cantidad=0 precio=0) que Factusol acepta como
+    # texto libre pero no son items reales — sumarlas no rompe (suman 0) pero
+    # es mas limpio omitirlas explicitamente.
     if total_neto == 0 and total_iva == 0:
-        for line in invoice_lines:
+        real_lines = filter_real_lines(invoice_lines)
+        for line in real_lines:
             piv = float(line.get("PIVLFA", 0) or 0)
             base = float(line.get("BASLFA", 0) or 0)
             iva_amount = float(line.get("IVALFA", 0) or 0)
