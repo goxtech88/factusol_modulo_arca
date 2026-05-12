@@ -760,6 +760,76 @@
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
 
+    <!-- Wizard de Primer Uso (Registro de Licencia Gratis) -->
+    <div id="wizard-modal" class="modal hidden" style="z-index: 9999">
+        <div class="modal-overlay"></div>
+        <div class="modal-content" style="max-width: 560px">
+            <div class="modal-header">
+                <h2 style="margin:0">
+                    <i data-lucide="party-popper" style="display:inline-block;vertical-align:middle"></i>
+                    Bienvenido a Factusol ARCA Sync
+                </h2>
+            </div>
+            <div class="modal-body" style="padding:1.5rem">
+                <p style="margin-top:0">
+                    Para activar tu <strong>licencia gratis</strong> y empezar a usar el modulo,
+                    completa los siguientes datos. Solo lo hacemos una vez.
+                </p>
+                <form id="wizard-form" autocomplete="on">
+                    <div style="display:grid; gap:0.75rem">
+                        <label>
+                            <span style="display:block; font-size:0.85em; color:var(--text-muted)">Razon social <span style="color:red">*</span></span>
+                            <input type="text" id="wz-company" required maxlength="200"
+                                placeholder="Ej: Mi Empresa S.R.L."
+                                style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px">
+                        </label>
+                        <label>
+                            <span style="display:block; font-size:0.85em; color:var(--text-muted)">CUIT <span style="color:red">*</span></span>
+                            <input type="text" id="wz-cuit" required inputmode="numeric" maxlength="13"
+                                placeholder="20-12345678-9 o 20123456789"
+                                style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px">
+                        </label>
+                        <label>
+                            <span style="display:block; font-size:0.85em; color:var(--text-muted)">Condicion frente al IVA</span>
+                            <select id="wz-cond-iva" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px">
+                                <option value="Responsable Inscripto">Responsable Inscripto</option>
+                                <option value="Monotributista">Monotributista</option>
+                                <option value="Exento">Exento</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span style="display:block; font-size:0.85em; color:var(--text-muted)">Nombre del responsable <span style="color:red">*</span></span>
+                            <input type="text" id="wz-contact" required maxlength="100"
+                                placeholder="Ej: Juan Perez"
+                                style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px">
+                        </label>
+                        <label>
+                            <span style="display:block; font-size:0.85em; color:var(--text-muted)">Email <span style="color:red">*</span></span>
+                            <input type="email" id="wz-email" required maxlength="200"
+                                placeholder="contacto@miempresa.com.ar"
+                                style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px">
+                        </label>
+                        <label>
+                            <span style="display:block; font-size:0.85em; color:var(--text-muted)">WhatsApp <span style="color:red">*</span></span>
+                            <input type="tel" id="wz-phone" required maxlength="40"
+                                placeholder="+54 9 11 1234-5678"
+                                style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px">
+                        </label>
+                    </div>
+                    <p style="margin:1rem 0 0; font-size:0.8em; color:var(--text-muted)">
+                        Tus datos quedan en nuestro sistema para activar la licencia y poder contactarte
+                        para soporte. No los compartimos con terceros.
+                    </p>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="wz-submit" onclick="WizardComponent.submit()">
+                    <i data-lucide="check-circle"></i> Activar Licencia Gratis
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Floating Support Button (WhatsApp) — solo planes con soporte -->
     <button id="support-fab" class="support-fab" style="display:none" title="Soporte WhatsApp GoxTech" aria-label="Soporte WhatsApp">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="#ffffff">
@@ -777,6 +847,7 @@
     <script src="/static/js/components/admin.js"></script>
     <script src="/static/js/components/config.js"></script>
     <script src="/static/js/components/credit_notes.js"></script>
+    <script src="/static/js/components/wizard.js"></script>
     <script src="/static/js/app.js"></script>
 </body>
 </html>

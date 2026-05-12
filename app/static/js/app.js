@@ -75,6 +75,12 @@ const App = {
         this._checkLicense();
         this.navigate('dashboard');
         if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        // Wizard de primer uso: si falta CUIT/email/razon-social, mostrar modal
+        // bloqueante para registrar la licencia gratuita y crear un Lead en CRM.
+        if (typeof WizardComponent !== 'undefined') {
+            setTimeout(() => WizardComponent.checkAndShow(), 800);
+        }
     },
 
     async _checkLicense() {

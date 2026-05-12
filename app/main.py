@@ -15,7 +15,7 @@ from app.database import init_db, SessionLocal
 from app.auth import hash_password
 from app.models.user import User
 
-from app.routers import auth_router, users_router, factusol_router, arca_router, config_router, credit_notes_router, updates_router
+from app.routers import auth_router, users_router, factusol_router, arca_router, config_router, license_router, credit_notes_router, updates_router
 
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Factusol ARCA Sync",
     description="Módulo de facturación electrónica ARCA para Factusol",
-    version="1.6.9",
+    version="1.7.0",
     lifespan=lifespan,
 )
 
@@ -104,6 +104,7 @@ app.include_router(arca_router.router)
 app.include_router(config_router.router)
 app.include_router(credit_notes_router.router)
 app.include_router(updates_router.router)
+app.include_router(license_router.router)
 
 # Static files (frontend)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

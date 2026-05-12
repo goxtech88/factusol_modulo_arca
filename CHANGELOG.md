@@ -1,5 +1,27 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.7.0 (2026-05-12)
+
+### Nuevas funcionalidades - Registro automatico de licencia gratuita
+- **Wizard de primer uso**: cuando la app arranca y la empresa no esta registrada todavia (faltan CUIT, email o razon social en config), se muestra un modal bloqueante con un formulario simple.
+  - Campos: Razon social, CUIT, Condicion frente al IVA, Nombre del responsable, Email, WhatsApp.
+  - **Validacion de CUIT con digito verificador** (mod 11) tanto en frontend como backend.
+  - Al submit: POST a `https://goxtech.com.ar/arca_factusol/api/licenses/free` con todos los datos, incluyendo `phone` y `contact_name` para alimentar el CRM.
+  - El cliente queda con plan basico activado y un Lead "Nuevo" automaticamente creado en el CRM de GoxTech.
+- **Nuevo router `/api/license/`**:
+  - `GET  /api/license/needs-registration` - True/False si falta completar el wizard.
+  - `POST /api/license/register` - registra al cliente en el backend remoto + guarda config local.
+  - `GET  /api/license/status` - estado del plan actual.
+  - `POST /api/license/refresh` - fuerza re-verificacion online.
+
+### Backend remoto (deployado en /opt/goxtech_licenses/)
+- `POST /licenses/free` ahora acepta campos opcionales `phone`, `contact_name`, `source`.
+- Cuando llega un registro nuevo, **crea automaticamente un Lead** en la tabla `leads` con stage="Nuevo", source="app_registration", linkeado por CUIT.
+- Si el Lead ya existe (re-registro), actualiza campos vacios + agrega un `LeadEvent` "re_registration".
+- Nueva columna `cuit` en tabla `leads` (con indice) para correlacionar Lead <-> License.
+
+---
+
 ## v1.6.9 (2026-05-12)
 
 ### Fix - Condicion fiscal del cliente mostrada en el modal de factura
