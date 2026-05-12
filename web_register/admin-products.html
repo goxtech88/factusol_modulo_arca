@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Metadata Productos | Goxtech</title>
+<style>
+:root {
+    --bg: #0a0e1a;
+    --bg-card: #131826;
+    --bg-soft: #1a2032;
+    --border: #2a3144;
+    --text: #e8eaf0;
+    --text-muted: #8b94a8;
+    --primary: #c8102e;
+    --accent: #4ade80;
+    --warn: #f59e0b;
+    --error: #dc2626;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text); padding: 20px;
+    line-height: 1.5;
+}
+.container { max-width: 960px; margin: 0 auto; }
+header { margin-bottom: 28px; }
+header h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+header p { color: var(--text-muted); font-size: 14px; }
+header .warn {
+    margin-top: 12px; padding: 10px 14px;
+    background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warn);
+    border-radius: 4px; font-size: 13px; color: #fcd34d;
+}
+
+.login-card, .product-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin-bottom: 16px;
+}
+.login-card { max-width: 420px; margin-left: auto; margin-right: auto; margin-top: 60px; }
+.login-card h2 { margin-bottom: 16px; }
+
+label {
+    display: block; font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 4px; margin-top: 12px;
+}
+input, textarea, select {
+    width: 100%; padding: 9px 11px;
+    background: var(--bg-soft); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px; font-family: inherit;
+    font-size: 13px;
+}
+input:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.15);
+}
+textarea { min-height: 80px; font-family: "Consolas", "JetBrains Mono", monospace; }
+button {
+    padding: 10px 18px; background: var(--primary); color: #fff;
+    border: none; border-radius: 6px; font-weight: 700; cursor: pointer;
+    font-size: 13px; transition: opacity 0.15s;
+}
+button:hover:not(:disabled) { opacity: 0.9; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary { background: var(--bg-soft); border: 1px solid var(--border); }
+
+.product-card h3 { font-size: 18px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.product-card .slug {
+    font-family: monospace; font-size: 11px; color: var(--text-muted);
+    background: var(--bg-soft); padding: 2px 6px; border-radius: 3px;
+}
+.product-card .category {
+    font-size: 11px; color: var(--accent); text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 12px;
+}
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .field-row { grid-template-columns: 1fr; } }
+
+.actions-row {
+    display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end;
+}
+
+.toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: 12px 16px; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    font-size: 13px; z-index: 100;
+    transform: translateY(100px); opacity: 0;
+    transition: transform 0.2s, opacity 0.2s;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { border-color: var(--accent); }
+.toast.error { border-color: var(--error); color: #fca5a5; }
+
+.hint {
+    font-size: 11px; color: var(--text-muted); margin-top: 2px;
+    font-style: italic;
+}
+.url-preview {
+    font-family: monospace; font-size: 11px; color: var(--accent);
+    margin-top: 4px; word-break: break-all;
+}
+.field-help {
+    background: var(--bg-soft); border-left: 2px solid var(--primary);
+    padding: 8px 10px; margin-top: 4px; border-radius: 0 4px 4px 0;
+    font-size: 11px; color: var(--text-muted); line-height: 1.5;
+}
+.field-help code { background: var(--bg); padding: 1px 4px; border-radius: 3px; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Login -->
+    <div id="login-section" class="login-card">
+        <h2>Admin · Productos</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">
+            Editor de metadata para landings de producto (Módulo ARCA, Tableros Power BI).
+        </p>
+        <label>Usuario</label>
+        <input type="text" id="login-user" placeholder="admin" autofocus value="admin">
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••••">
+        <p class="hint">Mismas credenciales que el panel admin de Goxtech.</p>
+        <div class="actions-row" style="justify-content: flex-start; margin-top: 16px;">
+            <button onclick="login()">Entrar</button>
+        </div>
+        <p id="login-error" style="color: #fca5a5; font-size: 12px; margin-top: 12px; display: none;"></p>
+    </div>
+
+    <!-- Lista de productos -->
+    <div id="admin-section" style="display: none;">
+        <header>
+            <h1>📦 Metadata de productos</h1>
+            <p>Cargá tagline, video demo, screenshots, requisitos y mensaje custom de WhatsApp para cada producto. Los datos aparecen automáticamente en las landings.</p>
+            <div class="warn">
+                <strong>⚠ Heads up</strong> — Esta vista solo edita metadata visual (tagline, video, etc). Para crear/borrar productos, gestionar archivos ZIP o cargar imágenes, seguí usando el admin React principal.
+            </div>
+        </header>
+
+        <div id="products-list">Cargando productos...</div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const API = "https://goxtech.com.ar/arca_factusol/api";
+let TOKEN = localStorage.getItem("gox_admin_jwt") || "";
+
+function toast(msg, type = "success") {
+    const t = document.getElementById("toast");
+    t.className = `toast show ${type}`;
+    t.textContent = msg;
+    setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+async function login() {
+    const user = document.getElementById("login-user").value.trim();
+    const pass = document.getElementById("login-pass").value;
+    const err = document.getElementById("login-error");
+    err.style.display = "none";
+    if (!user || !pass) {
+        err.textContent = "Usuario y contraseña son obligatorios";
+        err.style.display = "block";
+        return;
+    }
+    try {
+        const resp = await fetch(`${API}/admin/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: user, password: pass }),
+        });
+        if (!resp.ok) throw new Error(`Credenciales inválidas (HTTP ${resp.status})`);
+        const data = await resp.json();
+        TOKEN = data.token;
+        localStorage.setItem("gox_admin_jwt", TOKEN);
+        document.getElementById("login-section").style.display = "none";
+        document.getElementById("admin-section").style.display = "block";
+        loadProducts();
+    } catch (e) {
+        err.textContent = e.message;
+        err.style.display = "block";
+    }
+}
+
+async function loadProducts() {
+    try {
+        const resp = await fetch(`${API}/admin/downloads`, {
+            headers: { "Authorization": `Bearer ${TOKEN}` },
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const products = await resp.json();
+        renderProducts(products);
+    } catch (err) {
+        toast("Error al cargar: " + err.message, "error");
+    }
+}
+
+function renderProducts(products) {
+    const cont = document.getElementById("products-list");
+    if (!products.length) {
+        cont.innerHTML = "<p>No hay productos cargados.</p>";
+        return;
+    }
+    cont.innerHTML = products.map(p => `
+        <div class="product-card" data-id="${p.id}">
+            <h3>
+                ${escapeHtml(p.title)}
+                <span class="slug">/${escapeHtml(p.slug)}</span>
+            </h3>
+            <div class="category">${escapeHtml(p.category || "—")}${p.version ? " · v" + escapeHtml(p.version) : ""}</div>
+
+            <label>Tagline corto (1 línea, aparece como badge en el hero)</label>
+            <input type="text" data-field="tagline" maxlength="200" value="${escapeHtml(p.tagline || "")}" placeholder="Ej: CAE en Factusol en 10 segundos">
+
+            <label>Video demo (URL de YouTube o MP4)</label>
+            <input type="url" data-field="video_url" maxlength="500" value="${escapeHtml(p.video_url || "")}" placeholder="https://www.youtube.com/watch?v=... o https://app.powerbi.com/view?r=...">
+            <div class="field-help">
+                YouTube: <code>https://www.youtube.com/watch?v=ABC123</code> · Power BI: usar el link de "Publicar en la web" (<code>app.powerbi.com/view?r=...</code>).
+            </div>
+
+            <label>Screenshots (JSON array de URLs)</label>
+            <textarea data-field="screenshots_json" rows="3" placeholder='["/uploads/screenshots/cae.png", "/uploads/screenshots/qr.png"]'>${escapeHtml(p.screenshots_json || "")}</textarea>
+            <div class="field-help">
+                Array JSON de paths o URLs absolutas. Si el path empieza con <code>/</code> se sirve desde el backend. Subí las imágenes desde el admin principal (Sitio → Assets) y pegá acá las URLs.
+            </div>
+
+            <label>Requisitos técnicos (uno por línea)</label>
+            <textarea data-field="requirements" rows="5" placeholder="Factusol Evolution 2020+&#10;Certificado AFIP (.crt + .key)&#10;Windows 10+&#10;Conexión a internet">${escapeHtml(p.requirements || "")}</textarea>
+
+            <label>Mensaje WhatsApp custom</label>
+            <input type="text" data-field="whatsapp_message" maxlength="500" value="${escapeHtml(p.whatsapp_message || "")}" placeholder="Hola! Quiero información sobre...">
+            <div class="field-help">
+                Se pre-llena cuando el visitante hace click en el botón WhatsApp de la landing del producto.
+            </div>
+
+            <div class="actions-row">
+                <button class="secondary" onclick="cancelEdit(${p.id})">Cancelar</button>
+                <button onclick="saveProduct(${p.id})">Guardar</button>
+            </div>
+        </div>
+    `).join("");
+    // Guardamos el snapshot original para "cancelar"
+    window._originals = products.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
+}
+
+function cancelEdit(id) {
+    const card = document.querySelector(`.product-card[data-id="${id}"]`);
+    if (!card) return;
+    const orig = window._originals[id];
+    if (!orig) return;
+    ["tagline", "video_url", "screenshots_json", "requirements", "whatsapp_message"].forEach(k => {
+        const el = card.querySelector(`[data-field="${k}"]`);
+        if (el) el.value = orig[k] || "";
+    });
+    toast("Cambios descartados", "success");
+}
+
+async function saveProduct(id) {
+    const card = document.querySelector(`.product-card[data-id="${id}"]`);
+    if (!card) return;
+    const orig = window._originals[id];
+
+    // Construir payload completo (PUT requiere DownloadIn completo)
+    const payload = {
+        slug: orig.slug,
+        title: orig.title,
+        category: orig.category,
+        version: orig.version,
+        description: orig.description,
+        icon: orig.icon,
+        is_active: orig.is_active,
+        requires_login: orig.requires_login,
+    };
+    ["tagline", "video_url", "screenshots_json", "requirements", "whatsapp_message"].forEach(k => {
+        const el = card.querySelector(`[data-field="${k}"]`);
+        payload[k] = el && el.value.trim() ? el.value.trim() : null;
+    });
+
+    // Validar JSON de screenshots si tiene contenido
+    if (payload.screenshots_json) {
+        try {
+            const arr = JSON.parse(payload.screenshots_json);
+            if (!Array.isArray(arr)) throw new Error("debe ser un array");
+        } catch (err) {
+            toast("Screenshots: JSON inválido (" + err.message + ")", "error");
+            return;
+        }
+    }
+
+    const btn = card.querySelector(".actions-row button:last-child");
+    btn.disabled = true; btn.textContent = "Guardando...";
+    try {
+        const resp = await fetch(`${API}/admin/downloads/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${TOKEN}`,
+            },
+            body: JSON.stringify(payload),
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${resp.status}`);
+        }
+        const updated = await resp.json();
+        window._originals[id] = updated;
+        toast(`✓ ${updated.title} actualizado`, "success");
+    } catch (err) {
+        toast("Error al guardar: " + err.message, "error");
+    } finally {
+        btn.disabled = false; btn.textContent = "Guardar";
+    }
+}
+
+function escapeHtml(s) {
+    if (s == null) return "";
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Auto-login si hay token guardado
+if (TOKEN) {
+    fetch(`${API}/admin/downloads`, { headers: { "x-admin-token": TOKEN } })
+        .then(r => {
+            if (r.ok) {
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("admin-section").style.display = "block";
+                loadProducts();
+            }
+        })
+        .catch(() => {});
+}
+</script>
+</body>
+</html>
