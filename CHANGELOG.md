@@ -1,5 +1,14 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.6.6 (2026-05-12)
+
+### Fix critico - cache del WebView embebido
+- **El navegador embebido (Chrome/Edge --app mode) cacheaba HTML/JS** entre updates: despues de actualizar, el server tenia la version nueva pero la UI seguia mostrando la version vieja (los botones nuevos y los filtros no aparecian).
+- **Backend**: middleware `NoCacheStaticMiddleware` agrega headers `Cache-Control: no-store, no-cache, must-revalidate` a `/`, `/static/*` y `/favicon.ico`. El browser nunca mas va a cachear los assets de UI.
+- **Updater (bat)**: al final del proceso de update, borra automaticamente las subcarpetas de cache del navegador embebido (`Cache/`, `Code Cache/`, `GPUCache/`, `Service Worker/`) preservando las cookies de login. Esto fuerza un reload completo en el primer abrir.
+
+---
+
 ## v1.6.5 (2026-05-12)
 
 ### RG 1361 - Archivo VENTAS

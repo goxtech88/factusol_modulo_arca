@@ -4,10 +4,11 @@ Punto de entrada de la aplicación FastAPI.
 """
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from pathlib import Path
 
 from app.database import init_db, SessionLocal
@@ -63,7 +64,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Factusol ARCA Sync",
     description="Módulo de facturación electrónica ARCA para Factusol",
-    version="1.6.5",
+    version="1.6.6",
     lifespan=lifespan,
 )
 
@@ -75,6 +76,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── No-cache para assets de UI ────────────────────────────────────────────
+# El WebView embebido (Chrome/Edge --app) cachea HTML/JS por defecto. Tras un
+# update remoto, los archivos en disco cambian pero el browser sigue sirviendo
+# de cache HTTP la version vieja → el usuario no ve los cambios. Forzamos
+# que /static/* y / nunca se cacheen.
+class NoCacheStaticMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path == "/" or path.startswith("/static/") or path == "/favicon.ico":
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+
+app.add_middleware(NoCacheStaticMiddleware)
 
 # API Routers
 app.include_router(auth_router.router)

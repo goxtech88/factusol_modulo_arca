@@ -272,6 +272,13 @@ echo [4/5] Restore files >> "{log_path}"
 echo [4/5] Restore dirs >> "{log_path}"
 {chr(10).join(dir_restore_cmds)}
 
+echo [4.5/5] Limpiando cache HTTP del browser (preserva cookies/login)...
+echo [4.5/5] Limpiando Cache y Code Cache de .arca_browser >> "{log_path}"
+if exist "{app_dir}\\.arca_browser\\Default\\Cache" rmdir /s /q "{app_dir}\\.arca_browser\\Default\\Cache" >> "{log_path}" 2>&1
+if exist "{app_dir}\\.arca_browser\\Default\\Code Cache" rmdir /s /q "{app_dir}\\.arca_browser\\Default\\Code Cache" >> "{log_path}" 2>&1
+if exist "{app_dir}\\.arca_browser\\Default\\GPUCache" rmdir /s /q "{app_dir}\\.arca_browser\\Default\\GPUCache" >> "{log_path}" 2>&1
+if exist "{app_dir}\\.arca_browser\\Default\\Service Worker" rmdir /s /q "{app_dir}\\.arca_browser\\Default\\Service Worker" >> "{log_path}" 2>&1
+
 echo [5/5] Reiniciando ARCA...
 echo [5/5] Reinicio: %DATE% %TIME% >> "{log_path}"
 echo.
