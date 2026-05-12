@@ -1,5 +1,22 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.6.4 (2026-05-12)
+
+### CRITICO - Bug fix de actualizacion
+- **Fix: la DB del usuario se pisaba al actualizar.** En versiones <= 1.6.3 la lista de archivos preservados del updater tenia el nombre incorrecto de la DB (`arca.db` en vez del nombre real `app_data.db`). Al actualizar, la DB con usuarios y CAE historicos NO se preservaba — si una version traia un `app_data.db` o si el usuario re-extraia el ZIP encima, perdia todo.
+- **Backup ZIP completo pre-update**: antes de aplicar cualquier actualizacion ahora se crea `backups/backup_pre-vX.Y.Z_YYYYMMDD_HHMMSS.zip` con config.json + DB + certs + licencia. Si algo sale mal, restauras desde ahi.
+- **`copy` reemplaza `move`**: el preserve ahora usa COPY (no move) — el original queda en su lugar como red de seguridad mientras se hace el update.
+- **`xcopy /e /i /h /y` para directorios**: `move` no maneja directorios con handles abiertos; xcopy es robusto.
+- **Logging detallado del update** a `update_YYYYMMDD_HHMMSS.log` en el dir de la app — permite diagnosticar si algo falla.
+- **Pausa extra de 2s** tras detectar que ARCA.exe se cerro, para que SQLite y otros liberen handles del filesystem.
+- **`.arca_browser/` preservado** tambien (user-data-dir de Chrome/Edge embedded) — evita re-loguear despues de cada update.
+
+### Que pasa si ya perdiste config al actualizar a una version anterior
+- Esta version NO recupera lo perdido (los datos viejos ya no estan).
+- A partir de v1.6.4 cada update genera un backup, asi que de aca en adelante esta cubierto.
+
+---
+
 ## v1.6.3 (2026-05-12)
 
 ### UX
