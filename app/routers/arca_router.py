@@ -118,8 +118,16 @@ def validate_invoice(
     # Si el PV tiene tipo_comprobante fijo (!=0), usarlo; sino calcular por CFECLI + NIF
     if pv_config.tipo_comprobante and pv_config.tipo_comprobante != 0:
         tipo_comprobante = pv_config.tipo_comprobante
+        print(f"[TIPO CBTE] {tipfac}-{codfac}: PV {pv_config.punto_venta} TIENE TIPO FIJO = {tipo_comprobante} (override, ignora CFECLI)")
     else:
-        tipo_comprobante = determine_tipo_comprobante(cfecli, cond_emisor, nifcli_clean, mono_como_a)
+        tipo_comprobante, decision_info = determine_tipo_comprobante(
+            cfecli, cond_emisor, nifcli_clean, mono_como_a, explain=True,
+        )
+        print(
+            f"[TIPO CBTE] {tipfac}-{codfac}: cfecli={cfecli} ({decision_info.get('cfecli_label', '?')}) "
+            f"nif='{nifcli_clean}' mono_como_a={mono_como_a} → tipo={tipo_comprobante}. "
+            f"Razon: {decision_info.get('razon', '?')}"
+        )
 
 
 

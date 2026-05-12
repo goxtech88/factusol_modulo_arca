@@ -295,7 +295,8 @@ def determine_tipo_comprobante(
     cond_iva_emisor: str = "Responsable Inscripto",
     nifcli: str = "",
     mono_como_a: bool = True,
-) -> int:
+    explain: bool = False,
+):
     """
     Determina el tipo de comprobante AFIP según CFECLI y NIF del cliente.
 
@@ -320,22 +321,63 @@ def determine_tipo_comprobante(
     con la leyenda "Receptor del comprobante - Responsable Monotributo".
     La leyenda debe imprimirse en el comprobante desde Factusol.
     """
+    CFECLI_LABELS = {
+        0: "No configurado",
+        1: "Consumidor Final",
+        2: "Responsable Inscripto",
+        3: "Monotributo",
+        4: "Exento",
+        5: "No Responsable / No Alcanzado",
+    }
+
+    def _ret(tipo, razon):
+        if explain:
+            return tipo, {
+                "tipo": tipo,
+                "razon": razon,
+                "cfecli": cfecli,
+                "cfecli_label": CFECLI_LABELS.get(cfecli, f"Desconocido({cfecli})"),
+                "nifcli": nifcli,
+                "mono_como_a": mono_como_a,
+            }
+        return tipo
+
+    # ── Emisor Monotributista: siempre Factura C ──────────────────────
     if cond_iva_emisor == "Monotributista":
-        return 11  # Factura C
+        return _ret(11, "Emisor Monotributista → Factura C")
 
     cfecli = int(cfecli or 0)
     nifcli_clean = str(nifcli or "").replace("-", "").strip()
 
-    # Sin NIF o con DNI (< 11 dígitos) → consumidor final → Factura B
-    if not nifcli_clean or (nifcli_clean.isdigit() and len(nifcli_clean) < 11):
-        return 6
+    # ── Sin NIF / NIF no numerico → CF sin identificar ────────────────
+    if not nifcli_clean or not nifcli_clean.isdigit():
+        return _ret(6, f"Sin NIF / NIF no numerico ('{nifcli}') → CF sin identificar → Factura B")
 
-    # Con CUIT (11 dígitos): usar CFECLI
+    # ── DNI (< 11 digitos) → CF con DNI ───────────────────────────────
+    if len(nifcli_clean) < 11:
+        return _ret(6, f"NIF de {len(nifcli_clean)} digitos → DNI → Factura B")
+
+    # ── CUIT (11 digitos): regla EXPLICITA por CFECLI ─────────────────
+    # Cada CFECLI se trata por separado para evitar que el flag mono_como_a
+    # afecte a clientes que NO son Monotributo (especialmente Exentos).
+
     if cfecli == 2:
-        return 1   # Factura A (Responsable Inscripto)
-    if cfecli == 3 and mono_como_a:
-        return 1   # Factura A a Monotributista (RG 5022/21)
-    return 6       # Factura B (CF=0/1, Exento=4, o Mono si mono_como_a=False)
+        return _ret(1, "CFECLI=2 (Responsable Inscripto) con CUIT → Factura A (siempre)")
+
+    if cfecli == 3:
+        if mono_como_a:
+            return _ret(1, "CFECLI=3 (Monotributo) + mono_como_a=True (RG 5022/21) → Factura A")
+        return _ret(6, "CFECLI=3 (Monotributo) + mono_como_a=False (legacy) → Factura B")
+
+    if cfecli == 4:
+        # Exento: el flag mono_como_a NO aplica. Siempre B.
+        return _ret(6, "CFECLI=4 (Exento) → Factura B (SIEMPRE, mono_como_a no aplica a exentos)")
+
+    if cfecli == 5:
+        return _ret(6, "CFECLI=5 (No Responsable / No Alcanzado) → Factura B (siempre)")
+
+    # CFECLI=0 (no configurado) o 1 (CF con CUIT) o desconocido → B
+    return _ret(6, f"CFECLI={cfecli} ({CFECLI_LABELS.get(cfecli, '?')}) con CUIT → Factura B (default seguro)")
 
 
 

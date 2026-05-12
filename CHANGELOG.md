@@ -1,5 +1,20 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.6.8 (2026-05-12)
+
+### Fix - Tipo de comprobante para clientes Exentos
+- **Problema**: con el flag "Facturar Monotributistas como Factura A" activado, algunos clientes Exentos podian recibir Factura A. La regla queda explicita ahora.
+- **Reglas explicitas por CFECLI (emisor RI + cliente con CUIT)**:
+  - CFECLI=2 (Responsable Inscripto) → SIEMPRE Factura A
+  - CFECLI=3 (Monotributo) → A si `mono_como_a=True` (RG 5022/21), B si no
+  - **CFECLI=4 (Exento) → SIEMPRE Factura B** (el flag mono_como_a no aplica a exentos)
+  - CFECLI=5 (No Responsable / No Alcanzado) → SIEMPRE Factura B
+  - CFECLI=0/1 con CUIT → Factura B (default seguro)
+- **`determine_tipo_comprobante` ahora acepta `explain=True`** y devuelve la razon de la decision junto con el tipo. Se usa en el log de validacion para que quede registrado por que se eligio cada tipo.
+- **Log detallado** en cada validacion: `[TIPO CBTE] 1-100: cfecli=4 (Exento) nif='20123456789' mono_como_a=True → tipo=6. Razon: CFECLI=4 (Exento) → Factura B (SIEMPRE...)`.
+
+---
+
 ## v1.6.7 (2026-05-12)
 
 ### Lineas-leyenda de Factusol
