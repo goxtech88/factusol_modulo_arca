@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="0; url=/admin/#products">
+<title>Movido a /admin/</title>
+<style>
+body { font-family: -apple-system, "Segoe UI", sans-serif; background: #F8FAFC; color: #1F1F23; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; text-align: center; }
+.card { background: #fff; border: 1px solid #E5E7EB; border-radius: 16px; padding: 36px; max-width: 420px; box-shadow: 0 10px 40px rgba(0,0,0,.08); }
+h1 { font-size: 22px; color: #0B0B0D; margin-bottom: 8px; }
+p { color: #6B7280; margin-bottom: 18px; }
+a { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #FF6B00, #FF9A44); color: #fff; padding: 12px 22px; border-radius: 10px; text-decoration: none; font-weight: 700; box-shadow: 0 4px 14px rgba(255,107,0,.25); }
+.brand { color: #FF6B00; font-weight: 800; font-size: 18px; margin-bottom: 24px; }
+</style>
+</head>
+<body>
+<div class="card">
+    <div class="brand">Goxtech</div>
+    <h1>Esta vista se movió</h1>
+    <p>El editor de productos ahora forma parte del admin unificado.</p>
+    <a href="/admin/#products">Ir al admin →</a>
+</div>
+<script>setTimeout(() => location.replace("/admin/#products"), 300);</script>
+</body>
+</html>
