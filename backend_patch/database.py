@@ -34,6 +34,12 @@ def auto_migrate():
         ("licenses", "last_seen",   "DATETIME"),
         # Lead.cuit: vincula con License cuando el lead viene del registro de la app
         ("leads",    "cuit",        "VARCHAR(20)"),
+        # Goxtech v2: evidencia tecnica de productos (video, screenshots, requisitos, WA)
+        ("downloads", "video_url",        "VARCHAR(500)"),
+        ("downloads", "screenshots_json", "TEXT"),
+        ("downloads", "requirements",     "TEXT"),
+        ("downloads", "whatsapp_message", "VARCHAR(500)"),
+        ("downloads", "tagline",          "VARCHAR(200)"),
     ]
 
     # Indices a crear despues de las columnas (idempotente).

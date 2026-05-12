@@ -83,7 +83,13 @@ class HeroSlide(Base):
 
 
 class Download(Base):
-    """Archivos disponibles para descarga en el sitio público."""
+    """Archivos disponibles para descarga + metadatos tecnicos del producto.
+
+    Se usa para landings de productos (Modulo ARCA, Tableros Power BI, etc):
+    cada landing levanta del backend las screenshots, el video demo, los
+    requisitos del sistema y el mensaje custom de WhatsApp asociado al
+    producto, sin necesidad de hardcodear nada en el HTML estatico.
+    """
     __tablename__ = "downloads"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -98,6 +104,19 @@ class Download(Base):
     downloads_count: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     requires_login: Mapped[bool] = mapped_column(Boolean, default=False)
+    # ── Evidencia tecnica (Goxtech v2) ──
+    # URL del video demo (YouTube embed o MP4 self-hosted). Si null, no muestra.
+    video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # JSON array de URLs de screenshots. Ej: ["/arca_factusol/api/uploads/screenshots/cae.png", ...]
+    screenshots_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Texto libre con requisitos del sistema (markdown / multilinea).
+    # Ej: "- Factusol Evolution 2020+\n- Certificado .p12\n- .NET Framework 4.7.2"
+    requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Mensaje pre-cargado para el boton WhatsApp del producto.
+    # Ej: "Hola! Quiero informacion sobre el Modulo ARCA para Factusol."
+    whatsapp_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Tagline corto para landing (1 linea). Ej: "Inyeccion de CAE en Factusol en 10 segundos"
+    tagline: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

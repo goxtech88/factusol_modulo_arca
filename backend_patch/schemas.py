@@ -86,6 +86,12 @@ class DownloadOut(BaseModel):
     downloads_count: int
     is_active: bool
     requires_login: bool
+    # Evidencia tecnica (Goxtech v2)
+    video_url: Optional[str] = None
+    screenshots_json: Optional[str] = None  # JSON array as string
+    requirements: Optional[str] = None
+    whatsapp_message: Optional[str] = None
+    tagline: Optional[str] = None
 
 
 class DownloadIn(BaseModel):
@@ -97,6 +103,12 @@ class DownloadIn(BaseModel):
     icon: Optional[str] = Field(default=None, max_length=100)
     is_active: bool = True
     requires_login: bool = False
+    # Evidencia tecnica (Goxtech v2) - todos opcionales para no romper integraciones existentes
+    video_url: Optional[str] = Field(default=None, max_length=500)
+    screenshots_json: Optional[str] = Field(default=None, max_length=5000)
+    requirements: Optional[str] = Field(default=None, max_length=3000)
+    whatsapp_message: Optional[str] = Field(default=None, max_length=500)
+    tagline: Optional[str] = Field(default=None, max_length=200)
 
 
 # ── Review ──
