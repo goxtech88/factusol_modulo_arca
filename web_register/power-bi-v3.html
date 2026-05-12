@@ -7,6 +7,7 @@
 <meta name="description" content="Tableros Power BI conectados directo a tu ERP. Ventas, Cuentas a Cobrar, Stock. Modelo semántico DAX en español (Argentina, separador ;).">
 <link rel="icon" type="image/png" href="/img/logo-dark.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
 <style>
 :root {
@@ -31,6 +32,14 @@
     --shadow-strong: 0 20px 60px rgba(255, 107, 0, 0.15);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Lucide base — los SVG generados heredan width/height del contenedor */
+[data-lucide] { width: 1em; height: 1em; stroke-width: 2; vertical-align: middle; flex-shrink: 0; }
+.icon [data-lucide], .ico [data-lucide] { width: 22px; height: 22px; }
+.nav-cta [data-lucide], .btn-primary [data-lucide], .btn-secondary [data-lucide], .btn-wa [data-lucide] { width: 16px; height: 16px; stroke-width: 2.5; }
+.wa-float [data-lucide] { width: 28px; height: 28px; }
+.link [data-lucide], .arrow [data-lucide] { width: 14px; height: 14px; }
+.channel-card .icon [data-lucide] { width: 24px; height: 24px; }
+.product-card .link [data-lucide], .sector-card .link [data-lucide] { width: 14px; height: 14px; }
 body {
     font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
     background: var(--bg-app); color: var(--text-body); line-height: 1.6;
@@ -336,7 +345,7 @@ body {
             <div class="dash-card">
                 <div class="dash-preview" data-slug="dashboard-ventas">
                     <div class="placeholder">
-                        <div class="icon">📊</div>
+                        <div class="icon"><i data-lucide="file-spreadsheet"></i></div>
                         <p>Captura próximamente</p>
                     </div>
                 </div>
@@ -361,7 +370,7 @@ body {
             <div class="dash-card">
                 <div class="dash-preview" data-slug="dashboard-deudores">
                     <div class="placeholder">
-                        <div class="icon">💰</div>
+                        <div class="icon"><i data-lucide="wallet"></i></div>
                         <p>Captura próximamente</p>
                     </div>
                 </div>
@@ -386,7 +395,7 @@ body {
             <div class="dash-card">
                 <div class="dash-preview" data-slug="dashboard-stock">
                     <div class="placeholder">
-                        <div class="icon">📦</div>
+                        <div class="icon"><i data-lucide="truck"></i></div>
                         <p>Captura próximamente</p>
                     </div>
                 </div>
@@ -566,6 +575,11 @@ document.querySelectorAll('a[data-action="demo"]').forEach(a => {
         a.rel = "noopener";
     }
 });
+</script>
+
+
+<script>
+if (typeof lucide !== "undefined") lucide.createIcons();
 </script>
 </body>
 </html>

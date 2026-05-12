@@ -7,6 +7,7 @@
 <meta name="description" content="Descargas gratis de Goxtech: Módulo ARCA Sync para Factusol, tableros Power BI base, herramientas y utilidades.">
 <link rel="icon" type="image/png" href="/img/logo-dark.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
 <style>
 :root {
@@ -18,6 +19,14 @@
     --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Lucide base — los SVG generados heredan width/height del contenedor */
+[data-lucide] { width: 1em; height: 1em; stroke-width: 2; vertical-align: middle; flex-shrink: 0; }
+.icon [data-lucide], .ico [data-lucide] { width: 22px; height: 22px; }
+.nav-cta [data-lucide], .btn-primary [data-lucide], .btn-secondary [data-lucide], .btn-wa [data-lucide] { width: 16px; height: 16px; stroke-width: 2.5; }
+.wa-float [data-lucide] { width: 28px; height: 28px; }
+.link [data-lucide], .arrow [data-lucide] { width: 14px; height: 14px; }
+.channel-card .icon [data-lucide] { width: 24px; height: 24px; }
+.product-card .link [data-lucide], .sector-card .link [data-lucide] { width: 14px; height: 14px; }
 body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .mono { font-family: "JetBrains Mono", monospace; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
@@ -86,7 +95,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
             <a href="/descargas/" class="active">Descargas</a>
             <a href="/contacto/">Contacto</a>
         </div>
-        <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20Goxtech." target="_blank" rel="noopener" class="nav-cta">Hablemos →</a>
+        <a href="https://wa.me/5493541651038?text=Hola!%20Quiero%20información%20sobre%20Goxtech." target="_blank" rel="noopener" class="nav-cta">Hablemos <i data-lucide="arrow-right"></i></a>
     </div>
 </nav>
 
@@ -184,19 +193,20 @@ function render() {
                 <div class="version">${ver}${ver && slug ? " · " : ""}${escapeHtml(slug)}</div>
                 <p>${desc}</p>
                 <div class="meta">
-                    <span>📦 ${size}</span>
-                    ${cnt ? `<span>⬇ ${cnt}</span>` : ""}
+                    <span><i data-lucide="package"></i> ${size}</span>
+                    ${cnt ? `<span><i data-lucide="download"></i> ${cnt}</span>` : ""}
                 </div>
                 <div class="actions">
                     <a href="${downloadHref}" class="btn-primary">
                         ${requiresRegister ? "Registrarme y descargar" : "Descargar"}
-                        ↓
+                        <i data-lucide="arrow-down"></i>
                     </a>
                     ${hasLanding ? `<a href="/${slug.startsWith("dashboard") ? "power-bi" : slug}/" class="btn-secondary">Ver detalle</a>` : ""}
                 </div>
             </div>
         `;
     }).join("");
+    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 document.getElementById("filters").addEventListener("click", (ev) => {
@@ -208,6 +218,11 @@ document.getElementById("filters").addEventListener("click", (ev) => {
 });
 
 loadDownloads();
+</script>
+
+
+<script>
+if (typeof lucide !== "undefined") lucide.createIcons();
 </script>
 </body>
 </html>

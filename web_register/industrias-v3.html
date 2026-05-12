@@ -7,6 +7,7 @@
 <meta name="description" content="Goxtech trabaja con indumentaria, construcción, distribuidores, importadores, fábricas e inmobiliarias. Casos reales de Factusol, ARCA y Power BI.">
 <link rel="icon" type="image/png" href="/img/logo-dark.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
 <style>
 :root {
@@ -18,6 +19,14 @@
     --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Lucide base — los SVG generados heredan width/height del contenedor */
+[data-lucide] { width: 1em; height: 1em; stroke-width: 2; vertical-align: middle; flex-shrink: 0; }
+.icon [data-lucide], .ico [data-lucide] { width: 22px; height: 22px; }
+.nav-cta [data-lucide], .btn-primary [data-lucide], .btn-secondary [data-lucide], .btn-wa [data-lucide] { width: 16px; height: 16px; stroke-width: 2.5; }
+.wa-float [data-lucide] { width: 28px; height: 28px; }
+.link [data-lucide], .arrow [data-lucide] { width: 14px; height: 14px; }
+.channel-card .icon [data-lucide] { width: 24px; height: 24px; }
+.product-card .link [data-lucide], .sector-card .link [data-lucide] { width: 14px; height: 14px; }
 body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .mono { font-family: "JetBrains Mono", monospace; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
@@ -131,7 +140,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
         <div class="sectors-grid">
             <a href="/industrias/indumentaria/" class="sector-card">
                 <span class="num">01</span>
-                <div class="icon">👕</div>
+                <div class="icon"><i data-lucide="shirt"></i></div>
                 <span class="badge-available"><span style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></span> Página dedicada</span>
                 <h3>Indumentaria</h3>
                 <div class="tagline mono">▸ talle · color · temporada · curva</div>
@@ -153,7 +162,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 
             <a href="/industrias/construccion/" class="sector-card">
                 <span class="num">02</span>
-                <div class="icon">🏗</div>
+                <div class="icon"><i data-lucide="hard-hat"></i></div>
                 <span class="badge-available"><span style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></span> Página dedicada</span>
                 <h3>Construcción</h3>
                 <div class="tagline mono">▸ corralones · obras · cuenta corriente</div>
@@ -175,7 +184,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 
             <div class="sector-card">
                 <span class="num">03</span>
-                <div class="icon">📦</div>
+                <div class="icon"><i data-lucide="truck"></i></div>
                 <h3>Distribuidores</h3>
                 <div class="tagline mono">▸ ruteros · multi-depósito · canal</div>
                 <p class="desc">Empresas con vendedores en calle, multi-depósito y listas de precios diferenciadas por canal o zona. Pedidos desde el celular del rutero.</p>
@@ -196,7 +205,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 
             <div class="sector-card">
                 <span class="num">04</span>
-                <div class="icon">🚢</div>
+                <div class="icon"><i data-lucide="ship"></i></div>
                 <h3>Importadores</h3>
                 <div class="tagline mono">▸ usd/ars · despachos · margen real</div>
                 <p class="desc">Empresas que importan productos terminados o insumos. Costeo en USD, conversión a ARS, gastos de despacho y márgenes reales sobre costo desembarcado.</p>
@@ -217,7 +226,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 
             <div class="sector-card">
                 <span class="num">05</span>
-                <div class="icon">🏭</div>
+                <div class="icon"><i data-lucide="factory"></i></div>
                 <h3>Fábricas</h3>
                 <div class="tagline mono">▸ ordenes producción · escandallos · mrp</div>
                 <p class="desc">Fábricas chicas y medianas con producción a pedido o por lote. Escandallos de insumos, órdenes de producción, costeo por unidad fabricada.</p>
@@ -238,7 +247,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 
             <div class="sector-card">
                 <span class="num">06</span>
-                <div class="icon">🏠</div>
+                <div class="icon"><i data-lucide="home"></i></div>
                 <h3>Inmobiliaria</h3>
                 <div class="tagline mono">▸ alquileres · expensas · propietarios</div>
                 <p class="desc">Administraciones de propiedades. Cuenta corriente de cada propietario, cobranza de alquileres, expensas y liquidación periódica.</p>
@@ -295,5 +304,9 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 <a class="wa-float" href="https://wa.me/5493541651038" target="_blank" rel="noopener" aria-label="WhatsApp">
     <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
 </a>
+
+<script>
+if (typeof lucide !== "undefined") lucide.createIcons();
+</script>
 </body>
 </html>

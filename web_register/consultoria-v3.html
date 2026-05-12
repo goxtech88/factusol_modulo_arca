@@ -7,6 +7,7 @@
 <meta name="description" content="Servicios concretos de Goxtech: Factusol, Tienda Nube + Gestión Nube, Meta Ads, infraestructura Proxmox, ERPs custom. Partner oficial.">
 <link rel="icon" type="image/png" href="/img/logo-dark.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
 <style>
 :root {
@@ -18,6 +19,14 @@
     --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Lucide base — los SVG generados heredan width/height del contenedor */
+[data-lucide] { width: 1em; height: 1em; stroke-width: 2; vertical-align: middle; flex-shrink: 0; }
+.icon [data-lucide], .ico [data-lucide] { width: 22px; height: 22px; }
+.nav-cta [data-lucide], .btn-primary [data-lucide], .btn-secondary [data-lucide], .btn-wa [data-lucide] { width: 16px; height: 16px; stroke-width: 2.5; }
+.wa-float [data-lucide] { width: 28px; height: 28px; }
+.link [data-lucide], .arrow [data-lucide] { width: 14px; height: 14px; }
+.channel-card .icon [data-lucide] { width: 24px; height: 24px; }
+.product-card .link [data-lucide], .sector-card .link [data-lucide] { width: 14px; height: 14px; }
 body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .mono { font-family: "JetBrains Mono", monospace; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
@@ -129,9 +138,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
         <!-- Tienda Nube + Gestión Nube -->
         <div class="service-block" id="tienda-nube">
             <div class="head">
-                <div class="icon">
-                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                </div>
+                <div class="icon"><i data-lucide="shopping-bag"></i></div>
                 <span class="badge"><span style="width:6px;height:6px;background:var(--accent);border-radius:50%;"></span> Partner oficial</span>
                 <h3>Tienda Nube + Gestión Nube</h3>
                 <div class="tagline mono">▸ ecommerce + erp · stock unificado</div>
@@ -158,9 +165,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
         <!-- Factusol -->
         <div class="service-block" id="factusol">
             <div class="head">
-                <div class="icon">
-                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg>
-                </div>
+                <div class="icon"><i data-lucide="file-spreadsheet"></i></div>
                 <h3>Factusol · ERP español adaptado a AR</h3>
                 <div class="tagline mono">▸ implementacion + soporte + modulos custom</div>
             </div>
@@ -187,9 +192,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
         <!-- Meta Ads -->
         <div class="service-block" id="meta-ads">
             <div class="head">
-                <div class="icon">
-                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path></svg>
-                </div>
+                <div class="icon"><i data-lucide="target"></i></div>
                 <h3>Meta Ads · tráfico de performance</h3>
                 <div class="tagline mono">▸ facebook + instagram · pixel + ga4 · roas trackeado</div>
             </div>
@@ -215,9 +218,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
         <!-- Power BI -->
         <div class="service-block" id="power-bi">
             <div class="head">
-                <div class="icon">
-                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-                </div>
+                <div class="icon"><i data-lucide="bar-chart-3"></i></div>
                 <h3>Power BI · tableros a medida</h3>
                 <div class="tagline mono">▸ erp → dax (es-ar) → decisión</div>
             </div>
@@ -244,9 +245,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
         <!-- Infraestructura -->
         <div class="service-block" id="infraestructura">
             <div class="head">
-                <div class="icon">
-                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"></path></svg>
-                </div>
+                <div class="icon"><i data-lucide="server"></i></div>
                 <h3>Infraestructura · servidores y RDP</h3>
                 <div class="tagline mono">▸ proxmox · linux · backups · acceso remoto</div>
             </div>
@@ -272,9 +271,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
         <!-- Goxtech Labs -->
         <div class="service-block" id="labs">
             <div class="head">
-                <div class="icon">
-                    <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                </div>
+                <div class="icon"><i data-lucide="flask-conical"></i></div>
                 <span class="badge"><span style="width:6px;height:6px;background:var(--warn);border-radius:50%;"></span> Software a medida</span>
                 <h3>Goxtech Labs · desarrollos custom</h3>
                 <div class="tagline mono">▸ python · fastapi · sqlalchemy · sqlite/postgres</div>
@@ -363,5 +360,9 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 <a class="wa-float" href="https://wa.me/5493541651038" target="_blank" rel="noopener" aria-label="WhatsApp">
     <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
 </a>
+
+<script>
+if (typeof lucide !== "undefined") lucide.createIcons();
+</script>
 </body>
 </html>

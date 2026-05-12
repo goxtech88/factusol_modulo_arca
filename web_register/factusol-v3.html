@@ -7,6 +7,7 @@
 <meta name="description" content="Implementación, soporte y módulos custom para Factusol adaptado a Argentina. Factura electrónica AFIP, multi-PV, módulos a medida. 8+ años de experiencia.">
 <link rel="icon" type="image/png" href="/img/logo-dark.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
 <style>
 :root {
@@ -19,6 +20,14 @@
     --shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Lucide base — los SVG generados heredan width/height del contenedor */
+[data-lucide] { width: 1em; height: 1em; stroke-width: 2; vertical-align: middle; flex-shrink: 0; }
+.icon [data-lucide], .ico [data-lucide] { width: 22px; height: 22px; }
+.nav-cta [data-lucide], .btn-primary [data-lucide], .btn-secondary [data-lucide], .btn-wa [data-lucide] { width: 16px; height: 16px; stroke-width: 2.5; }
+.wa-float [data-lucide] { width: 28px; height: 28px; }
+.link [data-lucide], .arrow [data-lucide] { width: 14px; height: 14px; }
+.channel-card .icon [data-lucide] { width: 24px; height: 24px; }
+.product-card .link [data-lucide], .sector-card .link [data-lucide] { width: 14px; height: 14px; }
 body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: var(--bg-app); color: var(--text-body); line-height: 1.6; -webkit-font-smoothing: antialiased; }
 .mono { font-family: "JetBrains Mono", monospace; }
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
@@ -150,34 +159,34 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 
         <div class="modules-grid">
             <div class="module-card">
-                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></div>
+                <div class="icon"><i data-lucide="receipt"></i></div>
                 <h4>Facturación</h4>
                 <p>A, B, C, M, E + presupuestos, remitos, recibos, notas crédito/débito. Multi-PV.</p>
                 <span class="tag">+ ARCA Sync</span>
             </div>
             <div class="module-card">
-                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
+                <div class="icon"><i data-lucide="package"></i></div>
                 <h4>Stock</h4>
                 <p>Multi-depósito, control de mínimos, alertas, listas de precios por canal, escandallos.</p>
             </div>
             <div class="module-card">
-                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                <div class="icon"><i data-lucide="shopping-cart"></i></div>
                 <h4>Compras</h4>
                 <p>Pedidos a proveedores, recepciones, control de calidad, cuenta corriente, vencimientos.</p>
             </div>
             <div class="module-card">
-                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                <div class="icon"><i data-lucide="users"></i></div>
                 <h4>CRM</h4>
                 <p>Clientes, contactos, oportunidades, agentes comerciales, segmentación, recordatorios.</p>
             </div>
             <div class="module-card">
-                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg></div>
+                <div class="icon"><i data-lucide="shield-check"></i></div>
                 <h4>ARCA Sync</h4>
                 <p>Facturación electrónica AFIP integrada. CAE en 10s, QR + código de barras, RG 1361.</p>
                 <span class="tag">Producto propio</span>
             </div>
             <div class="module-card">
-                <div class="icon"><svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 00-4-4H4m0 0V8a4 4 0 014-4h12a4 4 0 014 4v8a4 4 0 01-4 4h-4l-4 4z"></path></svg></div>
+                <div class="icon"><i data-lucide="bar-chart-3"></i></div>
                 <h4>Reportes</h4>
                 <p>Listados configurables, exportación a Excel/PDF, integración nativa con Power BI.</p>
                 <span class="tag">+ Power BI</span>
@@ -321,5 +330,9 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 <a class="wa-float" href="https://wa.me/5493541651038" target="_blank" rel="noopener" aria-label="WhatsApp">
     <svg width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20.52 3.48A11.77 11.77 0 0 0 12.06 0C5.5 0 .17 5.33.17 11.89c0 2.09.55 4.14 1.6 5.95L0 24l6.32-1.66a11.86 11.86 0 0 0 5.74 1.46h.01c6.56 0 11.89-5.33 11.89-11.89 0-3.18-1.24-6.17-3.44-8.43Z"/></svg>
 </a>
+
+<script>
+if (typeof lucide !== "undefined") lucide.createIcons();
+</script>
 </body>
 </html>
