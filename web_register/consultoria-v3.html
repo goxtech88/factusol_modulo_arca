@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Consultoría — Servicios tecnológicos para PyMEs | Goxtech</title>
 <meta name="description" content="Servicios concretos de Goxtech: Factusol, Tienda Nube + Gestión Nube, Meta Ads, infraestructura Proxmox, ERPs custom. Partner oficial.">
-<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link rel="icon" type="image/png" id="favicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23FF6B00'/%3E%3Ctext x='50' y='66' text-anchor='middle' font-size='52' font-weight='800' fill='white' font-family='sans-serif'%3EG%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
@@ -363,6 +363,36 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 
 <script>
 if (typeof lucide !== "undefined") lucide.createIcons();
+</script>
+
+<script>
+(function() {
+    var API_BASE = "https://goxtech.com.ar/arca_factusol/api";
+    function assetUrl(p) {
+        if (!p) return "";
+        if (p.indexOf("http") === 0) return p;
+        if (p.indexOf("/arca_factusol/") === 0) return "https://goxtech.com.ar" + p;
+        return API_BASE + p;
+    }
+    fetch(API_BASE + "/site/config").then(function(r) { return r.json(); }).then(function(cfg) {
+        if (cfg.favicon_url) {
+            var ico = document.getElementById("favicon");
+            if (ico) ico.href = assetUrl(cfg.favicon_url);
+        }
+        if (cfg.logo_url || cfg.logo_dark_url) {
+            var url = assetUrl(cfg.logo_url || cfg.logo_dark_url);
+            document.querySelectorAll(".nav-brand").forEach(function(el) {
+                el.innerHTML = '<img src="' + url + '" alt="Goxtech" style="height:28px;width:auto;vertical-align:middle;">';
+            });
+            // footer brand tambien
+            document.querySelectorAll(".footer .brand").forEach(function(el) {
+                if (el.tagName === "SPAN" || el.tagName === "DIV") {
+                    el.innerHTML = '<img src="' + url + '" alt="Goxtech" style="height:32px;width:auto;">';
+                }
+            });
+        }
+    }).catch(function() { /* silent */ });
+})();
 </script>
 </body>
 </html>

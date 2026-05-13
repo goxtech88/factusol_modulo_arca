@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin · Goxtech</title>
 <meta name="robots" content="noindex,nofollow">
-<link rel="icon" type="image/png" href="/img/logo-dark.png">
+<link rel="icon" type="image/png" id="favicon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23FF6B00'/%3E%3Ctext x='50' y='66' text-anchor='middle' font-size='52' font-weight='800' fill='white' font-family='sans-serif'%3EG%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
@@ -264,7 +264,7 @@ table .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="brand-row">
-            <span class="brand">Goxtech</span>
+            <div id="sidebar-logo"><span class="brand">Goxtech</span></div>
             <span class="crumb">admin</span>
         </div>
         <nav class="nav">
@@ -473,6 +473,16 @@ let STATE = {
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
 function esc(s) { if (s == null) return ""; return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+// Resuelve URLs de assets del backend. Maneja inconsistencia entre
+// /admin/site/assets (devuelve path con prefix /arca_factusol/api/...)
+// y /site/config (devuelve path relativo al API: /uploads/site/...).
+function assetUrl(path) {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
+    if (path.startsWith("/arca_factusol/")) return "https://goxtech.com.ar" + path;
+    return API + path;  // path relativo al API → concat con base
+}
 function fmt(n) { return Number(n || 0).toLocaleString("es-AR"); }
 function money(n) { return "$" + Number(n || 0).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }); }
 function dateFmt(s) { if (!s) return "—"; try { const d = new Date(s); return d.toLocaleDateString("es-AR") + " " + d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }); } catch { return s; } }
@@ -1218,7 +1228,7 @@ async function loadHero() {
                     <td><strong>${esc(h.title || "—")}</strong></td>
                     <td><small>${esc((h.subtitle || "").substring(0,80))}</small></td>
                     <td><small><a href="${esc(h.cta_url || "#")}" target="_blank">${esc(h.cta_text || "—")}</a></small></td>
-                    <td>${h.image_path ? `<img src="${esc(h.image_path.startsWith('http')?h.image_path:API+h.image_path)}" style="height:32px;border-radius:4px;">` : "—"}</td>
+                    <td>${h.image_path ? `<img src="${esc(assetUrl(h.image_path))}" style="height:32px;border-radius:4px;">` : "—"}</td>
                     <td>${h.is_active !== false ? '<span class="badge badge-success">Sí</span>' : '<span class="badge badge-muted">No</span>'}</td>
                     <td><div class="row-actions">
                         <button class="btn btn-secondary btn-icon" onclick="openHeroModal(${h.id})"><i data-lucide="pencil"></i></button>
@@ -1287,7 +1297,7 @@ async function loadAssets() {
         }
         cont.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;">
             ${STATE.assets.map(a => {
-                const fullUrl = a.path ? (a.path.startsWith('http') ? a.path : API + a.path) : "";
+                const fullUrl = assetUrl(a.path);
                 return `
                 <div class="card" style="margin:0;text-align:center;">
                     <div style="height:120px;background:var(--bg-soft);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:10px;">
@@ -1423,9 +1433,28 @@ async function createMpPlan() {
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// Site config (logos dinamicos)
+// ──────────────────────────────────────────────────────────────────────
+async function loadSiteConfig() {
+    try {
+        const cfg = await fetch(`${API}/site/config`).then(r => r.json());
+        if (cfg.favicon_url) {
+            const ico = $("#favicon");
+            if (ico) ico.href = assetUrl(cfg.favicon_url);
+        }
+        if (cfg.logo_dark_url || cfg.logo_url) {
+            const url = assetUrl(cfg.logo_dark_url || cfg.logo_url);
+            const slot = $("#sidebar-logo");
+            if (slot) slot.innerHTML = `<img src="${url}" alt="Goxtech" style="height:30px;width:auto;max-width:160px;">`;
+        }
+    } catch (e) { /* silent */ }
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // Boot
 // ──────────────────────────────────────────────────────────────────────
 renderIcons();
+loadSiteConfig();
 
 if (TOKEN) {
     api("/admin/stats").then(() => showAdmin()).catch(() => showLogin());
