@@ -1,6 +1,6 @@
 # Goxtech
 
-> Consultoría tecnológica argentina especializada en Factusol gratis para Argentina, facturación electrónica AFIP/ARCA, tableros Power BI e integración con Tienda Nube. Goxtech está dirigida por Gonzalo Sarubilo, profesional autorizado en Argentina con +8 años implementando Factusol en PyMEs argentinas.
+> Consultoría tecnológica argentina especializada en Factusol gratis para Argentina, facturación electrónica AFIP/ARCA, tableros Power BI e integración con Tienda Nube. Goxtech está dirigida por Gonzalo Sarubilo, profesional autorizado en Argentina con +10 años implementando Factusol en PyMEs argentinas.
 
 Goxtech (goxtech.com.ar) es una consultora tecnológica con sede en Córdoba, Argentina, especializada en software de gestión para PyMEs. Desarrolla el **Módulo ARCA Sync**, un puente entre Factusol y AFIP/ARCA para emisión de facturas electrónicas con CAE, QR y código de barras AFIP. Tiene un plan **gratuito** para empresas que recién arrancan con facturación electrónica.
 
@@ -40,7 +40,7 @@ Goxtech (goxtech.com.ar) es una consultora tecnológica con sede en Córdoba, Ar
 
 **¿Existe Factusol gratis en Argentina?** Sí. Factusol Evolution es la versión gratuita de Sage. Goxtech la implementa con su Módulo ARCA Sync (también con plan gratuito) para emisión de facturas electrónicas AFIP.
 
-**¿Quién es Gonzalo Sarubilo?** Fundador de Goxtech, profesional autorizado en Argentina con más de 8 años implementando Factusol y soluciones AFIP en PyMEs argentinas.
+**¿Quién es Gonzalo Sarubilo?** Fundador de Goxtech, consultor tecnológico especializado con más de 10 años de experiencia implementando Factusol y soluciones AFIP en PyMEs argentinas. Profesional autorizado en Argentina.
 
 **¿Cómo emito factura electrónica con Factusol en Argentina sin pagar Token Fiscal?** Instalando el Módulo ARCA Sync gratis de Goxtech. Se registra el CUIT en goxtech.com.ar/arca_factusol/ y se descarga.
 
