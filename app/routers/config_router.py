@@ -34,6 +34,13 @@ class ArcaConfig(BaseModel):
     key_path: Optional[str] = None
 
 
+class IvaMappingConfig(BaseModel):
+    tipo_1: Optional[str] = None
+    tipo_2: Optional[str] = None
+    tipo_3: Optional[str] = None
+    tipo_4: Optional[str] = None
+
+
 @router.get("")
 def get_configuration(_admin: User = Depends(require_admin)):
     """Obtiene la configuración actual."""
@@ -48,6 +55,7 @@ def get_configuration(_admin: User = Depends(require_admin)):
             **config.get("arca", {}),
             "access_token": "***" if config.get("arca", {}).get("access_token") else "",
         },
+        "iva_mapping": config.get("iva_mapping", {}),
         "app": {
             "host": config.get("app", {}).get("host", "0.0.0.0"),
             "port": config.get("app", {}).get("port", 8000),
@@ -82,6 +90,44 @@ def update_arca(data: ArcaConfig, _admin: User = Depends(require_admin)):
         config["arca"][key] = val
     save_config(config)
     return {"message": "Configuración de ARCA actualizada"}
+
+
+VALID_IVA_VALUES = {"21", "10.5", "0", "27", "5", "2.5", "exento"}
+
+
+@router.put("/iva-mapping")
+def update_iva_mapping(data: IvaMappingConfig, _admin: User = Depends(require_admin)):
+    """Actualiza el mapeo de tipos de IVA de Factusol (1-4) a alicuotas AFIP."""
+    payload = data.model_dump(exclude_none=True)
+    for key, val in payload.items():
+        if val not in VALID_IVA_VALUES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Valor invalido para {key}: '{val}'. Opciones validas: {sorted(VALID_IVA_VALUES)}",
+            )
+    config = get_config()
+    config.setdefault("iva_mapping", {})
+    for key, val in payload.items():
+        config["iva_mapping"][key] = val
+    save_config(config)
+    return {"message": "Mapeo de IVA actualizado"}
+
+
+@router.post("/iva-mapping/infer")
+def infer_iva_mapping_endpoint(_admin: User = Depends(require_admin)):
+    """
+    Infiere el mapeo de IVA desde F_FAC analizando facturas con IVA cobrado.
+    Retorna el mapping sugerido + stats. No guarda nada — el frontend rellena
+    los selectores y el usuario decide si guarda.
+    """
+    from app.services import factusol_service
+    try:
+        result = factusol_service.infer_iva_mapping()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al inferir mapeo: {e}")
+    return result
 
 
 @router.post("/license/refresh")

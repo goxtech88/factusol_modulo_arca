@@ -43,6 +43,67 @@ const ConfigComponent = {
             } catch (err) { App.toast(err.message, 'error'); }
         });
 
+        document.getElementById('config-iva-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await API.put('/api/config/iva-mapping', {
+                    tipo_1: document.getElementById('cfg-iva-tipo-1').value,
+                    tipo_2: document.getElementById('cfg-iva-tipo-2').value,
+                    tipo_3: document.getElementById('cfg-iva-tipo-3').value,
+                    tipo_4: document.getElementById('cfg-iva-tipo-4').value,
+                });
+                App.toast('Mapeo de IVA guardado', 'success');
+            } catch (err) { App.toast(err.message, 'error'); }
+        });
+    },
+
+    async inferIvaMapping() {
+        const btn = document.getElementById('btn-infer-iva');
+        const result = document.getElementById('iva-infer-result');
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Analizando...';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        try {
+            const data = await API.post('/api/config/iva-mapping/infer');
+            const mapping = data.mapping || {};
+            const stats = data.stats || {};
+
+            // Solo rellenar slots que tienen mapping (no null). Los null se dejan como esta.
+            const detected = [];
+            const skipped = [];
+            for (let i = 1; i <= 4; i++) {
+                const key = `tipo_${i}`;
+                const val = mapping[key];
+                if (val !== null && val !== undefined) {
+                    document.getElementById(`cfg-iva-tipo-${i}`).value = val;
+                    detected.push(`Tipo ${i}: ${val === 'exento' ? 'Exento' : val + '%'}`);
+                } else {
+                    skipped.push(`Tipo ${i}`);
+                }
+            }
+
+            // Mostrar resultado
+            result.classList.remove('hidden', 'success', 'error');
+            result.className = 'test-result success';
+            const stMsg = stats.facturas_analizadas
+                ? `${stats.facturas_analizadas} facturas analizadas (series fiscales: ${(stats.series_fiscales || []).join(', ') || '—'})`
+                : (stats.mensaje || '');
+            let html = `<strong>Detectado:</strong> ${detected.join(' · ') || '(nada)'}<br><span style="font-size:11px">${stMsg}</span>`;
+            if (skipped.length) {
+                html += `<br><span style="font-size:11px;color:var(--text-muted)">Sin datos suficientes: ${skipped.join(', ')} (se mantuvo el valor actual)</span>`;
+            }
+            html += '<br><span style="font-size:11px">Revisá y presioná <strong>Guardar</strong> para confirmar.</span>';
+            result.innerHTML = html;
+        } catch (err) {
+            result.classList.remove('hidden', 'success');
+            result.className = 'test-result error';
+            result.textContent = err.message;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="wand-2"></i> Detectar desde Factusol';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
         // Botón "Consultar CUIT" en empresa - autocompleta datos fiscales
         document.getElementById('btn-lookup-cuit').addEventListener('click', async () => {
             const cuit = document.getElementById('cfg-cuit').value.replace(/[^0-9]/g, '').trim();
@@ -151,6 +212,13 @@ const ConfigComponent = {
             document.getElementById('cfg-environment').value = config.arca?.environment || 'development';
             document.getElementById('cfg-cert-path').value = config.arca?.cert_path || '';
             document.getElementById('cfg-key-path').value = config.arca?.key_path || '';
+
+            // Tipos de IVA (Factusol → AFIP)
+            const ivaMap = config.iva_mapping || {};
+            document.getElementById('cfg-iva-tipo-1').value = ivaMap.tipo_1 || '21';
+            document.getElementById('cfg-iva-tipo-2').value = ivaMap.tipo_2 || '10.5';
+            document.getElementById('cfg-iva-tipo-3').value = ivaMap.tipo_3 || '27';
+            document.getElementById('cfg-iva-tipo-4').value = ivaMap.tipo_4 || 'exento';
 
             // Plan / Licencia
             this._updateLicenseBar(config.license);

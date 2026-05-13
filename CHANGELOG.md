@@ -1,5 +1,28 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.7.2 (2026-05-13)
+
+### Nuevas funcionalidades - Mapeo de Tipos de IVA configurable
+- **Card "Tipos de IVA (Factusol)"** en Configuracion: permite mapear los 4 tipos de IVA de Factusol (campo IVALFA en lineas, slot N en header) a las alicuotas AFIP correspondientes (21%, 10.5%, 0%, 27%, 5%, 2.5%, Exento).
+- **Defaults estandar AR**: tipo 1 = 21%, tipo 2 = 10.5%, tipo 3 = 27%, tipo 4 = Exento. Cada empresa puede ajustar segun como tenga configurado su Factusol.
+- **Boton "Detectar desde Factusol"**: analiza las facturas reales de F_FAC (filtrando series fiscales — las que tienen IVA cobrado) y sugiere automaticamente el mapping. El usuario revisa y guarda.
+  - Detecta series fiscales por `(IIVA1+IIVA2+IIVA3) > 0` para descartar operaciones internas/presupuestos.
+  - Snapea valores cercanos al AFIP valido mas proximo (tolerancia 1.5%).
+  - Si un slot no tiene uso historico, deja el valor actual sin tocar.
+
+### Fix - Operaciones Exentas a AFIP
+- **Problema**: el campo `imp_op_ex` se mandaba SIEMPRE en 0 a AFIP, aunque la factura tuviera articulos exentos en BAS4FAC. Resultado: facturas con exentos pasaban con el total correcto pero el neto gravado inflado y operaciones exentas en 0.
+- **Fix**: `build_voucher_data` ahora usa el `iva_mapping` para decidir que slots son exentos. La base de esos slots va a `imp_op_ex` (operaciones exentas) en lugar de `imp_neto` (neto gravado), y no genera entrada en el array de alicuotas.
+- **Mismo fix en RG 1361** (Libro IVA): `imp_exento` se calcula desde el header de Factusol segun el mapping configurado, en vez del `0.0` hardcodeado.
+- **Fallback de lineas corregido**: el campo `IVALFA` de F_LFA era tratado como importe monetario cuando en realidad es un codigo categorico (1-4) que indica el tipo de IVA de cada linea. Ahora se agrupa correctamente.
+
+### Backend
+- Nuevo endpoint `PUT /api/config/iva-mapping` para guardar el mapeo manual.
+- Nuevo endpoint `POST /api/config/iva-mapping/infer` para inferencia automatica desde F_FAC.
+- Nueva funcion `factusol_service.infer_iva_mapping()`.
+
+---
+
 ## v1.7.1 (2026-05-12)
 
 ### Fix - Wizard solo aparece si faltan datos
