@@ -1,6 +1,7 @@
 fastapi==0.115.0
 uvicorn[standard]==0.30.0
 sqlalchemy==2.0.35
+greenlet>=3.0  # dep de SQLAlchemy 2.x — PyInstaller no la detecta solo desde sqlalchemy
 pyodbc
 afip.py==1.1.2
 python-jose[cryptography]==3.3.0

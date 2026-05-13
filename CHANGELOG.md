@@ -1,5 +1,16 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.7.3 (2026-05-13)
+
+### Hotfix - ARCA.exe no arrancaba en v1.7.2
+- **Problema**: el build de v1.7.2 no incluyo la libreria `greenlet` (dependencia de SQLAlchemy 2.x). Al iniciar ARCA.exe se generaba `ImportError: cannot import name 'getcurrent' from 'greenlet' (unknown location)` y la app no levantaba el servidor.
+- **Causa raiz**: el `arca.spec` confiaba en `collect_submodules('sqlalchemy')` que NO arrastra deps externas (greenlet es paquete separado). En entornos donde greenlet no esta en `site-packages` del venv al momento del build, PyInstaller silenciosamente omite la libreria.
+- **Fix**: `greenlet` agregado explicitamente a `hiddenimports` en `arca.spec`.
+- **v1.7.2 fue retirada del manifest** (rollback a v1.7.1) mientras se preparo este hotfix. Clientes que descargaron v1.7.2 deben actualizar a v1.7.3.
+- Contenido funcional identico a v1.7.2: mapeo de Tipos de IVA + fix operaciones exentas.
+
+---
+
 ## v1.7.2 (2026-05-13)
 
 ### Nuevas funcionalidades - Mapeo de Tipos de IVA configurable

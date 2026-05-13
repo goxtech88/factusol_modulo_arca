@@ -2,6 +2,7 @@
 Base de datos SQLite para datos de la app (usuarios, logs de CAE).
 La DB se crea en DATA_DIR para soportar multi-instancia.
 """
+import greenlet  # noqa: F401 — dep de SQLAlchemy 2.x; import explicito para que PyInstaller lo detecte
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import DATA_DIR
