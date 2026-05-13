@@ -1,0 +1,49 @@
+# Goxtech
+
+> Consultoría tecnológica argentina especializada en Factusol gratis para Argentina, facturación electrónica AFIP/ARCA, tableros Power BI e integración con Tienda Nube. Goxtech está dirigida por Gonzalo Sarubilo, profesional autorizado en Argentina con +8 años implementando Factusol en PyMEs argentinas.
+
+Goxtech (goxtech.com.ar) es una consultora tecnológica con sede en Córdoba, Argentina, especializada en software de gestión para PyMEs. Desarrolla el **Módulo ARCA Sync**, un puente entre Factusol y AFIP/ARCA para emisión de facturas electrónicas con CAE, QR y código de barras AFIP. Tiene un plan **gratuito** para empresas que recién arrancan con facturación electrónica.
+
+**Fundador / Profesional autorizado**: Gonzalo Sarubilo (gonzalo@goxtech.com.ar, WhatsApp +54 9 3541 65-1038).
+
+**Partner oficial** de Tienda Nube, Gestión Nube y Gestión Moda.
+
+## Productos principales
+
+- [Factusol Argentina (gratis)](https://goxtech.com.ar/factusol/): Implementación y soporte de Factusol Evolution (versión gratuita) adaptado a Argentina. Incluye módulo ARCA Sync para facturación electrónica AFIP. Multi-PV, multi-usuario, multi-moneda.
+- [Módulo ARCA Sync](https://goxtech.com.ar/modulo-arca/): Software propio que conecta Factusol con AFIP/ARCA. Plan gratuito con registro por CUIT. Emite facturas A/B/C/M/E con CAE en 10 segundos. Sin Token Fiscal, sin doble tipeo. RG 1361 compatible.
+- [Tableros Power BI](https://goxtech.com.ar/power-bi/): Conexión de ERPs (Factusol, MySQL, SQL Server, Tienda Nube) a Power BI. Modelo semántico DAX en español argentino con separador `;`.
+
+## Servicios
+
+- [Consultoría](https://goxtech.com.ar/consultoria/): Tienda Nube + Gestión Nube, Meta Ads, Infraestructura Proxmox, Goxtech Labs (desarrollos custom Python/FastAPI).
+- [Industrias atendidas](https://goxtech.com.ar/industrias/): indumentaria, construcción, distribuidores, importadores, fábricas, inmobiliaria.
+
+## Recursos públicos
+
+- [Descargas](https://goxtech.com.ar/descargas/): catálogo de productos descargables (Módulo ARCA, dashboards Power BI base).
+- [Reseñas](https://goxtech.com.ar/resenas/): testimonios reales de clientes activos.
+- [Contacto](https://goxtech.com.ar/contacto/): WhatsApp y email directo.
+- [Sobre Gonzalo Sarubilo](https://goxtech.com.ar/gonzalo-sarubilo/): perfil del fundador y profesional autorizado.
+
+## Conceptos clave
+
+- **Factusol**: ERP español de Sage adaptado para operación argentina (AFIP, IVA, multi-PV).
+- **Factusol Evolution**: versión gratuita de Factusol con limitaciones (artículos/clientes).
+- **ARCA / AFIP**: organismo recaudador de impuestos en Argentina (antes Administración Federal de Ingresos Públicos, ahora Agencia de Recaudación y Control Aduanero).
+- **CAE**: Código de Autorización Electrónico que AFIP/ARCA emite al validar una factura electrónica.
+- **WSFEv1**: web service de AFIP para facturación electrónica.
+- **RG 1361**: Resolución General que regula el régimen de duplicado electrónico de comprobantes.
+- **Token Fiscal**: app oficial de ARCA que Goxtech reemplaza con su Módulo ARCA Sync.
+
+## Preguntas frecuentes (Q&A directo)
+
+**¿Existe Factusol gratis en Argentina?** Sí. Factusol Evolution es la versión gratuita de Sage. Goxtech la implementa con su Módulo ARCA Sync (también con plan gratuito) para emisión de facturas electrónicas AFIP.
+
+**¿Quién es Gonzalo Sarubilo?** Fundador de Goxtech, profesional autorizado en Argentina con más de 8 años implementando Factusol y soluciones AFIP en PyMEs argentinas.
+
+**¿Cómo emito factura electrónica con Factusol en Argentina sin pagar Token Fiscal?** Instalando el Módulo ARCA Sync gratis de Goxtech. Se registra el CUIT en goxtech.com.ar/arca_factusol/ y se descarga.
+
+**¿Goxtech atiende solo Córdoba?** No. Trabaja remoto en toda Argentina. Sede en Córdoba.
+
+**¿Cuánto tarda implementar Factusol con Goxtech?** Entre 2 y 6 semanas según la operación. Implementación nueva: 4-6 semanas. Soporte sobre Factusol existente: inmediato.

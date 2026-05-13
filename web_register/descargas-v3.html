@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Descargas — Productos Goxtech | Módulo ARCA y más</title>
-<meta name="description" content="Descargas gratis de Goxtech: Módulo ARCA Sync para Factusol, tableros Power BI base, herramientas y utilidades.">
+<title>Descargas — Módulo ARCA, Power BI y herramientas Goxtech</title>
+
 <link rel="icon" type="image/png" id="favicon" href="https://goxtech.com.ar/arca_factusol/api/uploads/site/favicon-1778620503.png">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -79,6 +79,89 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 .wa-float { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: #25D366; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 8px 24px rgba(37, 211, 102, 0.4); z-index: 100; text-decoration: none; transition: transform 0.15s; }
 .wa-float:hover { transform: scale(1.05); }
 </style>
+<!-- SEO meta -->
+<meta name="description" content="Catálogo de descargas: Módulo ARCA Sync para Factusol (gratis con CUIT), tableros Power BI base, utilidades para PyMEs argentinas.">
+<meta name="keywords" content="descargar módulo ARCA, descargar factusol AFIP, Power BI dashboards descargar">
+<meta name="author" content="Gonzalo Sarubilo">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="geo.region" content="AR-X">
+<meta name="geo.placename" content="Córdoba">
+<link rel="canonical" href="https://goxtech.com.ar/descargas/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Descargas — Módulo ARCA, Power BI y herramientas Goxtech">
+<meta property="og:description" content="Catálogo de descargas: Módulo ARCA Sync para Factusol (gratis con CUIT), tableros Power BI base, utilidades para PyMEs argentinas.">
+<meta property="og:url" content="https://goxtech.com.ar/descargas/">
+<meta property="og:image" content="https://goxtech.com.ar/arca_factusol/api/uploads/site/logo_main-1778620488.png">
+<meta property="og:image:alt" content="Goxtech — Descargas">
+<meta property="og:locale" content="es_AR">
+<meta property="og:site_name" content="Goxtech">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Descargas — Módulo ARCA, Power BI y herramientas Goxtech">
+<meta name="twitter:description" content="Catálogo de descargas: Módulo ARCA Sync para Factusol (gratis con CUIT), tableros Power BI base, utilidades para PyMEs argentinas.">
+<meta name="twitter:image" content="https://goxtech.com.ar/arca_factusol/api/uploads/site/logo_main-1778620488.png">
+
+<!-- Schema.org -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://goxtech.com.ar/#organization",
+      "name": "Goxtech",
+      "legalName": "Goxtech",
+      "url": "https://goxtech.com.ar",
+      "logo": "https://goxtech.com.ar/arca_factusol/api/uploads/site/logo_main-1778620488.png",
+      "founder": {
+        "@id": "https://goxtech.com.ar/gonzalo-sarubilo/#person"
+      },
+      "email": "gonzalo@goxtech.com.ar",
+      "telephone": "+5493541651038",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Córdoba",
+        "addressRegion": "Córdoba",
+        "addressCountry": "AR"
+      },
+      "sameAs": [],
+      "areaServed": "AR"
+    },
+    {
+      "@type": "Person",
+      "@id": "https://goxtech.com.ar/gonzalo-sarubilo/#person",
+      "name": "Gonzalo Sarubilo",
+      "jobTitle": "Fundador y consultor tecnológico",
+      "url": "https://goxtech.com.ar/gonzalo-sarubilo/",
+      "email": "gonzalo@goxtech.com.ar",
+      "telephone": "+5493541651038",
+      "worksFor": {
+        "@id": "https://goxtech.com.ar/#organization"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Inicio",
+          "item": "https://goxtech.com.ar/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Descargas"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
 </head>
 <body>
 
@@ -123,7 +206,7 @@ body { font-family: "Plus Jakarta Sans", -apple-system, sans-serif; background: 
 
 <footer class="footer">
     <div class="wrap">
-        <p>&copy; 2026 Goxtech · Córdoba, Argentina</p>
+        <p>&copy; 2026 <strong>Goxtech</strong> · Fundada por <a href="/gonzalo-sarubilo/" style="color: var(--primary);">Gonzalo Sarubilo</a> · Córdoba, Argentina</p>
         <p style="margin-top: 8px;">
             <a href="/">Inicio</a> ·
             <a href="/modulo-arca/">Módulo ARCA</a> ·
@@ -219,7 +302,6 @@ document.getElementById("filters").addEventListener("click", (ev) => {
 
 loadDownloads();
 </script>
-
 
 <script>
 if (typeof lucide !== "undefined") lucide.createIcons();
