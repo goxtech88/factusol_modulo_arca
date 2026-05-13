@@ -1,5 +1,17 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.7.1 (2026-05-12)
+
+### Fix - Wizard solo aparece si faltan datos
+- **Problema en v1.7.0**: el wizard de primer uso podia abrirse incluso cuando el cliente ya tenia licencia activa (cargada en versiones anteriores con CUIT/email/razon social en config).
+- **Fix**: el endpoint `/api/license/needs-registration` ahora solo dispara el wizard cuando faltan los 3 datos basicos (CUIT, email, razon social) en config local. Si ya estan cargados, asumimos que el cliente paso por el wizard antes o cargo los datos manualmente — no molestamos con el modal.
+- **Nuevo boton "Activar / Actualizar licencia"** en Configuracion (al lado de "Verificar plan"): abre el wizard de forma manual. Util para:
+  - Re-registrar el CUIT en el server si nunca paso por el wizard automatico (clientes que actualizaron desde v1.6.x con datos cargados a mano).
+  - Actualizar datos (cambio de email / WhatsApp / razon social) y refrescar el Lead en el CRM.
+- El wizard al abrirse manualmente **precarga los datos existentes** desde config (no pide rellenar lo que ya esta).
+
+---
+
 ## v1.7.0 (2026-05-12)
 
 ### Nuevas funcionalidades - Registro automatico de licencia gratuita

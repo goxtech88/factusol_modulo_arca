@@ -79,9 +79,15 @@ def _is_valid_email(email: str) -> bool:
 @router.get("/needs-registration")
 def needs_registration(current_user: User = Depends(get_current_user)):
     """
-    Devuelve True si la empresa NO esta registrada todavia (falta CUIT o email
-    en config). El frontend usa esto para decidir si mostrar el wizard de
-    primer uso bloqueante al iniciar la app.
+    Devuelve True SI Y SOLO SI faltan datos basicos en config local (CUIT, email,
+    razon social). Si los 3 datos estan completos, asumimos que el cliente ya
+    paso por el wizard alguna vez (o cargo los datos manualmente).
+
+    NOTA: el endpoint /licenses/check del backend SIEMPRE devuelve plan='basica'
+    aunque el CUIT no este registrado (es retrocompatible). Por eso no podemos
+    distinguir confiablemente "no registrado" de "registrado con plan basica"
+    desde el cliente. Si el usuario quiere re-registrarse, lo hace manualmente
+    desde el boton "Activar licencia" en Configuracion.
     """
     config = get_config()
     empresa = config.get("empresa", {}) or {}

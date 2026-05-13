@@ -33,11 +33,38 @@ const WizardComponent = {
         modal.classList.add('active');
         // Refrescar iconos lucide
         if (typeof lucide !== 'undefined') lucide.createIcons();
+        // Pre-cargar datos existentes (cuando se abre desde "Activar licencia")
+        this._prefillFromConfig();
         // Focus en el primer campo
         setTimeout(() => {
             const first = document.getElementById('wz-company');
             if (first) first.focus();
         }, 150);
+    },
+
+    /**
+     * Si la app ya tiene datos en config.empresa (por ejemplo cuando el cliente
+     * abre el wizard desde "Activar licencia" en Config), los pre-completamos
+     * para que solo tenga que confirmar / actualizar lo que falte.
+     */
+    async _prefillFromConfig() {
+        try {
+            const info = await API.get('/api/license/needs-registration');
+            const cfg = await API.get('/api/config');
+            const emp = (cfg && cfg.empresa) || {};
+            const wzc = document.getElementById('wz-company');
+            const wzu = document.getElementById('wz-cuit');
+            const wzn = document.getElementById('wz-contact');
+            const wze = document.getElementById('wz-email');
+            const wzp = document.getElementById('wz-phone');
+            const wzi = document.getElementById('wz-cond-iva');
+            if (wzc && emp.razon_social && !wzc.value) wzc.value = emp.razon_social;
+            if (wzu && emp.cuit && !wzu.value) wzu.value = emp.cuit;
+            if (wzn && emp.contact_name && !wzn.value) wzn.value = emp.contact_name;
+            if (wze && emp.email && !wze.value) wze.value = emp.email;
+            if (wzp && emp.whatsapp && !wzp.value) wzp.value = emp.whatsapp;
+            if (wzi && emp.condicion_iva) wzi.value = emp.condicion_iva;
+        } catch (_) { /* ignore — primer uso, sin datos */ }
     },
 
     hide() {

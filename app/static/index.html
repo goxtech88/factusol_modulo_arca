@@ -611,9 +611,12 @@
                             <div class="card">
                                 <h3><i data-lucide="award"></i> Plan / Licencia</h3>
                                 <div id="license-status-bar" class="license-bar"></div>
-                                <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+                                <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                                     <button id="btn-refresh-license" class="btn btn-secondary" onclick="ConfigComponent.refreshLicense()">
                                         <i data-lucide="refresh-cw"></i> Verificar plan
+                                    </button>
+                                    <button id="btn-activate-license" class="btn btn-secondary" onclick="WizardComponent.show()" title="Abre el formulario de registro para activar/actualizar tu licencia gratuita">
+                                        <i data-lucide="user-plus"></i> Activar / Actualizar licencia
                                     </button>
                                     <span style="font-size:12px;color:var(--text-muted)">El plan se verifica automáticamente contra el servidor de GoxTech</span>
                                 </div>
