@@ -489,9 +489,16 @@ def generate_files(
         imp_total = float(log.imp_total or 0)
         imp_neto = float(log.imp_neto or 0)
         imp_iva = float(log.imp_iva or 0)
-        # No gravado / exento: si TOTFAC > neto+iva → diferencia se considera no gravada
-        imp_no_grav = max(0.0, imp_total - imp_neto - imp_iva)
-        imp_exento = 0.0  # Factusol no marca exentos por defecto
+        # Calcular imp_exento desde el header Factusol usando el mapeo:
+        # cada slot BAS{i}FAC marcado como "exento" en iva_mapping suma al exento.
+        iva_map_cfg = get_config().get("iva_mapping", {}) or {}
+        imp_exento = 0.0
+        for i in (1, 2, 3, 4):
+            raw = str(iva_map_cfg.get(f"tipo_{i}", "")).strip().lower()
+            if raw == "exento":
+                imp_exento += float(header_fs.get(f"BAS{i}FAC") or 0)
+        # No gravado: lo que sobra entre el total y (neto + iva + exento)
+        imp_no_grav = max(0.0, imp_total - imp_neto - imp_iva - imp_exento)
 
         # Cliente
         nif = (cliente_fs.get("NIFCLI") or log.cliente_doc or "")

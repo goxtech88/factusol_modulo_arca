@@ -348,3 +348,111 @@ def get_payment_methods() -> list[dict]:
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
     finally:
         conn.close()
+
+
+def infer_iva_mapping() -> dict:
+    """
+    Infiere el mapeo Tipo IVA (slot 1-4 Factusol) -> alicuota AFIP desde F_FAC.
+
+    Estrategia:
+      1. Detecta series fiscales: TIPFAC con al menos 1 factura con IVA cobrado
+         (IIVA1+IIVA2+IIVA3 > 0). Filtra operaciones internas/presupuestos.
+      2. Para cada slot 1-3, cuenta el % mas frecuente (PIVAxFAC) en facturas
+         donde BASxFAC > 0. Snap al valor AFIP mas cercano si esta dentro de
+         tolerancia (1.5%).
+      3. Slot 4 (BAS4FAC sin PIVA): exento por convencion si hay facturas que
+         lo usen.
+
+    Retorna dict con:
+      - mapping: {tipo_1, tipo_2, tipo_3, tipo_4} con valor AFIP o None si sin uso
+      - stats: detalle de facturas analizadas y distribucion por slot
+    """
+    from collections import Counter
+
+    AFIP_PCTS = [0.0, 2.5, 5.0, 10.5, 21.0, 27.0]
+
+    def _closest_afip(pct: float) -> str | None:
+        if pct < 0.01:
+            return "0"
+        closest = min(AFIP_PCTS, key=lambda x: abs(x - pct))
+        if abs(closest - pct) <= 1.5:
+            return str(closest) if closest != int(closest) else str(int(closest))
+        return None
+
+    conn = _get_connection()
+    try:
+        cursor = conn.cursor()
+
+        # 1) Detectar series fiscales
+        cursor.execute("""
+            SELECT TIPFAC
+            FROM F_FAC
+            WHERE (IIVA1FAC + IIVA2FAC + IIVA3FAC) > 0
+            GROUP BY TIPFAC
+        """)
+        series_fiscales = [r[0] for r in cursor.fetchall()]
+
+        if not series_fiscales:
+            return {
+                "mapping": {},
+                "stats": {
+                    "series_fiscales": [],
+                    "facturas_analizadas": 0,
+                    "mensaje": "No se encontraron facturas con IVA cobrado. Configure el mapeo manualmente.",
+                },
+            }
+
+        # 2) Leer facturas de esas series
+        placeholders = ",".join("?" * len(series_fiscales))
+        cursor.execute(
+            f"""
+            SELECT BAS1FAC, BAS2FAC, BAS3FAC, BAS4FAC,
+                   PIVA1FAC, PIVA2FAC, PIVA3FAC
+            FROM F_FAC
+            WHERE TIPFAC IN ({placeholders})
+            """,
+            series_fiscales,
+        )
+        rows = cursor.fetchall()
+
+        piv_counter = {1: Counter(), 2: Counter(), 3: Counter()}
+        slot4_used = 0
+        for r in rows:
+            bases = [float(r[0] or 0), float(r[1] or 0), float(r[2] or 0), float(r[3] or 0)]
+            pivs = [float(r[4] or 0), float(r[5] or 0), float(r[6] or 0)]
+            for i in range(3):
+                if bases[i] > 0:
+                    piv_counter[i + 1][round(pivs[i], 2)] += 1
+            if bases[3] > 0:
+                slot4_used += 1
+
+        # 3) Construir mapping
+        mapping: dict[str, str | None] = {}
+        slot_stats: dict[str, dict] = {}
+        for slot in (1, 2, 3):
+            c = piv_counter[slot]
+            total = sum(c.values())
+            slot_stats[f"tipo_{slot}"] = {
+                "facturas": total,
+                "top": [{"pct": p, "count": n} for p, n in c.most_common(3)],
+            }
+            if total == 0:
+                mapping[f"tipo_{slot}"] = None
+                continue
+            top_pct = c.most_common(1)[0][0]
+            mapping[f"tipo_{slot}"] = _closest_afip(top_pct)
+
+        # Slot 4: exento si esta en uso, o None si no
+        mapping["tipo_4"] = "exento" if slot4_used > 0 else None
+        slot_stats["tipo_4"] = {"facturas": slot4_used}
+
+        return {
+            "mapping": mapping,
+            "stats": {
+                "series_fiscales": series_fiscales,
+                "facturas_analizadas": len(rows),
+                "por_slot": slot_stats,
+            },
+        }
+    finally:
+        conn.close()

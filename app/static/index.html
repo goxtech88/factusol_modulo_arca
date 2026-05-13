@@ -701,6 +701,74 @@
                                 <div id="cert-gen-result" class="hidden" style="margin-top:10px"></div>
                             </div>
                             <div class="card">
+                                <h3><i data-lucide="percent"></i> Tipos de IVA (Factusol)</h3>
+                                <div class="info-note" style="margin-bottom:12px">
+                                    <i data-lucide="info"></i>
+                                    Mapeo entre el Tipo de IVA de Factusol (campo IVALFA en lineas, valores 1-4) y la alicuota AFIP correspondiente. Si marcas "Exento", esa base ira a "Operaciones Exentas" en lugar de gravada.
+                                </div>
+                                <form id="config-iva-form">
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                                        <div class="form-group">
+                                            <label>Tipo 1</label>
+                                            <select id="cfg-iva-tipo-1" class="select-styled">
+                                                <option value="21">21%</option>
+                                                <option value="10.5">10.5%</option>
+                                                <option value="0">0%</option>
+                                                <option value="27">27%</option>
+                                                <option value="5">5%</option>
+                                                <option value="2.5">2.5%</option>
+                                                <option value="exento">Exento</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tipo 2</label>
+                                            <select id="cfg-iva-tipo-2" class="select-styled">
+                                                <option value="21">21%</option>
+                                                <option value="10.5">10.5%</option>
+                                                <option value="0">0%</option>
+                                                <option value="27">27%</option>
+                                                <option value="5">5%</option>
+                                                <option value="2.5">2.5%</option>
+                                                <option value="exento">Exento</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tipo 3</label>
+                                            <select id="cfg-iva-tipo-3" class="select-styled">
+                                                <option value="21">21%</option>
+                                                <option value="10.5">10.5%</option>
+                                                <option value="0">0%</option>
+                                                <option value="27">27%</option>
+                                                <option value="5">5%</option>
+                                                <option value="2.5">2.5%</option>
+                                                <option value="exento">Exento</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tipo 4</label>
+                                            <select id="cfg-iva-tipo-4" class="select-styled">
+                                                <option value="21">21%</option>
+                                                <option value="10.5">10.5%</option>
+                                                <option value="0">0%</option>
+                                                <option value="27">27%</option>
+                                                <option value="5">5%</option>
+                                                <option value="2.5">2.5%</option>
+                                                <option value="exento">Exento</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;gap:8px;margin-top:10px">
+                                        <button type="submit" class="btn btn-primary">
+                                            Guardar
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" id="btn-infer-iva" onclick="ConfigComponent.inferIvaMapping()">
+                                            <i data-lucide="wand-2"></i> Detectar desde Factusol
+                                        </button>
+                                    </div>
+                                    <div id="iva-infer-result" class="test-result hidden" style="margin-top:8px"></div>
+                                </form>
+                            </div>
+                            <div class="card">
                                 <h3><i data-lucide="map-pin"></i> Punto de Venta</h3>
                                 <div class="info-note" style="margin-bottom:12px">
                                     <i data-lucide="info"></i>

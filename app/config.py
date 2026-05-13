@@ -47,6 +47,16 @@ DEFAULT_CONFIG = {
         "cert_path": "",
         "key_path": "",
     },
+    # Mapeo Tipo de IVA en Factusol (IVALFA en lineas / slot N en header) -> alicuota AFIP
+    # Valores aceptados: "21", "10.5", "0", "27", "5", "2.5", "exento"
+    # Default estandar AR: tipo 1=21%, 2=10.5%, 3=27%, 4=Exento.
+    # El usuario puede ajustarlo si su Factusol esta configurado distinto.
+    "iva_mapping": {
+        "tipo_1": "21",
+        "tipo_2": "10.5",
+        "tipo_3": "27",
+        "tipo_4": "exento",
+    },
     "app": {
         "secret_key": "cambiar-por-una-clave-segura",
         "host": "127.0.0.1",

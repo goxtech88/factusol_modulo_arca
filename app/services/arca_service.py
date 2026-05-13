@@ -416,9 +416,10 @@ def build_voucher_data(
       Id 3 → 0%     Id 4 → 10.5%   Id 5 → 21%
       Id 6 → 27%    Id 8 → 5%      Id 9 → 2.5%
 
-    IMPORTANTE: Los campos de IVA de las LÍNEAS (PIVLFA, BASLFA, IVALFA) son
-    poco confiables en Factusol. Usamos los campos del HEADER que son los
-    totales correctos por alícuota: BAS1-4FAC, IIVA1-4FAC, PIVA1-3FAC.
+    Mapeo de tipos de IVA Factusol (slot 1-4 en header BAS{i}FAC / valor IVALFA
+    en lineas): se resuelve desde config["iva_mapping"]. Si el slot esta marcado
+    como "exento" en el mapeo, su base va a imp_op_ex (no a imp_neto) y no se
+    informa alicuota.
     """
     # Fecha del comprobante
     fecha = invoice_header.get("FECFAC")
@@ -429,68 +430,97 @@ def build_voucher_data(
     else:
         fecha_str = datetime.now().strftime("%Y%m%d")
 
-    # ── Calcular IVA desde el HEADER (campos BASxFAC, IIVAxFAC, PIVAxFAC) ──
-    # Factusol guarda hasta 4 bases imponibles con sus IVAs en el header:
-    #   BAS1FAC/IIVA1FAC/PIVA1FAC  (alícuota 1)
-    #   BAS2FAC/IIVA2FAC  ← PIVA2FAC contiene el % de esta alícuota
-    #   BAS3FAC/IIVA3FAC  ← PIVA3FAC contiene el % de esta alícuota
-    #   BAS4FAC/IIVA4FAC  (rara vez se usa)
+    # ── Resolver mapeo Tipo Factusol (1..4) → alicuota AFIP ──
+    # Cada entrada es float (%) o None (exento). pct_to_id mapea % → Id AFIP.
     pct_to_id = {0: 3, 2.5: 9, 5: 8, 10.5: 4, 21: 5, 27: 6}
+    iva_map_cfg = get_config().get("iva_mapping", {}) or {}
+    tipo_to_pct: dict[int, float | None] = {}
+    for i in (1, 2, 3, 4):
+        raw = str(iva_map_cfg.get(f"tipo_{i}", "")).strip().lower()
+        if raw == "exento":
+            tipo_to_pct[i] = None
+        else:
+            try:
+                tipo_to_pct[i] = float(raw) if raw else 0.0
+            except ValueError:
+                tipo_to_pct[i] = 0.0
 
+    # ── Calcular IVA desde el HEADER (BAS{i}FAC + IIVA{i}FAC por slot 1..4) ──
+    # El slot N del header corresponde al tipo N del mapeo.
     iva_array = []
     total_neto = 0.0
     total_iva = 0.0
+    total_exento = 0.0
 
     for i in range(1, 5):
         base = float(invoice_header.get(f"BAS{i}FAC", 0) or 0)
         iva_imp = float(invoice_header.get(f"IIVA{i}FAC", 0) or 0)
-        pct = float(invoice_header.get(f"PIVA{i}FAC", 0) or 0) if i <= 3 else 0
-
         if base <= 0 and iva_imp <= 0:
             continue
 
-        # Si no hay %, intentar calcular desde base e importe
-        if pct == 0 and base > 0 and iva_imp > 0:
-            pct = round(iva_imp / base * 100, 1)
+        pct = tipo_to_pct.get(i, 0.0)
+
+        if pct is None:
+            # Slot marcado como Exento en el mapeo → va a imp_op_ex
+            total_exento += base
+            continue
 
         total_neto += base
         total_iva += iva_imp
-
-        afip_id = pct_to_id.get(pct, 5)  # default 21%
-        if pct > 0 and base > 0:
+        if base > 0:
+            afip_id = pct_to_id.get(pct, 5)  # default 21%
             iva_array.append({
                 "Id": afip_id,
                 "BaseImp": round(base, 2),
                 "Importe": round(iva_imp, 2),
             })
 
-    # Si no pudimos extraer nada del header, fallback a las líneas.
-    # Filtramos lineas-leyenda (cantidad=0 precio=0) que Factusol acepta como
-    # texto libre pero no son items reales — sumarlas no rompe (suman 0) pero
-    # es mas limpio omitirlas explicitamente.
-    if total_neto == 0 and total_iva == 0:
+    # Si no pudimos extraer nada del header, fallback a las líneas usando IVALFA
+    # (codigo de tipo 1..4 al que pertenece la linea) para agrupar correctamente.
+    if total_neto == 0 and total_iva == 0 and total_exento == 0:
         real_lines = filter_real_lines(invoice_lines)
+        # Agrupar BASLFA + IVA por tipo (IVALFA)
+        por_tipo: dict[int, dict[str, float]] = {}
         for line in real_lines:
+            try:
+                tipo = int(line.get("IVALFA") or 0)
+            except (TypeError, ValueError):
+                tipo = 0
+            if tipo < 1 or tipo > 4:
+                tipo = 1  # fallback al primer tipo si esta fuera de rango
+
             piv = float(line.get("PIVLFA", 0) or 0)
-            base = float(line.get("BASLFA", 0) or 0)
-            iva_amount = float(line.get("IVALFA", 0) or 0)
-            if base == 0 and iva_amount == 0:
-                total_line = float(line.get("TOTLFA", 0) or 0)
+            base_line = float(line.get("BASLFA", 0) or 0)
+            total_line = float(line.get("TOTLFA", 0) or 0)
+            if base_line == 0 and total_line > 0:
                 if piv > 0:
-                    base = round(total_line / (1 + piv / 100), 2)
-                    iva_amount = round(total_line - base, 2)
+                    base_line = round(total_line / (1 + piv / 100), 2)
                 else:
-                    base = total_line
+                    base_line = total_line
+            iva_line = round(base_line * piv / 100, 2) if piv > 0 else 0.0
+
+            d = por_tipo.setdefault(tipo, {"base": 0.0, "iva": 0.0})
+            d["base"] += base_line
+            d["iva"] += iva_line
+
+        for tipo, sums in por_tipo.items():
+            base = round(sums["base"], 2)
+            if base <= 0:
+                continue
+            pct = tipo_to_pct.get(tipo, 0.0)
+            if pct is None:
+                total_exento += base
+                continue
+            iva_amount = round(sums["iva"], 2)
             total_neto += base
             total_iva += iva_amount
-            if piv > 0 and base > 0:
-                afip_id = pct_to_id.get(piv, 5)
-                iva_array.append({"Id": afip_id, "BaseImp": round(base, 2), "Importe": round(iva_amount, 2)})
+            afip_id = pct_to_id.get(pct, 5)
+            iva_array.append({"Id": afip_id, "BaseImp": base, "Importe": iva_amount})
 
     # ImpTotal: usar el TOTFAC del header como fuente de verdad
     imp_total = float(invoice_header.get("TOTFAC", 0) or 0)
     if imp_total == 0:
-        imp_total = round(total_neto + total_iva, 2)
+        imp_total = round(total_neto + total_iva + total_exento, 2)
 
     # Documento del cliente
     # Distinguir: vacío → sin identificar (99), DNI < 11 dígitos (96), CUIT 11 dígitos (80)
@@ -523,7 +553,7 @@ def build_voucher_data(
         "imp_total": round(imp_total, 2),
         "imp_tot_conc": 0,
         "imp_neto": round(total_neto, 2),
-        "imp_op_ex": 0,
+        "imp_op_ex": round(total_exento, 2),
         "imp_iva": round(total_iva, 2),
         "imp_trib": 0,
         "moneda_id": "PES",
