@@ -14,6 +14,91 @@ from app.services import factusol_service, arca_service, rg1361_service
 router = APIRouter(prefix="/api/arca", tags=["arca"])
 
 
+# Letra del comprobante segun tipo AFIP, para armar el Nro Cbte estilo Factusol
+# (ej: "B-0002-00006486").
+_LETRA_CBTE = {
+    1: "A", 6: "B", 11: "C",
+    2: "NDA", 7: "NDB", 12: "NDC",
+    3: "NCA", 8: "NCB", 13: "NCC",
+}
+
+
+def _build_pedfac_and_barcode(tipo_comprobante, punto_venta, voucher_number, cae, cae_vto):
+    """Arma el Nro de comprobante (PEDFAC) y el codigo de barras AFIP (AATFAC)."""
+    from app.config import get_config
+
+    letra = _LETRA_CBTE.get(tipo_comprobante, "X")
+    pedfac = f"{letra}-{str(punto_venta).zfill(4)}-{str(voucher_number).zfill(8)}"
+
+    cuit_bc = str(get_config().get("empresa", {}).get("cuit", "")).replace("-", "").strip().zfill(11)
+    vto_bc = str(cae_vto or "").replace("-", "")[:8]
+    # CUIT(11) + TipoCbte(3) + PV(5) + CAE(14) + VtoCae(8)
+    barcode = (
+        f"{cuit_bc}{str(tipo_comprobante).zfill(3)}{str(punto_venta).zfill(5)}"
+        f"{str(cae).zfill(14)}{vto_bc}"
+    )
+    return pedfac, barcode
+
+
+def _grabar_cae_en_factusol(detail, tipfac, codfac, punto_venta, tipo_comprobante,
+                            voucher_number, cae, cae_vto):
+    """
+    Genera el QR AFIP, arma el Nro de comprobante y el codigo de barras, y graba
+    todo en F_FAC de Factusol. Reutilizado tanto al validar como al re-grabar
+    manualmente cuando el CAE quedo en el log pero no llego a Factusol.
+
+    Retorna dict con pedfac, barcode y qr_path.
+    """
+    from app.config import get_config
+    from datetime import datetime as _dt
+
+    cuit = str(get_config().get("empresa", {}).get("cuit", "")).replace("-", "").strip()
+
+    voucher_data = arca_service.build_voucher_data(
+        detail["header"], detail["lines"], detail.get("cliente"),
+        punto_venta, tipo_comprobante,
+    )
+
+    fecha_raw = detail["header"].get("FECFAC", "")
+    if hasattr(fecha_raw, "strftime"):
+        fecha_str = fecha_raw.strftime("%Y-%m-%d")
+    elif isinstance(fecha_raw, str) and len(fecha_raw) >= 8:
+        fecha_str = fecha_raw[:10]
+    else:
+        fecha_str = _dt.now().strftime("%Y-%m-%d")
+
+    qr_path = arca_service.generate_afip_qr(
+        cuit_emisor=cuit,
+        punto_venta=punto_venta,
+        voucher_number=voucher_number,
+        fecha_cbte=fecha_str,
+        tipo_comprobante=tipo_comprobante,
+        tipo_doc_receptor=voucher_data["tipo_doc"],
+        nro_doc_receptor=voucher_data["nro_doc"],
+        imp_total=voucher_data["imp_total"],
+        cae=cae,
+        cae_vto=cae_vto,
+        tipfac=tipfac,
+        codfac=codfac,
+    )
+
+    pedfac, barcode = _build_pedfac_and_barcode(
+        tipo_comprobante, punto_venta, voucher_number, cae, cae_vto,
+    )
+
+    factusol_service.write_cae_to_factura(
+        tipfac=tipfac,
+        codfac=codfac,
+        cae=cae,
+        voucher_number=pedfac,
+        cae_vto=cae_vto,
+        qr_img_path=qr_path,
+        barcode=barcode,
+    )
+
+    return {"pedfac": pedfac, "barcode": barcode, "qr_path": qr_path}
+
+
 @router.post("/validate/{tipfac}/{codfac}")
 def validate_invoice(
     tipfac: int,
@@ -204,71 +289,35 @@ def validate_invoice(
     db.add(cae_log)
     db.commit()
 
-    # ── Generar QR AFIP ──────────────────────────────────────────────────
-    from app.config import get_config
-    _cfg = get_config()
-    _cuit = str(_cfg.get("empresa", {}).get("cuit", "")).replace("-", "").strip()
-
-    _voucher_data = arca_service.build_voucher_data(
-        detail["header"], detail["lines"], detail["cliente"],
-        pv_config.punto_venta, tipo_comprobante,
-    )
-    _fecha_raw = detail["header"].get("FECFAC", "")
-    from datetime import datetime as _dt
-    if hasattr(_fecha_raw, "strftime"):
-        _fecha_str = _fecha_raw.strftime("%Y-%m-%d")
-    elif isinstance(_fecha_raw, str) and len(_fecha_raw) >= 8:
-        _fecha_str = _fecha_raw[:10]
-    else:
-        _fecha_str = _dt.now().strftime("%Y-%m-%d")
-
-    qr_path = arca_service.generate_afip_qr(
-        cuit_emisor=_cuit,
-        punto_venta=pv_config.punto_venta,
-        voucher_number=result.get("voucher_number", 0),
-        fecha_cbte=_fecha_str,
-        tipo_comprobante=tipo_comprobante,
-        tipo_doc_receptor=_voucher_data["tipo_doc"],
-        nro_doc_receptor=_voucher_data["nro_doc"],
-        imp_total=_voucher_data["imp_total"],
-        cae=result.get("CAE", ""),
-        cae_vto=result.get("CAEFchVto", ""),
-        tipfac=tipfac,
-        codfac=codfac,
-    )
-
-    # ── Grabar datos CAE en F_FAC de Factusol ────────────────────────────
-    # Formatear nro comprobante como Factusol: "A-0002-00006486"
-    _letra_map = {1: "A", 6: "B", 11: "C", 2: "NDA", 3: "NCA", 7: "NDB", 8: "NCB"}
-    _letra = _letra_map.get(tipo_comprobante, "X")
-    _pv_str = str(pv_config.punto_venta).zfill(4)
-    _cbte_str = str(result.get("voucher_number", 0)).zfill(8)
-    _pedfac = f"{_letra}-{_pv_str}-{_cbte_str}"
-
-    # Código de barras AFIP: CUIT(11) + TipoCbte(3) + PV(5) + CAE(14) + VtoCae(8)
-    from app.config import get_config as _gc
-    _cuit_bc = str(_gc().get("empresa", {}).get("cuit", "")).replace("-", "").strip().zfill(11)
-    _vto_bc = str(result.get("CAEFchVto", "")).replace("-", "")[:8]
-    _barcode = f"{_cuit_bc}{str(tipo_comprobante).zfill(3)}{str(pv_config.punto_venta).zfill(5)}{str(result.get('CAE', '')).zfill(14)}{_vto_bc}"
-
+    # ── Grabar datos CAE (QR + Nro Cbte + codigo de barras) en F_FAC ──────
+    qr_path = ""
+    factusol_grabado = True
+    factusol_error = None
     try:
-        factusol_service.write_cae_to_factura(
+        _info = _grabar_cae_en_factusol(
+            detail=detail,
             tipfac=tipfac,
             codfac=codfac,
+            punto_venta=pv_config.punto_venta,
+            tipo_comprobante=tipo_comprobante,
+            voucher_number=result.get("voucher_number", 0),
             cae=result.get("CAE", ""),
-            voucher_number=_pedfac,
             cae_vto=result.get("CAEFchVto", ""),
-            qr_img_path=qr_path,
-            barcode=_barcode,
         )
+        qr_path = _info["qr_path"]
     except Exception as _write_err:
-        # No falla la respuesta si el write-back a Access falla
+        # No falla la respuesta si el write-back a Access falla: el CAE ya quedo
+        # en el log y el usuario puede re-grabarlo con el boton "Grabar en Factusol".
+        factusol_grabado = False
+        factusol_error = str(_write_err)
         print(f"⚠️ No se pudo grabar CAE en Factusol F_FAC: {_write_err}")
 
 
     msg_resp = "Factura validada exitosamente en ARCA"
     if was_adjusted:
         msg_resp += f" - {ajuste_msg}"
+    if not factusol_grabado:
+        msg_resp += " (CAE obtenido, pero NO se grabo en Factusol: use 'Grabar en Factusol')"
 
     return {
         "status": "ok",
@@ -278,11 +327,88 @@ def validate_invoice(
         "tipo_comprobante": tipo_comprobante,
         "resultado": result.get("resultado"),
         "qr_path": qr_path,
+        "factusol_grabado": factusol_grabado,
+        "factusol_error": factusol_error,
         "fecha_ajustada": was_adjusted,
         "fecha_ajuste_info": ajuste_info if was_adjusted else None,
         "message": msg_resp,
     }
 
+
+
+@router.post("/write-factusol/{tipfac}/{codfac}")
+def write_factusol(
+    tipfac: int,
+    codfac: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Re-graba en Factusol (F_FAC) los datos del CAE ya emitido: Nro de
+    comprobante, vencimiento, QR y codigo de barras AFIP.
+
+    Util cuando el CAE se obtuvo correctamente en ARCA (quedo en el log) pero la
+    escritura a Factusol fallo en su momento, o para re-sincronizar si hay alguna
+    diferencia entre lo emitido y lo que figura en Factusol.
+    """
+    # Buscar el CAE de la factura (excluyendo NC: la NC es un comprobante aparte)
+    nc_tipos = [3, 8, 13]
+    cae_log = (
+        db.query(CAELog)
+        .filter(
+            CAELog.tipfac == tipfac,
+            CAELog.codfac == codfac,
+            CAELog.tipo_comprobante.notin_(nc_tipos),
+        )
+        .order_by(CAELog.created_at.desc())
+        .first()
+    )
+
+    if not cae_log:
+        raise HTTPException(
+            status_code=404,
+            detail="Esta factura no tiene CAE emitido. Primero obtenga el CAE en ARCA.",
+        )
+
+    # Obtener datos de Factusol para reconstruir el QR/codigo de barras
+    try:
+        detail = factusol_service.get_invoice_detail(tipfac, codfac)
+        if not detail:
+            raise HTTPException(status_code=404, detail="Factura no encontrada en Factusol")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}")
+
+    detail["lines"] = arca_service.filter_real_lines(detail.get("lines") or [])
+
+    try:
+        info = _grabar_cae_en_factusol(
+            detail=detail,
+            tipfac=tipfac,
+            codfac=codfac,
+            punto_venta=cae_log.punto_venta,
+            tipo_comprobante=cae_log.tipo_comprobante,
+            voucher_number=cae_log.voucher_number,
+            cae=cae_log.cae,
+            cae_vto=cae_log.cae_vto,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"No se pudieron grabar los datos en Factusol: {str(e)}",
+        )
+
+    return {
+        "status": "ok",
+        "cae": cae_log.cae,
+        "cae_vto": cae_log.cae_vto,
+        "voucher_number": cae_log.voucher_number,
+        "comprobante_nro": info["pedfac"],
+        "tipo_comprobante": cae_log.tipo_comprobante,
+        "qr_path": info["qr_path"],
+        "message": f"Datos grabados en Factusol: CAE {cae_log.cae} — {info['pedfac']}",
+    }
 
 
 @router.post("/credit-note/{tipfac}/{codfac}")

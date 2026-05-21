@@ -386,21 +386,30 @@ const InvoicesComponent = {
                             : `<span class="badge badge-light">Pendiente</span>`}
                 </td>
                 <td class="td-actions">
-                    <button class="btn btn-sm btn-secondary" title="Ver detalle"
+                    <button class="btn btn-sm btn-secondary" title="Ver detalle / Ver CAE"
                         onclick="InvoicesComponent.viewDetail(${inv.TIPFAC}, ${inv.CODFAC})">
                         <i data-lucide="eye"></i>
                     </button>
                     ${!validated && !hasCaeLocal
-                        ? `<button class="btn btn-sm btn-success" title="Validar en ARCA"
+                        ? `<button class="btn btn-sm btn-success" title="Obtener CAE en ARCA"
                                onclick="InvoicesComponent.validateInvoice(${inv.TIPFAC}, ${inv.CODFAC})">
                                <i data-lucide="check-check"></i> CAE
                            </button>`
-                        : cae?.has_nc
+                        : ''}
+                    ${validated && !hasCaeLocal
+                        ? `<button class="btn btn-sm btn-warning" title="El CAE se obtuvo en ARCA pero no se grabo en Factusol. Grabar ahora."
+                               onclick="InvoicesComponent.grabarFactusol(${inv.TIPFAC}, ${inv.CODFAC})">
+                               <i data-lucide="save"></i> Grabar
+                           </button>`
+                        : ''}
+                    ${(validated || hasCaeLocal)
+                        ? (cae?.has_nc
                             ? `<span class="badge badge-warning" title="NC emitida: ${cae.nc_cae || ''}">NC</span>`
                             : `<button class="btn btn-sm btn-danger" title="Nota de Credito"
                                    onclick="InvoicesComponent.createCreditNote(${inv.TIPFAC}, ${inv.CODFAC})">
                                    <i data-lucide="file-minus"></i> NC
-                               </button>`}
+                               </button>`)
+                        : ''}
                 </td>
             </tr>`;
         }).join('');
@@ -535,6 +544,11 @@ const InvoicesComponent = {
                         <div class="invoice-field"><label>Vto CAE</label>${caeStatus.cae_vto}</div>
                         <div class="invoice-field"><label>Nro Cbte ARCA</label>#${caeStatus.voucher_number} — PV ${caeStatus.punto_venta}</div>
                     </div>
+                    <div class="cae-warning-note">
+                        <i data-lucide="alert-triangle"></i>
+                        El CAE se obtuvo en ARCA pero <strong>aun no se grabo en Factusol</strong>.
+                        Use el boton <strong>"Grabar datos en Factusol"</strong> para sincronizarlo.
+                    </div>
                 </div>`;
             }
 
@@ -542,16 +556,27 @@ const InvoicesComponent = {
 
             const footer = document.getElementById('modal-invoice-footer');
             const yaValidada = caeStatus.validated || hasCaeFactusol;
+            // Discrepancia: el CAE existe en el log de ARCA pero NO esta grabado en Factusol.
+            const discrepancia = caeStatus.validated && !hasCaeFactusol;
 
             if (!yaValidada && this.currentPv) {
                 footer.innerHTML = `
                     <button class="btn btn-secondary modal-close">Cerrar</button>
                     <button class="btn btn-success" onclick="InvoicesComponent.validateInvoice(${tipfac}, ${codfac})">
-                        <i data-lucide="check-check"></i> Validar en ARCA
+                        <i data-lucide="check-check"></i> Obtener CAE
                     </button>`;
             } else if (yaValidada && this.currentPv) {
+                // Solo se puede re-grabar si el CAE figura en el log de ARCA.
+                const grabarBtn = caeStatus.validated
+                    ? `<button class="btn ${discrepancia ? 'btn-warning' : 'btn-secondary'}"
+                            title="Re-graba en Factusol el Nro de comprobante, vencimiento, QR y codigo de barras del CAE"
+                            onclick="InvoicesComponent.grabarFactusol(${tipfac}, ${codfac})">
+                            <i data-lucide="save"></i> Grabar datos en Factusol
+                        </button>`
+                    : '';
                 footer.innerHTML = `
                     <button class="btn btn-secondary modal-close">Cerrar</button>
+                    ${grabarBtn}
                     <button class="btn btn-danger" onclick="InvoicesComponent.createCreditNote(${tipfac}, ${codfac})">
                         <i data-lucide="file-minus"></i> Emitir Nota de Credito
                     </button>`;
@@ -639,7 +664,12 @@ const InvoicesComponent = {
 
             if (result.status === 'ok') {
                 this._logLine(`CAE obtenido: ${result.cae}`, 'ok');
-                App.toast(`CAE obtenido: ${result.cae}`, 'success');
+                if (result.factusol_grabado === false) {
+                    this._logLine('El CAE se obtuvo pero NO se grabo en Factusol. Use "Grabar datos en Factusol".', 'warn');
+                    App.toast(`CAE obtenido (${result.cae}) pero NO se grabo en Factusol. Use el boton "Grabar datos en Factusol".`, 'warning');
+                } else {
+                    App.toast(`CAE obtenido: ${result.cae}`, 'success');
+                }
             } else if (result.status === 'already_validated') {
                 this._logLine(`Factura ya validada. CAE: ${result.cae}`, 'warn');
                 App.toast(`Factura ya validada. CAE: ${result.cae}`, 'info');
@@ -657,6 +687,39 @@ const InvoicesComponent = {
             this._logLine(`ERROR: ${msg}`, 'error');
             App.toast(`Error ARCA: ${msg}`, 'error');
             console.error('[ARCA] Error en validateInvoice:', msg);
+        }
+    },
+
+
+    // ── Grabar datos del CAE en Factusol ─────────────────────────────────
+    async grabarFactusol(tipfac, codfac) {
+        if (!confirm(
+            `Grabar los datos del CAE de la factura ${tipfac}-${codfac} en Factusol?\n\n` +
+            `Se escribiran en F_FAC: Nro de comprobante, vencimiento del CAE, QR y codigo de barras AFIP.`
+        )) return;
+
+        this._logClear();
+        this._logLine(`Grabando datos del CAE en Factusol para ${tipfac}-${codfac}...`, 'info');
+
+        try {
+            const result = await API.post(`/api/arca/write-factusol/${tipfac}/${codfac}`);
+
+            if (result.status === 'ok') {
+                this._logLine(`Grabado en Factusol: ${result.comprobante_nro} (CAE ${result.cae})`, 'ok');
+                App.toast(result.message || 'Datos grabados en Factusol', 'success');
+            } else {
+                this._logLine(result.message || 'Respuesta inesperada', 'warn');
+                App.toast(result.message || 'Respuesta inesperada', 'warning');
+            }
+
+            setTimeout(() => {
+                this.closeModal();
+                this.refresh();
+            }, 2000);
+        } catch (err) {
+            const msg = err.message || 'Error desconocido';
+            this._logLine(`ERROR: ${msg}`, 'error');
+            App.toast(`Error al grabar en Factusol: ${msg}`, 'error');
         }
     },
 
