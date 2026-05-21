@@ -153,6 +153,128 @@ def search_original_invoice(
         raise HTTPException(status_code=500, detail=f"Error al buscar facturas: {str(e)}")
 
 
+_NC_LETRA = {3: "A", 8: "B", 13: "C"}
+
+# Condicion frente al IVA del receptor segun CFECLI de Factusol.
+_CFECLI_COND = {
+    0: "", 1: "Consumidor Final", 2: "Responsable Inscripto",
+    3: "Monotributista", 4: "Exento", 5: "No Responsable",
+}
+
+
+def _doc_receptor(doc_raw: str):
+    """Calcula (tipo_doc AFIP, nro_doc) a partir del NIF/CUIT/DNI del cliente."""
+    s = str(doc_raw or "").replace("-", "").strip()
+    if not s or not s.isdigit():
+        return 99, 0          # sin identificar
+    if len(s) < 11:
+        return 96, int(s)     # DNI
+    return 80, int(s)         # CUIT
+
+
+@router.get("/{nc_id}/comprobante")
+def get_nc_comprobante(
+    nc_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Devuelve los datos fiscales minimos de una NC para imprimir su PDF, y
+    genera el QR AFIP del comprobante. El QR se guarda con un nombre propio
+    (`nc-<pv>-<nro>.png`) para no pisar el QR de la factura original.
+    """
+    from app.config import get_config
+
+    nc = db.query(CAELog).filter(CAELog.id == nc_id).first()
+    if not nc or nc.tipo_comprobante not in NC_TIPOS:
+        raise HTTPException(status_code=404, detail="Nota de credito no encontrada")
+    if current_user.role != "admin" and nc.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tiene permisos sobre esta NC")
+
+    empresa = get_config().get("empresa", {}) or {}
+    cuit_emisor = str(empresa.get("cuit", "")).replace("-", "").strip()
+
+    tipo_doc, nro_doc = _doc_receptor(nc.cliente_doc)
+
+    fecha_dt = nc.created_at or datetime.now()
+    fecha_str = fecha_dt.strftime("%Y-%m-%d")
+
+    # Generar QR AFIP del comprobante (nombre propio para no pisar el de la factura)
+    qr_filename = f"nc-{nc.punto_venta}-{nc.voucher_number}.png"
+    qr_url = ""
+    try:
+        path = arca_service.generate_afip_qr(
+            cuit_emisor=cuit_emisor,
+            punto_venta=nc.punto_venta,
+            voucher_number=nc.voucher_number,
+            fecha_cbte=fecha_str,
+            tipo_comprobante=nc.tipo_comprobante,
+            tipo_doc_receptor=tipo_doc,
+            nro_doc_receptor=nro_doc,
+            imp_total=float(nc.imp_total or 0),
+            cae=nc.cae or "",
+            cae_vto=nc.cae_vto or "",
+            tipfac=nc.tipfac,
+            codfac=nc.codfac,
+            filename=qr_filename,
+        )
+        if path:
+            qr_url = f"/static/qr/{qr_filename}"
+    except Exception:
+        qr_url = ""
+
+    # Enriquecer datos del receptor desde Factusol (condicion IVA + domicilio).
+    # Si Factusol no esta disponible, seguimos con lo que hay en el log.
+    cliente_cond = ""
+    cliente_dom = ""
+    try:
+        detail = factusol_service.get_invoice_detail(nc.tipfac, nc.codfac)
+        cli = (detail or {}).get("cliente") or {}
+        cliente_cond = _CFECLI_COND.get(cli.get("CFECLI"), "")
+        dom_parts = [cli.get("DOMCLI") or "", cli.get("POBCLI") or "", cli.get("PROCLI") or ""]
+        cliente_dom = ", ".join(p for p in dom_parts if p)
+    except Exception:
+        pass
+
+    return {
+        "id": nc.id,
+        "tipo_comprobante": nc.tipo_comprobante,
+        "tipo_nombre": _TIPO_NOMBRE.get(nc.tipo_comprobante, "Nota de Credito"),
+        "letra": _NC_LETRA.get(nc.tipo_comprobante, ""),
+        "codigo_afip": nc.tipo_comprobante,
+        "punto_venta": nc.punto_venta,
+        "voucher_number": nc.voucher_number,
+        "comprobante_nro": f"{str(nc.punto_venta).zfill(4)}-{str(nc.voucher_number).zfill(8)}",
+        "fecha": fecha_str,
+        "cae": nc.cae,
+        "cae_vto": nc.cae_vto,
+        "imp_neto": nc.imp_neto,
+        "imp_iva": nc.imp_iva,
+        "imp_total": nc.imp_total,
+        "motivo": nc.motivo,
+        "cmp_asoc": {
+            "tipo": nc.cmp_asoc_tipo,
+            "tipo_nombre": _TIPO_NOMBRE.get(nc.cmp_asoc_tipo, ""),
+            "nro_fmt": f"{str(nc.cmp_asoc_pv or 0).zfill(4)}-{str(nc.cmp_asoc_nro or 0).zfill(8)}",
+        },
+        "cliente": {
+            "nombre": nc.cliente_nombre,
+            "doc": nc.cliente_doc,
+            "tipo_doc": tipo_doc,
+            "condicion_iva": cliente_cond,
+            "domicilio": cliente_dom,
+        },
+        "emisor": {
+            "razon_social": empresa.get("razon_social", ""),
+            "cuit": cuit_emisor,
+            "domicilio": empresa.get("domicilio", ""),
+            "condicion_iva": empresa.get("condicion_iva", ""),
+            "inicio_actividades": empresa.get("inicio_actividades", ""),
+        },
+        "qr_url": qr_url,
+    }
+
+
 @router.post("/")
 def create_credit_note(
     payload: CreditNoteCreate,

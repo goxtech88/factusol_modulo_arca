@@ -829,6 +829,7 @@ def generate_afip_qr(
     cae_vto: str,
     tipfac: int,
     codfac: int,
+    filename: str = None,
 ) -> str:
     """
     Genera la imagen QR estándar AFIP para comprobante electrónico.
@@ -880,7 +881,7 @@ def generate_afip_qr(
 
         qr_dir.mkdir(exist_ok=True)
 
-        filename = f"{tipfac}-{codfac}.png"
+        filename = filename or f"{tipfac}-{codfac}.png"
         out_path = qr_dir / filename
         img.save(str(out_path))
 
