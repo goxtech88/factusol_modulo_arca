@@ -1,5 +1,20 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.7.4 (2026-05-21)
+
+### Nueva funcionalidad - Boton "Grabar datos en Factusol"
+- **Problema**: en algunos casos la factura obtenia el CAE correctamente en ARCA (quedaba registrado en el log de CAE Emitidos) pero los datos NO se grababan en Factusol (campos `BNOFAC`/`PEDFAC`/`BNUFAC`/`IMGFAC`/`AATFAC` de F_FAC vacios). Hasta ahora no habia forma de re-sincronizar sin volver a pedir el CAE.
+- **Boton "Grabar datos en Factusol"**: re-graba en F_FAC el Nro de comprobante, el vencimiento del CAE, el QR y el codigo de barras AFIP a partir del CAE ya emitido (lo toma del log, NO vuelve a pedir CAE a AFIP). Sirve tambien para re-sincronizar si hay alguna diferencia entre lo emitido y lo que figura en Factusol.
+  - Aparece en la lista de Facturas (boton "Grabar", solo cuando hay CAE en el log pero falta en Factusol) y en el modal de detalle de la factura.
+  - El modal muestra un aviso cuando detecta la discrepancia (CAE en ARCA pero no en Factusol).
+- **Mejor diagnostico al validar**: si al obtener el CAE falla la escritura a Factusol, la respuesta ahora lo informa (`factusol_grabado: false`) y el mensaje sugiere usar el boton de re-grabar, en vez de quedar en silencio.
+
+### Backend
+- Nuevo endpoint `POST /api/arca/write-factusol/{tipfac}/{codfac}`: re-graba en Factusol los datos del CAE ya emitido.
+- Refactor: la logica de armado de QR + Nro comprobante + codigo de barras + write-back a F_FAC se unifico en un helper reutilizado tanto al validar como al re-grabar.
+
+---
+
 ## v1.7.3 (2026-05-13)
 
 ### Hotfix - ARCA.exe no arrancaba en v1.7.2
