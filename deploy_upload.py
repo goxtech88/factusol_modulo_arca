@@ -7,7 +7,7 @@ Topologia real (descubierta empiricamente):
         |
         |  paramiko SSH/SFTP
         v
-    192.168.1.201  (Proxmox VE, root/254136b+)   <-- jump host LAN
+    100.64.247.47  (Proxmox VE, root/254136b+)   <-- jump host (Tailscale; LAN 192.168.1.200)
         |
         |  sshpass + scp -O (protocolo legacy, SFTP subsystem deshabilitado)
         v
@@ -29,7 +29,7 @@ Uso:
     python deploy_upload.py --no-manifest    # sube ZIP sin tocar arca-latest.json
 
 Overrides por env var (opcional):
-    ARCA_JUMP_HOST    default: 192.168.1.201
+    ARCA_JUMP_HOST    default: 100.64.247.47  (Tailscale del Proxmox)
     ARCA_JUMP_USER    default: root
     ARCA_JUMP_PASS    default: 254136b+
     ARCA_DEST_HOST    default: 192.168.1.212
@@ -49,7 +49,7 @@ import paramiko
 
 
 # ── Config con override por env var ────────────────────────────────────────
-JUMP_HOST = os.environ.get("ARCA_JUMP_HOST", "192.168.1.201")
+JUMP_HOST = os.environ.get("ARCA_JUMP_HOST", "100.64.247.47")
 JUMP_USER = os.environ.get("ARCA_JUMP_USER", "root")
 JUMP_PASS = os.environ.get("ARCA_JUMP_PASS", "254136b+")
 
