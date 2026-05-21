@@ -1,5 +1,19 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.7.5 (2026-05-21)
+
+### Nueva funcionalidad - Imprimir / PDF de Notas de Credito
+- **Problema**: las NC emitidas no se podian imprimir. Al emitirlas se obtenia el CAE pero no se generaba el QR ni habia forma de imprimir el comprobante desde la app.
+- **Boton "Imprimir"** en la lista de Notas de Credito: abre el comprobante con la **informacion fiscal minima** listo para imprimir o guardar como PDF (el navegador permite "Guardar como PDF").
+  - Incluye: emisor (razon social, CUIT, domicilio, condicion IVA), letra y codigo AFIP del comprobante, Nro (PV-numero), fecha, datos del receptor (nombre, CUIT/DNI, condicion IVA, domicilio), comprobante asociado (factura origen), motivo, importes (neto/IVA/total), CAE + vencimiento y **QR AFIP**.
+- **QR de la NC**: se genera con nombre propio (`nc-<pv>-<nro>.png`) para no pisar el QR de la factura original (la NC comparte el `tipfac/codfac` de la factura).
+
+### Backend
+- Nuevo endpoint `GET /api/credit-notes/{nc_id}/comprobante`: devuelve los datos fiscales de la NC y genera su QR AFIP.
+- `arca_service.generate_afip_qr` acepta un `filename` opcional para guardar el QR con un nombre distinto.
+
+---
+
 ## v1.7.4 (2026-05-21)
 
 ### Nueva funcionalidad - Boton "Grabar datos en Factusol"

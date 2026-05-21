@@ -77,9 +77,154 @@ const CreditNotesComponent = {
                 <td>${nc.motivo || '-'}</td>
                 <td style="text-align:right">${importe}</td>
                 <td>${nc.cae || '-'}</td>
+                <td style="text-align:center">
+                    <button class="btn btn-sm btn-secondary" title="Imprimir / PDF de la nota de credito"
+                        onclick="CreditNotesComponent.printNC(${nc.id})">
+                        <i data-lucide="printer"></i>
+                    </button>
+                </td>
             </tr>`;
         }).join('');
         if (typeof lucide !== 'undefined') lucide.createIcons();
+    },
+
+    // ── Imprimir / PDF de la NC (informacion fiscal minima) ─────────────────
+    async printNC(id) {
+        let d;
+        try {
+            d = await API.get(`/api/credit-notes/${id}/comprobante`);
+        } catch (err) {
+            App.toast(err.message || 'No se pudieron obtener los datos de la NC', 'error');
+            return;
+        }
+
+        const esc = (s) => String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const fmt = (n) => Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const fmtCuit = (c) => (c && c.length === 11) ? `${c.slice(0,2)}-${c.slice(2,10)}-${c.slice(10)}` : (c || '-');
+        const fmtFecha = (f) => {
+            if (!f) return '-';
+            const m = String(f).match(/(\d{4})-(\d{2})-(\d{2})/);
+            return m ? `${m[3]}/${m[2]}/${m[1]}` : f;
+        };
+
+        const em = d.emisor || {};
+        const cl = d.cliente || {};
+        const asoc = d.cmp_asoc || {};
+        const docLabel = cl.tipo_doc === 80 ? 'CUIT' : (cl.tipo_doc === 96 ? 'DNI' : 'Doc.');
+        // La ventana de impresion es about:blank: el src debe ser absoluto (con origin)
+        // para que el QR (servido desde /static/qr/) resuelva correctamente.
+        const qrSrc = d.qr_url ? (window.location.origin + d.qr_url) : '';
+        const qrImg = qrSrc
+            ? `<img id="nc-qr" src="${esc(qrSrc)}" alt="QR AFIP" style="width:130px;height:130px">`
+            : '<div style="font-size:11px;color:#900">QR no disponible</div>';
+
+        const hayDiscrim = Number(d.imp_iva || 0) > 0;
+        const importesRows = hayDiscrim
+            ? `<div class="imp-row"><span>Neto Gravado</span><span>$ ${fmt(d.imp_neto)}</span></div>
+               <div class="imp-row"><span>IVA</span><span>$ ${fmt(d.imp_iva)}</span></div>
+               <div class="imp-row total"><span>TOTAL</span><span>$ ${fmt(d.imp_total)}</span></div>`
+            : `<div class="imp-row total"><span>TOTAL</span><span>$ ${fmt(d.imp_total)}</span></div>`;
+
+        const html = `<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+<title>${esc(d.tipo_nombre)} ${esc(d.comprobante_nro)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size:13px; color:#111; padding:24px; }
+  .doc { border:1px solid #333; }
+  .top { display:flex; border-bottom:1px solid #333; position:relative; }
+  .top .col { flex:1; padding:12px 16px; }
+  .top .col.left { border-right:0; }
+  .letra-box { position:absolute; left:50%; top:0; transform:translateX(-50%);
+    width:64px; border-left:1px solid #333; border-right:1px solid #333; border-bottom:1px solid #333;
+    text-align:center; padding:6px 0; background:#fff; }
+  .letra-box .letra { font-size:34px; font-weight:700; line-height:1; }
+  .letra-box .cod { font-size:9px; }
+  h1 { font-size:16px; margin-bottom:6px; }
+  .muted { color:#444; font-size:12px; }
+  .ot { text-align:right; }
+  .ot .tit { font-size:18px; font-weight:700; }
+  .ot .nro { font-size:14px; font-weight:700; margin-top:4px; }
+  .section { padding:10px 16px; border-bottom:1px solid #333; }
+  .row2 { display:flex; gap:24px; flex-wrap:wrap; }
+  .row2 > div { font-size:12px; }
+  .label { color:#555; }
+  .imp { padding:10px 16px; display:flex; flex-direction:column; align-items:flex-end; gap:3px; border-bottom:1px solid #333; }
+  .imp-row { display:flex; gap:24px; font-size:13px; min-width:240px; justify-content:space-between; }
+  .imp-row span:last-child { font-family:Consolas,monospace; }
+  .imp-row.total { border-top:2px solid #333; padding-top:5px; font-weight:700; font-size:15px; }
+  .cae { display:flex; align-items:center; gap:18px; padding:12px 16px; }
+  .cae .data { flex:1; font-size:13px; }
+  .cae .data .big { font-size:15px; font-weight:700; }
+  .foot { margin-top:10px; text-align:center; font-size:10px; color:#777; }
+  @media print { body { padding:0; } @page { margin:12mm; } }
+</style></head>
+<body>
+  <div class="doc">
+    <div class="top">
+      <div class="letra-box">
+        <div class="letra">${esc(d.letra || 'X')}</div>
+        <div class="cod">COD. ${String(d.codigo_afip || '').padStart(3,'0')}</div>
+      </div>
+      <div class="col left">
+        <h1>${esc(em.razon_social || 'Empresa')}</h1>
+        <div class="muted">${esc(em.domicilio || '')}</div>
+        <div class="muted">CUIT: ${fmtCuit(em.cuit)}</div>
+        <div class="muted">${esc(em.condicion_iva || '')}</div>
+        ${em.inicio_actividades ? `<div class="muted">Inicio actividades: ${esc(em.inicio_actividades)}</div>` : ''}
+      </div>
+      <div class="col ot">
+        <div class="tit">NOTA DE CRÉDITO ${esc(d.letra || '')}</div>
+        <div class="nro">N° ${esc(d.comprobante_nro)}</div>
+        <div class="muted">Fecha: ${fmtFecha(d.fecha)}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="row2">
+        <div><span class="label">Cliente:</span> <strong>${esc(cl.nombre || '-')}</strong></div>
+        <div><span class="label">${docLabel}:</span> ${esc(cl.doc || '-')}</div>
+        ${cl.condicion_iva ? `<div><span class="label">Cond. IVA:</span> ${esc(cl.condicion_iva)}</div>` : ''}
+      </div>
+      ${cl.domicilio ? `<div class="row2" style="margin-top:4px"><div><span class="label">Domicilio:</span> ${esc(cl.domicilio)}</div></div>` : ''}
+    </div>
+
+    <div class="section">
+      <div class="row2">
+        <div><span class="label">Comprobante asociado:</span> ${esc(asoc.tipo_nombre || '-')} ${esc(asoc.nro_fmt || '')}</div>
+        ${d.motivo ? `<div><span class="label">Motivo:</span> ${esc(d.motivo)}</div>` : ''}
+      </div>
+    </div>
+
+    <div class="imp">${importesRows}</div>
+
+    <div class="cae">
+      ${qrImg}
+      <div class="data">
+        <div class="big">CAE N°: ${esc(d.cae || '-')}</div>
+        <div>Vto. CAE: ${fmtFecha(d.cae_vto)}</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">Comprobante autorizado por ARCA (AFIP) — Generado por Factusol ARCA Sync</div>
+
+  <script>
+    function go(){ try { window.print(); } catch(e){} }
+    var qr = document.getElementById('nc-qr');
+    if (!qr) { window.onload = go; }
+    else if (qr.complete) { go(); }
+    else { qr.onload = go; qr.onerror = go; setTimeout(go, 1500); }
+  </script>
+</body></html>`;
+
+        const w = window.open('', '_blank');
+        if (!w) {
+            App.toast('Permití las ventanas emergentes para imprimir', 'warning');
+            return;
+        }
+        w.document.write(html);
+        w.document.close();
     },
 
     showEmitModal() {
