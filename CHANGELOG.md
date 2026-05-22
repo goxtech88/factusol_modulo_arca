@@ -1,5 +1,15 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.7.6 (2026-05-22)
+
+### Fix - La Nota de Credito ahora indica de que factura es
+- **Problema**: al imprimir una NC no se veia con que factura estaba relacionada. Las NC emitidas desde el boton "NC" de la lista de Facturas no guardaban el comprobante asociado, por lo que el comprobante impreso mostraba "0000-00000000".
+- **Fix**: al emitir la NC desde la lista de Facturas ahora se guarda el comprobante asociado (tipo + PV + numero de la factura original) y el motivo ("Anulacion").
+- **Impresion**: el comprobante de la NC ahora muestra la **Factura de origen (Factusol)** (serie-numero) ademas del comprobante AFIP asociado.
+- **NC viejas**: el endpoint de impresion reconstruye la relacion buscando la factura original (mismo TIPFAC/CODFAC) cuando la NC no tiene el dato guardado — asi las NC ya emitidas tambien salen correctas, sin migracion de datos.
+
+---
+
 ## v1.7.5 (2026-05-21)
 
 ### Nueva funcionalidad - Imprimir / PDF de Notas de Credito

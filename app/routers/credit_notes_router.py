@@ -191,6 +191,29 @@ def get_nc_comprobante(
     if current_user.role != "admin" and nc.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tiene permisos sobre esta NC")
 
+    # ── Comprobante asociado (la factura que anula la NC) ────────────────────
+    # Usamos los campos cmp_asoc si estan guardados; si no (NC viejas creadas por
+    # el boton inline que no los guardaba), los reconstruimos buscando la factura
+    # original: comparte tipfac/codfac con la NC y es de tipo no-NC.
+    asoc_tipo = nc.cmp_asoc_tipo
+    asoc_pv = nc.cmp_asoc_pv
+    asoc_nro = nc.cmp_asoc_nro
+    if not asoc_nro:
+        orig = (
+            db.query(CAELog)
+            .filter(
+                CAELog.tipfac == nc.tipfac,
+                CAELog.codfac == nc.codfac,
+                CAELog.tipo_comprobante.notin_(NC_TIPOS),
+            )
+            .order_by(CAELog.created_at.asc())
+            .first()
+        )
+        if orig:
+            asoc_tipo = orig.tipo_comprobante
+            asoc_pv = orig.punto_venta
+            asoc_nro = orig.voucher_number
+
     empresa = get_config().get("empresa", {}) or {}
     cuit_emisor = str(empresa.get("cuit", "")).replace("-", "").strip()
 
@@ -252,10 +275,16 @@ def get_nc_comprobante(
         "imp_iva": nc.imp_iva,
         "imp_total": nc.imp_total,
         "motivo": nc.motivo,
+        # Numero de factura en Factusol (serie-numero): siempre disponible, es lo
+        # que el usuario reconoce como "la factura" en su Factusol.
+        "factura_origen": f"{nc.tipfac}-{nc.codfac}",
         "cmp_asoc": {
-            "tipo": nc.cmp_asoc_tipo,
-            "tipo_nombre": _TIPO_NOMBRE.get(nc.cmp_asoc_tipo, ""),
-            "nro_fmt": f"{str(nc.cmp_asoc_pv or 0).zfill(4)}-{str(nc.cmp_asoc_nro or 0).zfill(8)}",
+            "tipo": asoc_tipo,
+            "tipo_nombre": _TIPO_NOMBRE.get(asoc_tipo, "Factura") if asoc_tipo else "",
+            "nro_fmt": (
+                f"{str(asoc_pv or 0).zfill(4)}-{str(asoc_nro or 0).zfill(8)}"
+                if asoc_nro else ""
+            ),
         },
         "cliente": {
             "nombre": nc.cliente_nombre,

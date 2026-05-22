@@ -192,7 +192,8 @@ const CreditNotesComponent = {
 
     <div class="section">
       <div class="row2">
-        <div><span class="label">Comprobante asociado:</span> ${esc(asoc.tipo_nombre || '-')} ${esc(asoc.nro_fmt || '')}</div>
+        <div><span class="label">Comprobante asociado:</span> ${asoc.nro_fmt ? `${esc(asoc.tipo_nombre || 'Factura')} N° ${esc(asoc.nro_fmt)}` : esc(d.factura_origen || '-')}</div>
+        <div><span class="label">Factura (Factusol):</span> <strong>${esc(d.factura_origen || '-')}</strong></div>
         ${d.motivo ? `<div><span class="label">Motivo:</span> ${esc(d.motivo)}</div>` : ''}
       </div>
     </div>

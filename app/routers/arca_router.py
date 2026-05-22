@@ -518,6 +518,12 @@ def create_credit_note(
         imp_iva=sum(float(detail["header"].get(f"IIVA{i}FAC") or 0) for i in range(1, 5)),
         cliente_nombre=detail["header"].get("CNOFAC"),
         cliente_doc=detail.get("cliente", {}).get("NIFCLI") if detail.get("cliente") else None,
+        # Relacion con la factura que anula: imprescindible para que la NC indique
+        # de que comprobante es (AFIP comprobante asociado + impresion de la NC).
+        motivo="Anulacion",
+        cmp_asoc_tipo=tipo_cbte_original,
+        cmp_asoc_pv=cae_original.punto_venta,
+        cmp_asoc_nro=cae_original.voucher_number,
     )
     db.add(nc_log)
     db.commit()
