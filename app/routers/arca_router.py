@@ -952,3 +952,55 @@ def export_rg1361(
             "X-Comprobantes-Count": str(count),
         },
     )
+
+
+@router.get("/rg1361/export-pami")
+def export_pami_ace(
+    year: int,
+    month: int,
+    pv: int | None = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Genera y descarga un ZIP con los TXT POR COMPROBANTE en el formato que exige
+    el portal PAMI ACE. Cada comprobante produce 3 archivos nombrados con su
+    clave fiscal:
+        {CUIT}_{TIPO}_{PV}_{NRO}_CABECERA.txt
+        {CUIT}_{TIPO}_{PV}_{NRO}_DETALLE.txt
+        {CUIT}_{TIPO}_{PV}_{NRO}_VENTAS.txt
+    (el PDF lo aporta Factusol con el mismo nombre base + ".pdf").
+
+    - year/month: período fiscal a exportar.
+    - pv: opcional, filtra por punto de venta.
+    - admin ve todos los CAE; usuario ve solo los suyos.
+    """
+    if not (1 <= month <= 12):
+        raise HTTPException(status_code=400, detail="Mes inválido (1-12)")
+    if not (2000 <= year <= 2100):
+        raise HTTPException(status_code=400, detail="Año inválido")
+
+    user_filter = None if current_user.role == "admin" else current_user.id
+
+    try:
+        zip_bytes, filename, count, skipped = rg1361_service.generate_pami_zip(
+            db, year=year, month=month, pv=pv, user_id=user_filter,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al generar archivos PAMI ACE: {str(e)}")
+
+    if count == 0:
+        msg = f"No hay comprobantes con CAE para {year:04d}-{month:02d}" + (f" (PV {pv})" if pv else "")
+        if skipped > 0:
+            msg += f" emitidos a INSSJP (CUIT {rg1361_service.PAMI_INSSJP_CUIT}). Se omitieron {skipped} comprobante(s) con otro receptor."
+        raise HTTPException(status_code=404, detail=msg)
+
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Comprobantes-Count": str(count),
+            "X-Comprobantes-Skipped": str(skipped),
+        },
+    )

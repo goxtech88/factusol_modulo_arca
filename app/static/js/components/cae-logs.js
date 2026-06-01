@@ -447,4 +447,69 @@ Empaquetado: ${d.frozen ? 'SI (ejecutable)' : 'NO (modo desarrollo)'}`;
             App.toast(err.message || 'Error al generar RG 1361', 'error');
         }
     },
+
+    // ── Exportador PAMI ACE (TXT por comprobante) ───────────────────────
+    async exportPamiACE() {
+        // Determinar período: usa el filtro de mes si está seleccionado, sino mes en curso
+        let year, month;
+        if (this._monthFilter) {
+            const [y, m] = this._monthFilter.split('-');
+            year = parseInt(y, 10);
+            month = parseInt(m, 10);
+        } else {
+            const now = new Date();
+            year = now.getFullYear();
+            month = now.getMonth() + 1;
+        }
+
+        const periodoLabel = new Date(year, month - 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+        const ok = confirm(
+            `Generar archivos PAMI ACE del período: ${periodoLabel}\n\n` +
+            `Se descargará un ZIP con, POR CADA comprobante:\n` +
+            `  • {CUIT}_{TIPO}_{PV}_{NRO}_CABECERA.txt\n` +
+            `  • {CUIT}_{TIPO}_{PV}_{NRO}_DETALLE.txt\n` +
+            `  • {CUIT}_{TIPO}_{PV}_{NRO}_VENTAS.txt\n\n` +
+            `El PDF lo aporta Factusol con el mismo nombre base.\n\n` +
+            `¿Continuar?`
+        );
+        if (!ok) return;
+
+        try {
+            const url = `/api/arca/rg1361/export-pami?year=${year}&month=${month}`;
+            const resp = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${API.token}` },
+            });
+
+            if (!resp.ok) {
+                let detail = `Error ${resp.status}`;
+                try { const j = await resp.json(); detail = j.detail || detail; } catch (_) {}
+                App.toast(detail, 'error');
+                return;
+            }
+
+            const count = resp.headers.get('X-Comprobantes-Count') || '?';
+            const skipped = parseInt(resp.headers.get('X-Comprobantes-Skipped') || '0', 10);
+            const cd = resp.headers.get('Content-Disposition') || '';
+            const m = /filename="([^"]+)"/.exec(cd);
+            const filename = m ? m[1] : `PAMI_ACE_${year}${String(month).padStart(2, '0')}.zip`;
+
+            const blob = await resp.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+
+            let msg = `Generados ${count} comprobante(s) para PAMI — ${filename}`;
+            if (skipped > 0) {
+                msg += ` (omitidos ${skipped} comprobante(s) con receptor distinto de INSSJP)`;
+            }
+            App.toast(msg, 'success');
+        } catch (err) {
+            App.toast(err.message || 'Error al generar PAMI ACE', 'error');
+        }
+    },
 };

@@ -124,17 +124,18 @@ def _date_yyyymmdd(d: object) -> str:
     return "0" * 8
 
 
-def _normalize_doc(doc_raw: str) -> tuple[str, str]:
+def _normalize_doc(doc_raw: str, length: int = 11) -> tuple[str, str]:
     """
     Devuelve (codigo_doc, numero_doc) según RG 1361 - Tabla E.7.
     11 dígitos → CUIT (80). 7-8 dígitos → DNI (96). Otro/vacío → 99.
+    El nro_doc se zfilla al ancho indicado (CABECERA=11, VENTAS=20).
     """
     s = "".join(c for c in (doc_raw or "") if c.isdigit())
     if len(s) == 11:
-        return "80", s.zfill(12)
+        return "80", s.zfill(length)
     if 7 <= len(s) <= 8:
-        return "96", s.zfill(12)
-    return "99", "0" * 12
+        return "96", s.zfill(length)
+    return "99", "0" * length
 
 
 def _resp_from_cfecli(cfecli: int) -> str:
@@ -176,43 +177,48 @@ def _build_cabecera_tipo1(
     cae: str,
     cae_vto: str,
 ) -> str:
-    """Registro tipo 1 del archivo CABECERA - 307 caracteres."""
-    cod_doc, nro_doc = _normalize_doc(cuit_cliente_raw)
+    """
+    Registro tipo 1 del archivo CABECERA - 290 caracteres.
+    Layout reverse-engineered de los archivos de referencia AFIP (RG 1361).
+    """
+    cod_doc, nro_doc = _normalize_doc(cuit_cliente_raw, length=11)
+    is_exento = imp_neto <= 0 and imp_exento > 0
+    cae_digits = "".join(c for c in (cae or "") if c.isdigit()).zfill(14)[-14:]
 
     parts = [
-        "1",                                      # 1) Tipo registro
-        _date_yyyymmdd(fecha),                    # 2) Fecha cbte
-        _num(tipo_cbte, 2),                       # 3) Tipo cbte
-        " ",                                      # 4) Controlador fiscal (no aplica)
-        _num(pv, 4),                              # 5) Punto de venta
-        _num(nro_cbte, 8),                        # 6) Nro comprobante
-        _num(nro_cbte, 8),                        # 7) Nro cbte registrado
-        _num(1, 3),                               # 8) Cantidad de hojas
-        cod_doc,                                  # 9) Cod documento comprador
-        nro_doc,                                  # 10) Nro identificación comprador
-        _ascii(razon_social, 50),                 # 11) Apellido y nombre / razón social
-        _amount(imp_total),                       # 12) Importe total operación
-        _amount(imp_no_grav),                     # 13) Conceptos no gravados
-        _amount(imp_neto),                        # 14) Neto gravado
-        _amount(imp_iva),                         # 15) Impuesto liquidado (IVA)
-        _amount(0),                               # 16) IVA liquidado a RNI
-        _amount(imp_exento),                      # 17) Operaciones exentas
-        _amount(0),                               # 18) Percepciones / pagos imp. nacionales
-        _amount(0),                               # 19) Percepción ingresos brutos
-        _amount(0),                               # 20) Percepción imp. municipales
-        _amount(0),                               # 21) Impuestos internos
-        _amount(imp_total),                       # 22) Transporte (sumatoria items)
-        _resp_from_cfecli(cfecli),                # 23) Tipo responsable
-        "PES",                                    # 24) Cod moneda
-        "0001000000",                             # 25) Tipo cambio (1.000000)
-        _num(cant_alicuotas or 1, 2),             # 26) Cantidad alícuotas IVA
-        " ",                                      # 27) Cód operación (Z/X/E/blanco)
-        _num(0, 9),                               # 28) CAI (impresión preimpresa - no aplica)
-        _date_yyyymmdd(cae_vto),                  # 29) Fecha vto
-        "0" * 8,                                  # 30) Fecha anulación
+        "1",                                      # pos 1     - Tipo registro
+        _date_yyyymmdd(fecha),                    # pos 2-9   - Fecha cbte (8)
+        _num(tipo_cbte, 2),                       # pos 10-11 - Tipo cbte (2)
+        " ",                                      # pos 12    - Ctrl fiscal (1)
+        _num(pv, 4),                              # pos 13-16 - PV (4)
+        _num(nro_cbte, 8),                        # pos 17-24 - Nro cbte desde (8)
+        _num(nro_cbte, 8),                        # pos 25-32 - Nro cbte hasta (8)
+        "001",                                    # pos 33-35 - Cantidad hojas (3)
+        cod_doc,                                  # pos 36-37 - Cod doc receptor (2)
+        nro_doc,                                  # pos 38-48 - Nro doc receptor (11)
+        _ascii(razon_social, 30),                 # pos 49-78 - Razón social (30)
+        _amount(imp_total),                       # pos 79-93  - Imp total operación
+        _amount(imp_no_grav),                     # pos 94-108 - Conceptos no gravados
+        _amount(imp_neto),                        # pos 109-123 - Neto gravado
+        _amount(imp_iva),                         # pos 124-138 - IVA liquidado
+        _amount(0),                               # pos 139-153 - IVA RNI
+        _amount(imp_exento),                      # pos 154-168 - Operaciones exentas
+        _amount(0),                               # pos 169-183 - Percep imp. nacionales
+        _amount(0),                               # pos 184-198 - Percep IIBB
+        _amount(0),                               # pos 199-213 - Percep municipal
+        _amount(0),                               # pos 214-228 - Impuestos internos
+        _amount(0),                               # pos 229-243 - Transporte (0 para 1 hoja)
+        _resp_from_cfecli(cfecli),                # pos 244-245 - Tipo responsable (2)
+        "PES",                                    # pos 246-248 - Moneda (3)
+        "0001000000",                             # pos 249-258 - Tipo cambio (10)
+        "1",                                      # pos 259    - Cant alícuotas (1)
+        ("E" if is_exento else " "),              # pos 260    - Cod operación (1)
+        cae_digits,                               # pos 261-274 - CAE (14)
+        _date_yyyymmdd(cae_vto),                  # pos 275-282 - Fecha vto CAE (8)
+        " " * 8,                                  # pos 283-290 - Fecha anulación (8 blancos)
     ]
     line = "".join(parts)
-    assert len(line) == 307, f"CABECERA tipo 1 debe ser 307 chars, fue {len(line)}"
+    assert len(line) == 290, f"CABECERA tipo 1 debe ser 290 chars, fue {len(line)}"
     return line
 
 
@@ -224,33 +230,32 @@ def _build_cabecera_tipo2(
     totales: dict,
 ) -> str:
     """
-    Registro tipo 2 del archivo CABECERA - 307 caracteres.
-    Resumen: período + cantidad tipo 1 + CUIT informante + sumatorias de campos
-    numéricos del tipo 1 (campos 12-22).
+    Registro tipo 2 del archivo CABECERA - 290 caracteres.
+    Resumen: período + cantidad tipo 1 + CUIT informante + sumatorias.
     """
     parts = [
-        "2",                                      # 1) Tipo registro
-        periodo_yyyymm,                           # 2) Período (AAAAMM)
-        " " * 17,                                 # 3) Relleno (hasta pos 24)
-        _num(cant_tipo1, 8),                      # 4) Cantidad registros tipo 1 (8 dígitos)
-        " " * 17,                                 # 5) Relleno (hasta pos 49)
-        cuit_emisor.zfill(11),                    # 6) CUIT informante (pos 50-60)
-        " " * 39,                                 # 7) Relleno (hasta pos 99)
-        _amount(totales.get("imp_total", 0)),     # 8) Total importe operación
-        _amount(totales.get("imp_no_grav", 0)),   # 9) Total no gravado
-        _amount(totales.get("imp_neto", 0)),      # 10) Total neto gravado
-        _amount(totales.get("imp_iva", 0)),       # 11) Total impuesto liquidado
-        _amount(0),                               # 12) Total IVA RNI
-        _amount(totales.get("imp_exento", 0)),    # 13) Total exento
-        _amount(0),                               # 14) Total percepciones nacionales
-        _amount(0),                               # 15) Total percepción IIBB
-        _amount(0),                               # 16) Total percepción municipal
-        _amount(0),                               # 17) Total impuestos internos
-        _amount(totales.get("imp_total", 0)),     # 18) Total transporte
+        "2",                                      # pos 1     - Tipo registro
+        periodo_yyyymm,                           # pos 2-7   - Período AAAAMM (6)
+        " " * 13,                                 # pos 8-20  - blanks (13)
+        _num(cant_tipo1, 8),                      # pos 21-28 - Cantidad tipo 1 (8)
+        " " * 17,                                 # pos 29-45 - blanks (17)
+        cuit_emisor.zfill(11),                    # pos 46-56 - CUIT informante (11)
+        " " * 22,                                 # pos 57-78 - blanks (22)
+        _amount(totales.get("imp_total", 0)),     # pos 79-93   - Total operación
+        _amount(totales.get("imp_no_grav", 0)),   # pos 94-108  - Total no gravado
+        _amount(totales.get("imp_neto", 0)),      # pos 109-123 - Total neto
+        _amount(totales.get("imp_iva", 0)),       # pos 124-138 - Total IVA
+        _amount(0),                               # pos 139-153 - Total IVA RNI
+        _amount(totales.get("imp_exento", 0)),    # pos 154-168 - Total exento
+        _amount(0),                               # pos 169-183 - Total percep nac
+        _amount(0),                               # pos 184-198 - Total IIBB
+        _amount(0),                               # pos 199-213 - Total municipal
+        _amount(0),                               # pos 214-228 - Total imp internos
     ]
     line = "".join(parts)
-    # Padding hasta 307 (mismo largo que tipo 1)
-    line = line.ljust(307)[:307]
+    # Padding con blancos hasta 290
+    line = line.ljust(290)[:290]
+    assert len(line) == 290, f"CABECERA tipo 2 debe ser 290 chars, fue {len(line)}"
     return line
 
 
@@ -267,95 +272,52 @@ def _build_ventas_tipo1(
     imp_total: float,
     imp_no_grav: float,
     imp_neto: float,
-    alicuota_iva: float,    # porcentaje (ej 21.0)
     imp_iva: float,
     imp_exento: float,
-    cfecli: int,
-    cae: str,
-    cae_vto: str,
 ) -> str:
-    """Registro tipo 1 del archivo VENTAS - 308 caracteres."""
-    cod_doc, nro_doc_12 = _normalize_doc(cuit_cliente_raw)
-    # VENTAS pide 20 chars para el numero de documento (no 12 como CABECERA)
-    nro_doc = str(int(nro_doc_12) if nro_doc_12.isdigit() else 0).zfill(20)
-
-    # Alicuota: 5 chars, 3 enteros + 2 decimales sin separador
-    # Ej: 21.00 -> "02100", 10.50 -> "01050", 0.00 -> "00000"
-    try:
-        a = float(alicuota_iva or 0)
-    except (TypeError, ValueError):
-        a = 0.0
-    alicuota_str = str(int(round(a * 100))).zfill(5)[-5:]
+    """
+    Registro VENTAS por comprobante - 266 caracteres.
+    Layout reverse-engineered de los archivos AFIP de referencia.
+    Notas:
+      - NO lleva tipo registro al inicio (empieza directo en fecha).
+      - tipo cbte se codifica en 3 chars (zfilled): 6 → '006'.
+      - ctrl fiscal va con '0' (numérico), no espacio.
+      - nros de cbte son 20 chars (no 8).
+      - nro doc receptor es 20 chars (zfilled).
+      - 8 amounts: total, no_grav, neto, exento, percepNac, IIBB, munic, internos.
+      - CAE no se incluye en VENTAS (14 ceros).
+    """
+    cod_doc, nro_doc = _normalize_doc(cuit_cliente_raw, length=20)
+    is_exento = imp_neto <= 0 and imp_exento > 0
 
     parts = [
-        "1",                                # 1) Tipo registro
-        _date_yyyymmdd(fecha),              # 2) Fecha cbte (8)
-        _num(tipo_cbte, 2),                 # 3) Tipo cbte
-        " ",                                # 4) Controlador fiscal
-        _num(pv, 4),                        # 5) Punto de venta
-        _num(nro_cbte, 8),                  # 6) Nro cbte desde
-        _num(nro_cbte, 8),                  # 7) Nro cbte hasta
-        cod_doc,                            # 8) Cod doc comprador (2)
-        nro_doc,                            # 9) Nro identif comprador (20)
-        _ascii(razon_social, 30),           # 10) Apellido/denominacion (30)
-        _amount(imp_total),                 # 11) Importe total operacion (15)
-        _amount(imp_no_grav),               # 12) Conceptos no gravados (15)
-        _amount(imp_neto),                  # 13) Neto gravado (15)
-        alicuota_str,                       # 14) Alicuota IVA (5)
-        _amount(imp_iva),                   # 15) Impuesto liquidado (15)
-        _amount(0),                         # 16) IVA RNI / No categorizados
-        _amount(imp_exento),                # 17) Operaciones exentas
-        _amount(0),                         # 18) Percepciones nacionales
-        _amount(0),                         # 19) Percepcion IIBB
-        _amount(0),                         # 20) Percepcion municipal
-        _amount(0),                         # 21) Impuestos internos
-        _resp_from_cfecli(cfecli),          # 22) Tipo responsable
-        "PES",                              # 23) Cod moneda
-        "0001000000",                       # 24) Tipo cambio (1.000000)
-        "1",                                # 25) Cant alicuotas IVA (1 char)
-        " ",                                # 26) Cod operacion
-        " " * 16,                           # 27) CAI (16 chars, no aplica para CAE)
-        _date_yyyymmdd(cae_vto),            # 28) Fecha vencimiento (8)
-        "0" * 8,                            # 29) Fecha anulacion (8)
-        " " * 20,                           # 30) Info adicional (20)
+        _date_yyyymmdd(fecha),                # pos 1-8   - Fecha cbte (8)
+        _num(tipo_cbte, 3),                   # pos 9-11  - Tipo cbte (3, zfilled)
+        "0",                                  # pos 12    - Ctrl fiscal (1, "0")
+        _num(pv, 4),                          # pos 13-16 - PV (4)
+        _num(nro_cbte, 20),                   # pos 17-36 - Nro cbte desde (20)
+        _num(nro_cbte, 20),                   # pos 37-56 - Nro cbte hasta (20)
+        cod_doc,                              # pos 57-58 - Cod doc receptor (2)
+        nro_doc,                              # pos 59-78 - Nro doc receptor (20)
+        _ascii(razon_social, 30),             # pos 79-108 - Razón social (30)
+        _amount(imp_total),                   # pos 109-123 - Imp total
+        _amount(imp_no_grav),                 # pos 124-138 - No gravado
+        _amount(imp_neto),                    # pos 139-153 - Neto gravado
+        _amount(imp_exento),                  # pos 154-168 - Exento
+        _amount(0),                           # pos 169-183 - Percep nac
+        _amount(0),                           # pos 184-198 - Percep IIBB
+        _amount(0),                           # pos 199-213 - Percep municipal
+        _amount(0),                           # pos 214-228 - Imp internos
+        "PES",                                # pos 229-231 - Moneda (3)
+        "0001000000",                         # pos 232-241 - Tipo cambio (10)
+        "1",                                  # pos 242     - Cant alícuotas (1)
+        ("E" if is_exento else "0"),          # pos 243     - Cod operación (1)
+        "0" * 14,                             # pos 244-257 - CAE (14, ceros)
+        "0",                                  # pos 258     - Filler (1, "0")
+        _date_yyyymmdd(fecha),                # pos 259-266 - Fecha (repite cbte)
     ]
     line = "".join(parts)
-    # El registro debe tener 308 chars (pos 1-308)
-    if len(line) != 308:
-        line = line.ljust(308)[:308]
-    return line
-
-
-def _build_ventas_tipo2(
-    *,
-    periodo_yyyymm: str,
-    cant_tipo1: int,
-    cuit_emisor: str,
-    totales: dict,
-) -> str:
-    """Registro tipo 2 (resumen) del archivo VENTAS - 308 caracteres."""
-    parts = [
-        "2",                                      # 1) Tipo registro
-        periodo_yyyymm,                           # 2) Periodo AAAAMM (6)
-        " " * 11,                                 # 3) Relleno hasta pos 18
-        _num(cant_tipo1, 10),                     # 4) Cantidad registros tipo 1 (10)
-        " " * 8,                                  # 5) Relleno hasta pos 36
-        cuit_emisor.zfill(11),                    # 6) CUIT informante (11) pos 37-47
-        " " * 6,                                  # 7) Relleno hasta pos 53
-        _amount(totales.get("imp_total", 0)),     # 8) Total importe operacion
-        _amount(totales.get("imp_no_grav", 0)),   # 9) Total no gravado
-        _amount(totales.get("imp_neto", 0)),      # 10) Total neto gravado
-        " " * 6,                                  # 11) Relleno hasta pos 104
-        _amount(totales.get("imp_iva", 0)),       # 12) Total impuesto liquidado
-        _amount(0),                               # 13) Total IVA RNI
-        _amount(totales.get("imp_exento", 0)),    # 14) Total exento
-        _amount(0),                               # 15) Total percepciones nacionales
-        _amount(0),                               # 16) Total percepcion IIBB
-        _amount(0),                               # 17) Total percepcion municipal
-        _amount(0),                               # 18) Total impuestos internos
-    ]
-    line = "".join(parts)
-    line = line.ljust(308)[:308]  # padding al ancho del tipo 1
+    assert len(line) == 266, f"VENTAS debe ser 266 chars, fue {len(line)}"
     return line
 
 
@@ -370,29 +332,71 @@ def _build_detalle_tipo1(
     precio_unitario: float,
     bonificacion: float,
     subtotal: float,
-    cod_alicuota: str,
-    indicador_exento: str,
+    alicuota_porc: float,
     descripcion: str,
+    nro_item: int = 1,
 ) -> str:
-    """Registro tipo 1 del archivo DETALLE - 95 caracteres + diseño libre."""
+    """
+    Registro DETALLE por ítem - 189 caracteres (fixed).
+    Layout reverse-engineered del archivo AFIP de referencia:
+      pos 1-2    Tipo cbte (2)
+      pos 3      Ctrl fiscal (1, espacio)
+      pos 4-11   Fecha cbte (8)
+      pos 12-15  PV (4)
+      pos 16-23  Nro cbte desde (8)
+      pos 24-31  Nro cbte hasta (8)
+      pos 32-43  Cantidad (12, 5 decimales)
+      pos 44-45  Unidad medida (2)
+      pos 46-61  Precio unitario (16, 3 decimales)
+      pos 62-76  Bonificación (15, 2 decimales)
+      pos 77-91  Reservado/ajuste (15, ceros)
+      pos 92-106 Subtotal (15, 1 decimal — observado en refs AFIP)
+      pos 107-110 Cod alícuota (4, % zfilled — '0021' para 21%, '0000' exento)
+      pos 111    Indicador exento (1, '0')
+      pos 112    Indicador anulación (1, '0')
+      pos 113    Indicador G/E (1, 'G' gravado, 'E' exento)
+      pos 114    Espacio (1)
+      pos 115-118 Nro item / línea (4, zfilled)
+      pos 119    Espacio (1)
+      pos 120-189 Descripción (70 chars)
+    """
+    # Ajustar a la alícuota AFIP válida más cercana (Tabla E.6). Esto protege
+    # el ancho del campo (4 chars) contra valores anómalos de PIVLFA en Factusol
+    # —p.ej. una línea con PIVLFA de 7 dígitos rompía el registro a 192 chars—
+    # y a la vez garantiza que se informe siempre una alícuota legal. Para los
+    # valores normales (0, 10.5, 21, 27…) el resultado es idéntico al anterior.
+    try:
+        _porc = abs(float(alicuota_porc or 0))
+    except (TypeError, ValueError):
+        _porc = 0.0
+    alic = min(ALICUOTA_TO_CODIGO.keys(), key=lambda v: abs(v - _porc))
+    is_exento = alic == 0.0
+    cod_alic = f"{int(round(alic)):04d}"
+
     parts = [
-        _num(tipo_cbte, 2),                  # 1) Tipo cbte
-        " ",                                 # 2) Controlador fiscal
-        _date_yyyymmdd(fecha),               # 3) Fecha cbte
-        _num(pv, 4),                         # 4) Punto de venta
-        _num(nro_cbte, 8),                   # 5) Nro cbte
-        _num(nro_cbte, 8),                   # 6) Nro cbte registrado
-        _amount(cantidad, total_len=12, decimals=5),  # 7) Cantidad
-        _num(unidad_medida or 7, 2),         # 8) Unidad de medida
-        _amount(precio_unitario, total_len=16, decimals=3),  # 9) Precio unitario
-        _amount(bonificacion),               # 10) Bonificación
-        _amount(subtotal),                   # 11) Subtotal por registro
-        cod_alicuota,                        # 12) Alícuota IVA aplicable
-        indicador_exento or " ",             # 13) Indicación exento/gravado (E/G/blanco)
-        " ",                                 # 14) Indicador anulación
-        _ascii(descripcion, 100),            # 15) Diseño libre (descripción del ítem)
+        _num(tipo_cbte, 2),                                # pos 1-2
+        " ",                                               # pos 3
+        _date_yyyymmdd(fecha),                             # pos 4-11
+        _num(pv, 4),                                       # pos 12-15
+        _num(nro_cbte, 8),                                 # pos 16-23
+        _num(nro_cbte, 8),                                 # pos 24-31
+        _amount(cantidad, total_len=12, decimals=5),       # pos 32-43
+        _num(unidad_medida or 7, 2),                       # pos 44-45
+        _amount(precio_unitario, total_len=16, decimals=3),# pos 46-61
+        _amount(bonificacion),                             # pos 62-76 (15, 2dec)
+        "0" * 15,                                          # pos 77-91
+        _amount(subtotal, total_len=15, decimals=1),       # pos 92-106 (1 decimal!)
+        cod_alic,                                          # pos 107-110
+        "0",                                               # pos 111
+        "0",                                               # pos 112
+        ("E" if is_exento else "G"),                       # pos 113
+        " ",                                               # pos 114
+        _num(nro_item, 4),                                 # pos 115-118
+        " ",                                               # pos 119
+        _ascii(descripcion, 70),                           # pos 120-189
     ]
     line = "".join(parts)
+    assert len(line) == 189, f"DETALLE debe ser 189 chars, fue {len(line)}"
     return line
 
 
@@ -442,6 +446,158 @@ def _build_cliente_from_factusol(tipfac: int, codfac: int) -> dict:
     return detail.get("cliente") or {}
 
 
+def _compute_log_records(log: CAELog) -> dict:
+    """
+    Computa los registros tipo-1 (cabecera, detalle, ventas) y los importes de
+    un único CAELog. Reutilizado por la exportación mensual (RG 1361) y por la
+    exportación por comprobante (PAMI ACE) para que ambas usen exactamente la
+    misma lógica de armado.
+    """
+    # Datos del header de Factusol (para fecha emisión, no_grav, exento, etc.)
+    try:
+        raw_lines, header_fs = _build_lines_from_factusol(log.tipfac, log.codfac)
+        cliente_fs = _build_cliente_from_factusol(log.tipfac, log.codfac)
+        # Descartar lineas-leyenda (cantidad=0 precio=0): son texto descriptivo
+        # que Factusol acepta como item pero no son items reales.
+        from app.services.arca_service import filter_real_lines
+        lines_fs = filter_real_lines(raw_lines)
+    except Exception:
+        lines_fs, header_fs, cliente_fs = [], {}, {}
+
+    # Fecha del comprobante: preferir FECFAC; si no, created_at del CAE
+    fecha_cbte = header_fs.get("FECFAC") or log.created_at
+    if hasattr(fecha_cbte, "date"):
+        fecha_cbte = fecha_cbte.date() if isinstance(fecha_cbte, datetime) else fecha_cbte
+
+    # Importes
+    imp_total = float(log.imp_total or 0)
+    imp_neto = float(log.imp_neto or 0)
+    imp_iva = float(log.imp_iva or 0)
+    # imp_exento desde el header Factusol: cada slot BAS{i}FAC marcado como
+    # "exento" en iva_mapping suma al exento.
+    iva_map_cfg = get_config().get("iva_mapping", {}) or {}
+    imp_exento = 0.0
+    for i in (1, 2, 3, 4):
+        raw = str(iva_map_cfg.get(f"tipo_{i}", "")).strip().lower()
+        if raw == "exento":
+            imp_exento += float(header_fs.get(f"BAS{i}FAC") or 0)
+    # No gravado: lo que sobra entre el total y (neto + iva + exento)
+    imp_no_grav = max(0.0, imp_total - imp_neto - imp_iva - imp_exento)
+
+    # Cliente
+    nif = (cliente_fs.get("NIFCLI") or log.cliente_doc or "")
+    cfecli = int(cliente_fs.get("CFECLI") or 0)
+    razon = cliente_fs.get("NOFCLI") or log.cliente_nombre or ""
+
+    # Cantidad de alícuotas distintas en el comprobante
+    alicuotas_set = set()
+    for ln in lines_fs:
+        piv = ln.get("PIVLFA")
+        if piv is not None:
+            alicuotas_set.add(round(float(piv), 2))
+    cant_alic = max(1, len(alicuotas_set)) if lines_fs else 1
+
+    # ── CABECERA tipo 1 ──
+    cabecera = _build_cabecera_tipo1(
+        fecha=fecha_cbte,
+        tipo_cbte=log.tipo_comprobante,
+        pv=log.punto_venta,
+        nro_cbte=log.voucher_number,
+        cuit_cliente_raw=nif,
+        razon_social=razon,
+        imp_total=imp_total,
+        imp_no_grav=imp_no_grav,
+        imp_neto=imp_neto,
+        imp_iva=imp_iva,
+        imp_exento=imp_exento,
+        cfecli=cfecli,
+        cant_alicuotas=cant_alic,
+        cae=log.cae or "",
+        cae_vto=log.cae_vto or "",
+    )
+
+    # ── DETALLE: una línea por cada ítem de la factura ──
+    detalle: list[str] = []
+    if lines_fs:
+        for idx, ln in enumerate(lines_fs, start=1):
+            cantidad = float(ln.get("CANLFA") or 0)
+            precio = float(ln.get("PRELFA") or 0)
+            tot_linea = float(ln.get("TOTLFA") or 0)
+            bonif = max(0.0, (cantidad * precio) - tot_linea)
+            piv = float(ln.get("PIVLFA") or 0)
+            desc = ln.get("DESLFA") or ""
+            detalle.append(_build_detalle_tipo1(
+                fecha=fecha_cbte,
+                tipo_cbte=log.tipo_comprobante,
+                pv=log.punto_venta,
+                nro_cbte=log.voucher_number,
+                cantidad=cantidad,
+                unidad_medida=7,
+                precio_unitario=precio,
+                bonificacion=bonif,
+                subtotal=tot_linea,
+                alicuota_porc=piv,
+                descripcion=desc,
+                nro_item=idx,
+            ))
+    else:
+        # Si no se pudo leer Factusol, generar una línea sintética con totales
+        alic_porc = 21.0 if imp_iva > 0 else 0.0
+        detalle.append(_build_detalle_tipo1(
+            fecha=fecha_cbte,
+            tipo_cbte=log.tipo_comprobante,
+            pv=log.punto_venta,
+            nro_cbte=log.voucher_number,
+            cantidad=1.0,
+            unidad_medida=7,
+            precio_unitario=imp_neto,
+            bonificacion=0.0,
+            subtotal=imp_neto,
+            alicuota_porc=alic_porc,
+            descripcion="Comprobante",
+            nro_item=1,
+        ))
+
+    # ── VENTAS: 1 registro por comprobante ──
+    ventas = _build_ventas_tipo1(
+        fecha=fecha_cbte,
+        tipo_cbte=log.tipo_comprobante,
+        pv=log.punto_venta,
+        nro_cbte=log.voucher_number,
+        cuit_cliente_raw=nif,
+        razon_social=razon,
+        imp_total=imp_total,
+        imp_no_grav=imp_no_grav,
+        imp_neto=imp_neto,
+        imp_iva=imp_iva,
+        imp_exento=imp_exento,
+    )
+
+    # Período propio del comprobante (AAAAMM) para el registro tipo 2
+    if isinstance(fecha_cbte, (datetime, date)):
+        periodo = f"{fecha_cbte.year:04d}{fecha_cbte.month:02d}"
+    else:
+        periodo = _date_yyyymmdd(fecha_cbte)[:6]
+
+    return {
+        "cabecera": cabecera,
+        "detalle": detalle,
+        "ventas": ventas,
+        "totales": {
+            "imp_total": imp_total,
+            "imp_neto": imp_neto,
+            "imp_iva": imp_iva,
+            "imp_no_grav": imp_no_grav,
+            "imp_exento": imp_exento,
+        },
+        "periodo": periodo,
+        "tipo_cbte": log.tipo_comprobante,
+        "pv": log.punto_venta,
+        "nro_cbte": log.voucher_number,
+        "cuit_receptor": "".join(c for c in str(nif or "") if c.isdigit()),
+    }
+
+
 def generate_files(
     db: Session,
     *,
@@ -468,155 +624,16 @@ def generate_files(
     totales = {"imp_total": 0.0, "imp_neto": 0.0, "imp_iva": 0.0, "imp_no_grav": 0.0, "imp_exento": 0.0}
 
     for log in logs:
-        # Datos del header de Factusol (para fecha emisión, no_grav, exento, etc.)
-        try:
-            raw_lines, header_fs = _build_lines_from_factusol(log.tipfac, log.codfac)
-            cliente_fs = _build_cliente_from_factusol(log.tipfac, log.codfac)
-            # Descartar lineas-leyenda (cantidad=0 precio=0): son texto descriptivo
-            # que Factusol acepta como item pero no son items reales. Se omiten en
-            # el DETALLE para no generar ruido en el archivo RG 1361.
-            from app.services.arca_service import filter_real_lines
-            lines_fs = filter_real_lines(raw_lines)
-        except Exception:
-            lines_fs, header_fs, cliente_fs = [], {}, {}
-
-        # Fecha del comprobante: preferir FECFAC; si no, created_at del CAE
-        fecha_cbte = header_fs.get("FECFAC") or log.created_at
-        if hasattr(fecha_cbte, "date"):
-            fecha_cbte = fecha_cbte.date() if isinstance(fecha_cbte, datetime) else fecha_cbte
-
-        # Importes
-        imp_total = float(log.imp_total or 0)
-        imp_neto = float(log.imp_neto or 0)
-        imp_iva = float(log.imp_iva or 0)
-        # Calcular imp_exento desde el header Factusol usando el mapeo:
-        # cada slot BAS{i}FAC marcado como "exento" en iva_mapping suma al exento.
-        iva_map_cfg = get_config().get("iva_mapping", {}) or {}
-        imp_exento = 0.0
-        for i in (1, 2, 3, 4):
-            raw = str(iva_map_cfg.get(f"tipo_{i}", "")).strip().lower()
-            if raw == "exento":
-                imp_exento += float(header_fs.get(f"BAS{i}FAC") or 0)
-        # No gravado: lo que sobra entre el total y (neto + iva + exento)
-        imp_no_grav = max(0.0, imp_total - imp_neto - imp_iva - imp_exento)
-
-        # Cliente
-        nif = (cliente_fs.get("NIFCLI") or log.cliente_doc or "")
-        cfecli = int(cliente_fs.get("CFECLI") or 0)
-        razon = cliente_fs.get("NOFCLI") or log.cliente_nombre or ""
-
-        # Cantidad de alícuotas distintas en el comprobante
-        alicuotas_set = set()
-        for ln in lines_fs:
-            piv = ln.get("PIVLFA")
-            if piv is not None:
-                alicuotas_set.add(round(float(piv), 2))
-        cant_alic = max(1, len(alicuotas_set)) if lines_fs else 1
-
-        # ── CABECERA tipo 1 ──
-        cabecera_lines.append(_build_cabecera_tipo1(
-            fecha=fecha_cbte,
-            tipo_cbte=log.tipo_comprobante,
-            pv=log.punto_venta,
-            nro_cbte=log.voucher_number,
-            cuit_cliente_raw=nif,
-            razon_social=razon,
-            imp_total=imp_total,
-            imp_no_grav=imp_no_grav,
-            imp_neto=imp_neto,
-            imp_iva=imp_iva,
-            imp_exento=imp_exento,
-            cfecli=cfecli,
-            cant_alicuotas=cant_alic,
-            cae=log.cae or "",
-            cae_vto=log.cae_vto or "",
-        ))
-
-        # ── DETALLE tipo 1: una línea por cada ítem de la factura ──
-        if lines_fs:
-            for ln in lines_fs:
-                cantidad = float(ln.get("CANLFA") or 0)
-                precio = float(ln.get("PRELFA") or 0)
-                # Bonificación: usar TOTLFA - (cantidad * precio) si existe
-                tot_linea = float(ln.get("TOTLFA") or 0)
-                bonif = max(0.0, (cantidad * precio) - tot_linea)
-                piv = float(ln.get("PIVLFA") or 0)
-                desc = ln.get("DESLFA") or ""
-                cod_alic = _cod_alicuota(piv)
-                ind_ex = "E" if abs(piv) < 0.01 else "G"
-                detalle_lines.append(_build_detalle_tipo1(
-                    fecha=fecha_cbte,
-                    tipo_cbte=log.tipo_comprobante,
-                    pv=log.punto_venta,
-                    nro_cbte=log.voucher_number,
-                    cantidad=cantidad,
-                    unidad_medida=7,
-                    precio_unitario=precio,
-                    bonificacion=bonif,
-                    subtotal=tot_linea,
-                    cod_alicuota=cod_alic,
-                    indicador_exento=ind_ex,
-                    descripcion=desc,
-                ))
-        else:
-            # Si no se pudo leer Factusol, generar una línea sintética con totales
-            cod_alic = _cod_alicuota(21.0 if imp_iva > 0 else 0.0)
-            ind_ex = "G" if imp_iva > 0 else "E"
-            detalle_lines.append(_build_detalle_tipo1(
-                fecha=fecha_cbte,
-                tipo_cbte=log.tipo_comprobante,
-                pv=log.punto_venta,
-                nro_cbte=log.voucher_number,
-                cantidad=1.0,
-                unidad_medida=7,
-                precio_unitario=imp_neto,
-                bonificacion=0.0,
-                subtotal=imp_neto,
-                cod_alicuota=cod_alic,
-                indicador_exento=ind_ex,
-                descripcion="Comprobante",
-            ))
-
-        # ── VENTAS tipo 1: 1 registro por cbte (alicuota principal del log) ──
-        # Si neto > 0, calcular alicuota implicita; si no, asumir 0 (exento)
-        if imp_neto > 0:
-            alicuota_calc = round((imp_iva / imp_neto) * 100, 2)
-        else:
-            # Si no hay neto, usar la alicuota mas comun encontrada en lineas (si hay)
-            alicuota_calc = round(sorted(alicuotas_set)[0], 2) if alicuotas_set else 0.0
-        ventas_lines.append(_build_ventas_tipo1(
-            fecha=fecha_cbte,
-            tipo_cbte=log.tipo_comprobante,
-            pv=log.punto_venta,
-            nro_cbte=log.voucher_number,
-            cuit_cliente_raw=nif,
-            razon_social=razon,
-            imp_total=imp_total,
-            imp_no_grav=imp_no_grav,
-            imp_neto=imp_neto,
-            alicuota_iva=alicuota_calc,
-            imp_iva=imp_iva,
-            imp_exento=imp_exento,
-            cfecli=cfecli,
-            cae=log.cae or "",
-            cae_vto=log.cae_vto or "",
-        ))
-
-        # Totales del tipo 2
-        totales["imp_total"] += imp_total
-        totales["imp_neto"] += imp_neto
-        totales["imp_iva"] += imp_iva
-        totales["imp_no_grav"] += imp_no_grav
-        totales["imp_exento"] += imp_exento
+        rec = _compute_log_records(log)
+        cabecera_lines.append(rec["cabecera"])
+        detalle_lines.extend(rec["detalle"])
+        ventas_lines.append(rec["ventas"])
+        for k in totales:
+            totales[k] += rec["totales"][k]
 
     # ── Tipo 2 (footer) ──
+    # Sólo CABECERA lleva tipo 2 (resumen). VENTAS y DETALLE no.
     cabecera_lines.append(_build_cabecera_tipo2(
-        periodo_yyyymm=periodo,
-        cant_tipo1=len(logs),
-        cuit_emisor=cuit_emisor,
-        totales=totales,
-    ))
-    ventas_lines.append(_build_ventas_tipo2(
         periodo_yyyymm=periodo,
         cant_tipo1=len(logs),
         cuit_emisor=cuit_emisor,
@@ -663,3 +680,115 @@ def generate_zip(
     pv_suffix = f"_PV{pv:04d}" if pv else ""
     filename = f"RG1361_{periodo}{pv_suffix}.zip"
     return buf.getvalue(), filename, data["count"]
+
+
+# ─── Exportación por comprobante (portal PAMI ACE) ──────────────────────────
+# PAMI ACE exige, POR CADA comprobante, un PDF + 3 TXT nombrados con la clave
+# del comprobante: {CUIT_EMISOR}_{TIPO}_{PV}_{NRO}. El TIPO va en 2 dígitos
+# (ej 06=FB), el PV en 4 (ej 0003) y el número en 8 (ej 00000032).
+
+def _comprobante_basename(cuit_emisor: str, tipo_cbte: int, pv: int, nro_cbte: int) -> str:
+    """Nombre base PAMI ACE de un comprobante (sin extensión)."""
+    return f"{cuit_emisor}_{_num(tipo_cbte, 2)}_{_num(pv, 4)}_{_num(nro_cbte, 8)}"
+
+
+# CUIT del INSSJP (PAMI) — el portal PAMI ACE sólo acepta comprobantes
+# emitidos a este receptor.
+PAMI_INSSJP_CUIT = "30522763922"
+
+
+def generate_pami_files(
+    db: Session,
+    *,
+    year: int,
+    month: int,
+    pv: Optional[int] = None,
+    user_id: Optional[int] = None,
+    only_pami: bool = True,
+) -> dict:
+    """
+    Genera, POR COMPROBANTE, los 3 archivos TXT con el nombre que exige PAMI ACE:
+        {CUIT_EMISOR}_{TIPO}_{PV}_{NRO}_CABECERA.txt
+        {CUIT_EMISOR}_{TIPO}_{PV}_{NRO}_DETALLE.txt
+        {CUIT_EMISOR}_{TIPO}_{PV}_{NRO}_VENTAS.txt
+
+    Cada archivo contiene SOLO los registros de ese comprobante:
+      - CABECERA: tipo 1 + tipo 2 (resumen del propio comprobante, cant=1).
+      - DETALLE:  un registro tipo 1 por cada ítem.
+      - VENTAS:   un registro tipo 1 (sin tipo 2).
+    El PDF lo aporta Factusol con el mismo nombre base + ".pdf".
+
+    Si only_pami=True (default), filtra y exporta solamente comprobantes cuyo
+    receptor sea INSSJP (CUIT 30522763922); el portal rechaza cualquier otro.
+
+    Devuelve dict con 'files', 'count', 'skipped_no_pami', 'cuit_emisor', 'periodo'.
+    """
+    config = get_config()
+    cuit_emisor = "".join(c for c in str(config.get("empresa", {}).get("cuit", "")) if c.isdigit())
+    cuit_emisor = cuit_emisor.zfill(11)
+
+    periodo = f"{year:04d}{month:02d}"
+    logs = _iter_logs_for_period(db, year=year, month=month, pv=pv, user_id=user_id)
+
+    files: dict[str, bytes] = {}
+    count_included = 0
+    skipped_no_pami = 0
+    for log in logs:
+        rec = _compute_log_records(log)
+
+        if only_pami and rec.get("cuit_receptor") != PAMI_INSSJP_CUIT:
+            skipped_no_pami += 1
+            continue
+
+        base = _comprobante_basename(cuit_emisor, rec["tipo_cbte"], rec["pv"], rec["nro_cbte"])
+
+        cab_tipo2 = _build_cabecera_tipo2(
+            periodo_yyyymm=rec["periodo"],
+            cant_tipo1=1,
+            cuit_emisor=cuit_emisor,
+            totales=rec["totales"],
+        )
+
+        cabecera_bytes = ("\r\n".join([rec["cabecera"], cab_tipo2]) + "\r\n").encode("ascii", errors="replace")
+        detalle_bytes = ("\r\n".join(rec["detalle"]) + ("\r\n" if rec["detalle"] else "")).encode("ascii", errors="replace")
+        ventas_bytes = (rec["ventas"] + "\r\n").encode("ascii", errors="replace")
+
+        files[f"{base}_CABECERA.txt"] = cabecera_bytes
+        files[f"{base}_DETALLE.txt"] = detalle_bytes
+        files[f"{base}_VENTAS.txt"] = ventas_bytes
+        count_included += 1
+
+    return {
+        "files": files,
+        "count": count_included,
+        "skipped_no_pami": skipped_no_pami,
+        "cuit_emisor": cuit_emisor,
+        "periodo": periodo,
+    }
+
+
+def generate_pami_zip(
+    db: Session,
+    *,
+    year: int,
+    month: int,
+    pv: Optional[int] = None,
+    user_id: Optional[int] = None,
+    only_pami: bool = True,
+) -> tuple[bytes, str, int, int]:
+    """
+    Empaqueta en un ZIP los TXT por comprobante (formato PAMI ACE).
+    Devuelve (zip_bytes, filename, count, skipped_no_pami).
+    """
+    data = generate_pami_files(
+        db, year=year, month=month, pv=pv, user_id=user_id, only_pami=only_pami,
+    )
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, content in data["files"].items():
+            zf.writestr(name, content)
+
+    pv_suffix = f"_PV{pv:04d}" if pv else ""
+    filename = f"PAMI_ACE_{data['periodo']}{pv_suffix}.zip"
+    return buf.getvalue(), filename, data["count"], data["skipped_no_pami"]

@@ -1,5 +1,55 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.7.9 (2026-06-01)
+
+### Fix - La exportacion PAMI ACE / RG 1361 fallaba con "DETALLE debe ser 189 chars, fue 192"
+- **Problema**: al generar los archivos PAMI ACE, la exportacion abortaba con el error `DETALLE debe ser 189 chars, fue 192`. El registro DETALLE salia 3 caracteres mas largo del layout AFIP (189) y el assert lo frenaba, impidiendo exportar todo el periodo.
+- **Causa raiz**: en `_build_detalle_tipo1` el campo "codigo de alicuota" (pos 107-110) se formateaba con `f"{int(round(abs(piv))):04d}"`, donde `:04d` es ancho **minimo** 4, no maximo. Todos los demas campos truncan a su ancho exacto, pero este no. Una linea de Factusol con un `PIVLFA` (alicuota de IVA) anomalo de 7 digitos generaba un codigo de 7 caracteres y desbordaba el registro a 192.
+- **Fix**: la alicuota ahora se ajusta a la mas cercana de la tabla AFIP valida (Tabla E.6: 0, 2.5, 5, 10.5, 21, 27) **antes** de formatear. Esto acota el campo a 4 chars siempre y garantiza que se informe una alicuota legal. Para los valores normales (21, 0, 10.5, etc.) el resultado es identico al anterior.
+- **Nota**: si una linea tenia el IVA mal cargado en Factusol (valor fuera de rango), el ajuste la lleva a la alicuota valida mas cercana. Conviene corregir esa linea en Factusol para que la alicuota informada sea la correcta.
+
+---
+
+## v1.7.8 (2026-05-28)
+
+### Fix CRITICO - El formato RG 1361 estaba incorrecto desde el inicio
+- **Problema**: PAMI ACE seguia rechazando los archivos generados por v1.7.7: "El CUIT del archivo de CABECERA no coincide con el del nombre del archivo. El CAE del archivo CABECERA no es correcto. El MONTO del archivo CABECERA no es correcto." Los **nombres** estaban OK desde v1.7.7, pero el **layout interno** no coincidia con lo que AFIP/PAMI valida.
+- **Causa raiz**: el modulo venia armando los registros con longitudes y posiciones de campos heredadas de una lectura incompleta del Anexo II de la RG 1361 (CABECERA tipo 1 a 307 chars en lugar de 290, razon social a 50 en lugar de 30, nro doc a 12 en lugar de 11, cant alicuotas a 2 en lugar de 1, el campo CAI lleno con 9 ceros en lugar del CAE real en 14 caracteres, fecha anulacion con `00000000` en lugar de 8 blancos, etc.). El layout incorrecto venia desde v1.6.5 cuando se sumo la exportacion RG 1361 — no afectaba al regimen de duplicado mensual porque ese flujo nunca se valido contra una referencia real, pero PAMI ACE lo detecta inmediatamente.
+- **Fix**: rewrite completo de los 4 builders (`_build_cabecera_tipo1`, `_build_cabecera_tipo2`, `_build_ventas_tipo1`, `_build_detalle_tipo1`) reverse-engineered contra archivos AFIP reales de comprobantes ya aceptados. Layouts confirmados byte-a-byte:
+  - **CABECERA tipo 1**: 290 chars, nro doc 11, razon 30, cant alicuotas 1, CAE en pos 261-274, fecha anulacion en blancos.
+  - **CABECERA tipo 2**: 290 chars, CUIT informante en pos 46-56, 10 totales (sin "total transporte"), padding con blancos.
+  - **DETALLE**: 189 chars fixed, subtotal con 1 decimal (no 2), nro item explicito, descripcion 70 chars.
+  - **VENTAS**: 266 chars, sin tipo registro al inicio (empieza directo en fecha), tipo cbte en 3 chars, nro cbte en 20 chars, sin tipo 2.
+- **Verificacion automatica**: test local arma los archivos para las facturas 1482 (exento) y 1459 (gravable 21%) con datos sinteticos y compara byte-a-byte contra los archivos de referencia AFIP. Los 7 registros (tipo 1+tipo 2 de CABECERA + DETALLE + VENTAS para cada factura) matchean 1:1.
+
+### Nueva funcionalidad - Filtrar export PAMI ACE por receptor INSSJP
+- El portal PAMI ACE solo acepta comprobantes emitidos a INSSJP (CUIT **30522763922**). Cualquier otro receptor (consumidor final, otra obra social, particular) es rechazado por el portal.
+- El boton "Exportar PAMI ACE" ahora **filtra automaticamente** y solo incluye en el ZIP los comprobantes cuyo receptor es INSSJP. Los demas se omiten silenciosamente y el toast lo informa: "Generados X comprobante(s) para PAMI — ... (omitidos Y comprobante(s) con receptor distinto de INSSJP)".
+- Si no quedan comprobantes para PAMI tras el filtro, el error 404 lo aclara: "No hay comprobantes con CAE para AAAA-MM emitidos a INSSJP (CUIT 30522763922). Se omitieron N comprobante(s) con otro receptor."
+
+### Backend
+- `rg1361_service`: rewrite de los 4 builders al layout AFIP real, constante `PAMI_INSSJP_CUIT = "30522763922"`, parametro `only_pami` en `generate_pami_files`/`generate_pami_zip`, header `X-Comprobantes-Skipped` en la respuesta del endpoint.
+
+---
+
+## v1.7.7 (2026-05-27)
+
+### Nueva funcionalidad - Exportar para PAMI ACE (TXT por comprobante)
+- **Problema**: el portal PAMI ACE rechaza la subida con "El nombre de los archivos no es correcto" porque exige los TXT nombrados POR COMPROBANTE con su clave fiscal (`{CUIT}_{TIPO}_{PV}_{NRO}`), mientras que el exportador RG 1361 generaba un único archivo mensual agregado (`CABECERA_AAAAMM.txt`).
+- **Nuevo botón "Exportar PAMI ACE"** en CAE Emitidos: descarga un ZIP con, por cada comprobante del período, tres archivos con el nombre exacto que valida PAMI:
+  - `{CUIT}_{TIPO}_{PV}_{NRO}_CABECERA.txt` (registro tipo 1 + tipo 2 de control, cantidad = 1).
+  - `{CUIT}_{TIPO}_{PV}_{NRO}_DETALLE.txt` (registros tipo 1; RG 1361 no define tipo 2 para detalle).
+  - `{CUIT}_{TIPO}_{PV}_{NRO}_VENTAS.txt` (registro tipo 1 + tipo 2 de control, cantidad = 1).
+  - El PDF lo aporta Factusol con el mismo nombre base + `.pdf`.
+  - TIPO en 2 dígitos (ej `06`=Factura B), PV en 4 (`0003`), número en 8 (`00000032`).
+- **El exportador RG 1361 mensual se mantiene sin cambios** (sigue generando el ZIP agregado para el régimen de duplicado electrónico).
+
+### Backend
+- Nuevo endpoint `GET /api/arca/rg1361/export-pami?year=&month=&pv=`.
+- `rg1361_service`: refactor — la lógica por comprobante se extrajo a `_compute_log_records()`, reutilizada por la exportación mensual y la nueva por comprobante (`generate_pami_files` / `generate_pami_zip`). El formato de cada registro es idéntico al ya validado.
+
+---
+
 ## v1.7.6 (2026-05-22)
 
 ### Fix - La Nota de Credito ahora indica de que factura es
