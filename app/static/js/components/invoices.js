@@ -15,6 +15,7 @@ const InvoicesComponent = {
     _fopfacFilters: new Set(),  // códigos de formas de pago seleccionadas (vacío = todas)
     _paymentMethods: [],        // cache de formas de pago
     _fopfacAllSelected: true,   // si todas están tildadas
+    _usarFechaHoy: false,       // tilde "Usar fecha hoy": valida en ARCA con fecha de hoy sin tocar Factusol
 
     // ── Columnas ordenables ──────────────────────────────────────────────
     COLS: [
@@ -43,6 +44,11 @@ const InvoicesComponent = {
                 this._fopfacAllSelected = false;
             }
         } catch { /* use defaults */ }
+
+        // Restaurar tilde "Usar fecha hoy"
+        this._usarFechaHoy = localStorage.getItem('invoice_usar_fecha_hoy') === '1';
+        const fhSwitch = document.getElementById('invoices-fechahoy-switch');
+        if (fhSwitch) fhSwitch.checked = this._usarFechaHoy;
 
         // Dropdown toggle
         const dropBtn = document.getElementById('fopfac-dropdown-btn');
@@ -104,6 +110,21 @@ const InvoicesComponent = {
             const sw = document.getElementById('invoices-auto-switch');
             if (sw) sw.checked = !enabled;
         }
+    },
+
+    // ── Tilde "Usar fecha hoy" ───────────────────────────────────────────
+    // Cuando esta activo, al obtener el CAE la factura se valida en ARCA con la
+    // fecha de HOY en lugar de la fecha del comprobante de Factusol. La fecha en
+    // Factusol NO se toca (se preserva la trazabilidad de la operacion).
+    toggleFechaHoy(enabled) {
+        this._usarFechaHoy = !!enabled;
+        localStorage.setItem('invoice_usar_fecha_hoy', enabled ? '1' : '0');
+        App.toast(
+            enabled
+                ? '📅 Las facturas se validarán con la fecha de HOY (sin modificar Factusol)'
+                : 'Las facturas se validarán con la fecha del comprobante de Factusol',
+            enabled ? 'success' : 'info',
+        );
     },
 
 
@@ -649,21 +670,37 @@ const InvoicesComponent = {
             App.toast('No tiene un punto de venta seleccionado', 'error');
             return;
         }
+        const hoyStr = new Date().toLocaleDateString('es-AR');
+        const fechaMsg = this._usarFechaHoy
+            ? `Fecha del comprobante en ARCA: HOY (${hoyStr}). La fecha en Factusol NO se modifica.\n`
+            : '';
         if (!confirm(
             `Validar factura ${tipfac}-${codfac} en ARCA?\n` +
             `Punto de Venta: ${this.currentPv.punto_venta}\n` +
+            fechaMsg +
             `Esta accion solicitara un CAE a AFIP.`
         )) return;
 
         this._logClear();
         this._logLine(`Iniciando validacion factura ${tipfac}-${codfac}...`, 'info');
+        if (this._usarFechaHoy) {
+            this._logLine(`Modo "Usar fecha hoy": se validara con fecha ${hoyStr} (Factusol intacto)`, 'info');
+        }
         this._logLine(`PV: ${this.currentPv.punto_venta} | Autenticando con WSAA...`, 'info');
 
         try {
-            const result = await API.post(`/api/arca/validate/${tipfac}/${codfac}?pv_id=${this.currentPv.id}`);
+            const result = await API.post(
+                `/api/arca/validate/${tipfac}/${codfac}?pv_id=${this.currentPv.id}`
+                + `&usar_fecha_hoy=${this._usarFechaHoy}`
+            );
 
             if (result.status === 'ok') {
                 this._logLine(`CAE obtenido: ${result.cae}`, 'ok');
+                if (result.usar_fecha_hoy && result.fecha_ajuste_info) {
+                    this._logLine(
+                        `Validada con fecha de hoy ${result.fecha_ajuste_info.fecha_enviada || ''}. `
+                        + `Fecha en Factusol sin modificar.`, 'ok');
+                }
                 if (result.factusol_grabado === false) {
                     this._logLine('El CAE se obtuvo pero NO se grabo en Factusol. Use "Grabar datos en Factusol".', 'warn');
                     App.toast(`CAE obtenido (${result.cae}) pero NO se grabo en Factusol. Use el boton "Grabar datos en Factusol".`, 'warning');

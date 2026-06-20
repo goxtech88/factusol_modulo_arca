@@ -291,6 +291,11 @@ def _validate_single_sync(
         tipo_comprobante=tipo_comprobante,
     )
 
+    # Fecha enviada a ARCA (= FECFAC en memoria tras el auto-ajuste). El export
+    # RG 1361 la prefiere sobre la FECFAC de Factusol.
+    _fch_arca = arca_service._parse_fecha(detail["header"].get("FECFAC"))
+    _fecha_cbte_str = _fch_arca.isoformat() if _fch_arca else None
+
     # Guardar log en DB
     cae_log = CAELog(
         user_id=pv_config.user_id,
@@ -301,6 +306,7 @@ def _validate_single_sync(
         voucher_number=result.get("voucher_number", 0),
         cae=result.get("CAE", ""),
         cae_vto=result.get("CAEFchVto", ""),
+        fecha_cbte=_fecha_cbte_str,
         imp_total=detail["header"].get("TOTFAC"),
         cliente_nombre=detail["header"].get("CNOFAC"),
         cliente_doc=detail.get("cliente", {}).get("NIFCLI") if detail.get("cliente") else None,

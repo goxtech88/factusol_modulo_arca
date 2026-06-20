@@ -104,12 +104,18 @@ def validate_invoice(
     tipfac: int,
     codfac: int,
     pv_id: int = None,
+    usar_fecha_hoy: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Valida una factura de Factusol en ARCA y obtiene el CAE.
     pv_id: ID del punto de venta del usuario a utilizar.
+    usar_fecha_hoy: si es True, el comprobante se valida en ARCA con la fecha de
+        HOY en lugar de la fecha del comprobante de Factusol. La fecha original
+        en F_FAC NO se modifica (se preserva la trazabilidad de la operacion).
+        Pensado para clientes que cargan facturas en Factusol con la fecha real
+        de la operacion pero validan en ARCA periodicamente.
     """
 
     # Buscar config de punto de venta
@@ -156,22 +162,52 @@ def validate_invoice(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}")
 
-    # ── Auto-ajuste de fecha del comprobante (rango AFIP) ──
-    # AFIP rechaza con error 10016 si la fecha esta > 5 dias (productos) o > 10
-    # (servicios) respecto del actual. En vez de bloquear, ajustamos la fecha
-    # al limite valido mas cercano y actualizamos F_FAC para que Factusol quede
-    # sincronizado con la fecha que efectivamente se mando a AFIP.
+    # ── Fecha del comprobante que se manda a ARCA ──
     fecha_orig = detail.get("header", {}).get("FECFAC")
-    fecha_final, was_adjusted, ajuste_msg, ajuste_info = arca_service.auto_adjust_invoice_date(fecha_orig, concepto=1)
-    if was_adjusted:
-        try:
-            factusol_service.update_invoice_date(tipfac, codfac, fecha_final)
-            # Refrescar detail con la nueva fecha para que el voucher se arme con ella
-            detail["header"]["FECFAC"] = fecha_final
-            print(f"[FECHA AJUSTADA] {tipfac}-{codfac}: {ajuste_msg}")
-        except Exception as _e:
-            print(f"[FECHA] WARN: no pude actualizar FECFAC en F_FAC: {_e}")
-            # Sigo de todos modos: pyafipws recibe la fecha ajustada del header
+
+    if usar_fecha_hoy:
+        # El usuario eligio el tilde "Usar fecha hoy": el comprobante se valida en
+        # ARCA con la fecha de HOY (fecha de la validacion fiscal), NO con la fecha
+        # del comprobante de Factusol. Para clientes que cargan la factura con la
+        # fecha real de la operacion pero validan en ARCA periodicamente.
+        #
+        # IMPORTANTE: se cambia FECFAC SOLO en memoria (para armar el voucher y el
+        # QR con la fecha de hoy). NO se reescribe FECFAC en F_FAC, asi la fecha
+        # original en Factusol queda intacta y no se pierde la trazabilidad.
+        from datetime import date as _date
+        hoy = _date.today()
+        fecha_orig_parse = arca_service._parse_fecha(fecha_orig)
+        detail["header"]["FECFAC"] = hoy
+        was_adjusted = True
+        ajuste_msg = (
+            f"Validada con fecha de HOY {hoy.strftime('%d/%m/%Y')}; "
+            f"la fecha en Factusol "
+            f"({fecha_orig_parse.strftime('%d/%m/%Y') if fecha_orig_parse else fecha_orig}) "
+            f"NO se modifico."
+        )
+        ajuste_info = {
+            "usar_fecha_hoy": True,
+            "fecha_enviada": hoy.isoformat(),
+            "fecha_factusol": fecha_orig_parse.isoformat() if fecha_orig_parse else str(fecha_orig),
+            "factusol_modificado": False,
+        }
+        print(f"[FECHA HOY] {tipfac}-{codfac}: {ajuste_msg}")
+    else:
+        # ── Auto-ajuste de fecha del comprobante (rango AFIP) ──
+        # AFIP rechaza con error 10016 si la fecha esta > 5 dias (productos) o > 10
+        # (servicios) respecto del actual. En vez de bloquear, ajustamos la fecha
+        # al limite valido mas cercano y actualizamos F_FAC para que Factusol quede
+        # sincronizado con la fecha que efectivamente se mando a AFIP.
+        fecha_final, was_adjusted, ajuste_msg, ajuste_info = arca_service.auto_adjust_invoice_date(fecha_orig, concepto=1)
+        if was_adjusted:
+            try:
+                factusol_service.update_invoice_date(tipfac, codfac, fecha_final)
+                # Refrescar detail con la nueva fecha para que el voucher se arme con ella
+                detail["header"]["FECFAC"] = fecha_final
+                print(f"[FECHA AJUSTADA] {tipfac}-{codfac}: {ajuste_msg}")
+            except Exception as _e:
+                print(f"[FECHA] WARN: no pude actualizar FECFAC en F_FAC: {_e}")
+                # Sigo de todos modos: pyafipws recibe la fecha ajustada del header
 
     # Filtrar lineas-leyenda (cantidad=0 Y precio=0): Factusol las acepta como
     # texto descriptivo dentro del listado de items, pero no son items reales.
@@ -270,6 +306,12 @@ def validate_invoice(
             )
         raise HTTPException(status_code=502, detail=f"Error en ARCA: {err_str}")
 
+    # Fecha realmente enviada a ARCA (= FECFAC en memoria: hoy si usar_fecha_hoy,
+    # la ajustada si se autoajusto, o la original). El export RG 1361 la prefiere
+    # sobre la FECFAC de Factusol para que el duplicado coincida con AFIP.
+    _fch_arca = arca_service._parse_fecha(detail["header"].get("FECFAC"))
+    _fecha_cbte_str = _fch_arca.isoformat() if _fch_arca else None
+
     # Guardar log
     cae_log = CAELog(
         user_id=current_user.id,
@@ -280,6 +322,7 @@ def validate_invoice(
         voucher_number=result.get("voucher_number", 0),
         cae=result.get("CAE", ""),
         cae_vto=result.get("CAEFchVto", ""),
+        fecha_cbte=_fecha_cbte_str,
         imp_total=detail["header"].get("TOTFAC"),
         imp_neto=sum(float(detail["header"].get(f"BAS{i}FAC") or 0) for i in range(1, 5)),
         imp_iva=sum(float(detail["header"].get(f"IIVA{i}FAC") or 0) for i in range(1, 5)),
@@ -331,6 +374,7 @@ def validate_invoice(
         "factusol_error": factusol_error,
         "fecha_ajustada": was_adjusted,
         "fecha_ajuste_info": ajuste_info if was_adjusted else None,
+        "usar_fecha_hoy": usar_fecha_hoy,
         "message": msg_resp,
     }
 

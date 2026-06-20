@@ -1,5 +1,22 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.8.0 (2026-06-20)
+
+### Nueva funcionalidad - Tilde "Usar fecha hoy" en el listado de facturas
+- **Problema**: hay clientes que cargan las facturas en Factusol con la fecha real de la operacion, pero validan en ARCA **periodicamente** (no el mismo dia). Necesitan que el CAE quede con la fecha de HOY (la de la validacion fiscal) sin tener que modificar la fecha del comprobante en Factusol, para no perder la trazabilidad de la operacion.
+- **Solucion**: nuevo tilde **"Fecha hoy"** en la barra del listado de facturas, junto al toggle de facturacion automatica. Cuando esta **activo**, al obtener el CAE la factura se valida en ARCA con la fecha de **HOY**; cuando esta **apagado**, se valida con la fecha del comprobante de Factusol (comportamiento de siempre).
+- **Importante**: en modo "Fecha hoy" la fecha original (`FECFAC`) en `F_FAC` **NO se modifica** — solo se cambia en memoria la fecha que se le manda a AFIP y con la que se arma el QR. Asi la trazabilidad de la operacion en Factusol queda intacta. (En el modo normal el auto-ajuste de fecha por rango AFIP sigue reescribiendo `FECFAC` como hasta ahora.)
+- El tilde se persiste en el navegador (`localStorage`) y resalta en verde cuando esta activo para que sea evidente que **todas** las validaciones saldran con la fecha de hoy. El dialogo de confirmacion y el mini-log lo informan en cada validacion.
+
+### Backend
+- `arca_router`: el endpoint `POST /api/arca/validate/{tipfac}/{codfac}` acepta el parametro `usar_fecha_hoy: bool = False`. Cuando es `True`, usa la fecha de hoy para el voucher/QR sin llamar a `update_invoice_date` (no toca `F_FAC`). La respuesta agrega `usar_fecha_hoy` y el detalle de la fecha enviada vs. la fecha de Factusol.
+- **Consistencia con RG 1361 / PAMI**: se persiste en `cae_logs` la fecha realmente enviada a ARCA (nueva columna nullable `fecha_cbte`, auto-migrada). El export RG 1361 ahora **prefiere** esa fecha sobre la `FECFAC` de Factusol, asi el duplicado electronico coincide con lo que AFIP registro tambien cuando se valido con "usar fecha hoy". Los CAE previos a v1.8.0 (sin `fecha_cbte`) siguen cayendo a `FECFAC` como antes — sin cambios de comportamiento para datos existentes. La columna se llena tanto en la validacion manual como en la auto-validacion.
+
+### Frontend
+- `invoices.js` / `index.html` / `style.css`: tilde "Fecha hoy" con estado persistido, sincronizacion al cargar, y pase del parametro `usar_fecha_hoy` en la validacion (boton CAE por fila y boton "Obtener CAE" del modal).
+
+---
+
 ## v1.7.9 (2026-06-01)
 
 ### Fix - La exportacion PAMI ACE / RG 1361 fallaba con "DETALLE debe ser 189 chars, fue 192"

@@ -464,8 +464,13 @@ def _compute_log_records(log: CAELog) -> dict:
     except Exception:
         lines_fs, header_fs, cliente_fs = [], {}, {}
 
-    # Fecha del comprobante: preferir FECFAC; si no, created_at del CAE
-    fecha_cbte = header_fs.get("FECFAC") or log.created_at
+    # Fecha del comprobante: preferir la fecha realmente enviada a ARCA
+    # (log.fecha_cbte), que puede diferir de la FECFAC de Factusol cuando se
+    # valido con "usar fecha hoy" (AFIP tiene la de hoy, Factusol la original).
+    # Si el log no la tiene (registros previos a v1.8.0), caer a FECFAC y, en
+    # ultimo caso, al created_at del CAE.
+    from app.services.arca_service import _parse_fecha as _parse_fecha_arca
+    fecha_cbte = _parse_fecha_arca(getattr(log, "fecha_cbte", None)) or header_fs.get("FECFAC") or log.created_at
     if hasattr(fecha_cbte, "date"):
         fecha_cbte = fecha_cbte.date() if isinstance(fecha_cbte, datetime) else fecha_cbte
 

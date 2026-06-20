@@ -24,6 +24,13 @@ class CAELog(Base):
     cae = Column(String(20), nullable=False)
     cae_vto = Column(String(10), nullable=False)  # YYYY-MM-DD
 
+    # Fecha del comprobante efectivamente enviada a ARCA (YYYY-MM-DD). Puede
+    # diferir de la FECFAC de Factusol cuando se valida con "usar fecha hoy":
+    # AFIP registra esta fecha, mientras que Factusol conserva la fecha original
+    # de la operacion. La usa el export RG 1361 / PAMI para que el duplicado
+    # coincida con lo que AFIP tiene.
+    fecha_cbte = Column(String(10), nullable=True)
+
     # Montos
     imp_total = Column(Float, nullable=True)
     imp_neto = Column(Float, nullable=True)

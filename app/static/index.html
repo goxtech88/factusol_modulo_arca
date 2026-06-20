@@ -198,6 +198,16 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
+                                <div class="auto-toggle-compact" id="invoices-fechahoy-toggle"
+                                    title="Validar en ARCA con la fecha de HOY, sin modificar la fecha del comprobante en Factusol. Para clientes que facturan periódicamente y necesitan conservar la trazabilidad de la operación.">
+                                    <i data-lucide="calendar-clock"></i>
+                                    <span class="toggle-label-text">Fecha hoy</span>
+                                    <label class="toggle-switch toggle-sm">
+                                        <input type="checkbox" id="invoices-fechahoy-switch"
+                                            onchange="InvoicesComponent.toggleFechaHoy(this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
                             </div>
                             <div class="toolbar-center">
                                 <div class="date-segmenter">

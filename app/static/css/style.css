@@ -2727,6 +2727,23 @@ mark.fb-highlight {
     color: var(--text-muted);
 }
 
+.auto-toggle-compact .toggle-label-text {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* Resaltar el toggle "Fecha hoy" cuando esta activo para que sea evidente
+   que TODAS las validaciones saldran con la fecha de hoy. */
+#invoices-fechahoy-toggle:has(input:checked) .toggle-label-text {
+    color: #16a34a;
+    font-weight: 600;
+}
+
+#invoices-fechahoy-toggle:has(input:checked) [data-lucide] {
+    color: #16a34a;
+}
+
 /* Toggle small */
 .toggle-sm {
     width: 36px;
