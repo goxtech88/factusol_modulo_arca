@@ -156,10 +156,24 @@ def main():
     print(f"\n[1/4] Conectando al jump host {JUMP_USER}@{JUMP_HOST}...")
     jump = paramiko.SSHClient()
     jump.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    try:
-        jump.connect(JUMP_HOST, username=JUMP_USER, password=JUMP_PASS, timeout=15)
-    except Exception as e:
-        print(f"ERROR auth en jump host: {e}")
+    # Timeouts holgados: sobre Tailscale el banner SSH del Proxmox a veces tarda
+    # mas de los 15s default de paramiko y daba "Authentication timeout" aunque el
+    # puerto 22 estuviera abierto. Reintentamos un par de veces por las dudas.
+    last_err = None
+    for intento in range(1, 4):
+        try:
+            jump.connect(
+                JUMP_HOST, username=JUMP_USER, password=JUMP_PASS,
+                timeout=30, banner_timeout=60, auth_timeout=60,
+                look_for_keys=False, allow_agent=False,
+            )
+            last_err = None
+            break
+        except Exception as e:
+            last_err = e
+            print(f"      intento {intento}/3 fallo: {e}")
+    if last_err is not None:
+        print(f"ERROR auth en jump host: {last_err}")
         sys.exit(1)
     print("      OK")
 
