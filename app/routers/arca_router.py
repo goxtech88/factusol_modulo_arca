@@ -817,13 +817,15 @@ def consultar_padron(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Consulta datos fiscales de un CUIT usando cuitonline.com.
+    Consulta datos fiscales de un CUIT.
 
+    Fuentes (en orden): webservice oficial de ARCA (constancia de inscripción A5,
+    mismo certificado que wsfe), tangofactura.com y cuitonline.com como fallbacks.
     Retorna razón social, tipo persona, condición IVA y domicilio fiscal.
     Útil para actualizar los datos de un cliente en Factusol desde la UI.
     """
     try:
-        data = arca_service.consultar_cuit_online(cuit)
+        data = arca_service.consultar_cuit(cuit)
         return data
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -846,7 +848,7 @@ def enrich_customer(
     from app.services import factusol_service
 
     try:
-        data = arca_service.consultar_cuit_online(cuit)
+        data = arca_service.consultar_cuit(cuit)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

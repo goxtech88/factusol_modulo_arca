@@ -623,7 +623,7 @@ const InvoicesComponent = {
         try {
             const result = await API.post(`/api/arca/enrich-customer/${codcli}/${cuit}`);
             const fields = result.updated_fields || [];
-            App.toast(`Cliente actualizado: ${result.razon_social || ''} — ${result.condicion_iva || 'N/D'} (${fields.length} campos)`, 'success');
+            App.toast(`Cliente actualizado: ${result.razon_social || ''} — ${result.condicion_iva || 'N/D'} (${fields.length} campos) · Fuente: ${result.source || 'N/D'}`, 'success');
             // Refrescar el modal con los datos actualizados
             this.viewDetail(tipfac, codfac);
         } catch (err) {

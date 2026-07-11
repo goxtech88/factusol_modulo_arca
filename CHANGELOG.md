@@ -1,5 +1,21 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.8.1 (2026-07-11)
+
+### Fix definitivo - Validador de CUITs ("Actualizar datos desde CUIT")
+- **Problema**: la consulta de datos fiscales de un CUIT dependia de **scraping** de cuitonline.com (HTML que cambia, bloqueos, timeouts) con fallback a tangofactura.com (servicio de terceros que suele estar caido). Fallaba seguido y sin mensajes claros. El intento anterior con el Padron A4 oficial (retirado en v1.5.1) fallaba porque el A4 requiere un permiso especial de AFIP que los clientes no tienen — y el import de pyafipws estaba roto (`ws_sr_padron_a4` no existe como modulo).
+- **Solucion**: nueva cadena de fuentes en `consultar_cuit()`, de mas a menos confiable:
+  1. **ARCA oficial — Constancia de Inscripcion (Padron A5, `ws_sr_constancia_inscripcion`)**: webservice oficial, disponible para **cualquier** contribuyente (a diferencia del A4), usa el **mismo certificado digital ya configurado para facturar**. Solo requiere autorizar el servicio "Consulta de Constancia de Inscripcion" al alias del certificado en el Administrador de Relaciones de ARCA (tramite unico; si falta, el error lo explica paso a paso).
+  2. afip.tangofactura.com (API JSON publica) como fallback.
+  3. cuitonline.com (scraping) como ultimo recurso.
+- **Validacion local del digito verificador (mod 11)** antes de consultar cualquier fuente: un CUIT mal tipeado en Factusol ahora falla al instante con mensaje claro ("no pasa la verificacion del digito verificador") en vez de un error criptico de red. Tambien distingue el caso DNI (menos de 11 digitos).
+- El TA del servicio de padron se cachea ~12h igual que el de wsfe (clave propia `constancia_a5`).
+- El toast de exito del boton "Actualizar datos desde CUIT" ahora muestra la **fuente** de los datos, para saber si vinieron del padron oficial de ARCA o de un fallback.
+- Limpieza: eliminada la funcion muerta `consultar_padron` (A4, rota) y sus URLs; `consultar_cuit_online` renombrada a `_consultar_cuitonline_scraping` (interna).
+- Shim de compatibilidad: `pyafipws.ws_sr_padron` importa `SafeConfigParser` (removido en Python 3.12+); se alias a `ConfigParser` antes del import para que el modulo cargue en Python moderno.
+
+---
+
 ## v1.8.0 (2026-06-20)
 
 ### Nueva funcionalidad - Tilde "Usar fecha hoy" en el listado de facturas

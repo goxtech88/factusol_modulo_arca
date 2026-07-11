@@ -4,7 +4,7 @@ Servicio de integración con ARCA (AFIP) via pyafipws de Mariano Reingart.
 Flujo de autenticación AFIP:
   1. WSAA: Con cert+key genera un Ticket de Acceso (TA) firmado digitalmente
   2. WSFEv1: Usa el TA para consultar/enviar comprobantes electronicos
-  3. WS Padrón A4: Consulta datos fiscales de contribuyentes por CUIT
+  3. WS Constancia de Inscripción (Padrón A5): Consulta datos fiscales de contribuyentes por CUIT
 
 Documentación:
   https://github.com/reingart/pyafipws
@@ -38,9 +38,10 @@ WSAA_URL_PROD = "https://wsaa.afip.gov.ar/ws/services/LoginCms"
 WSFE_URL_HOMO = "https://wswhomo.afip.gov.ar/wsfev1/service.asmx"
 WSFE_URL_PROD = "https://servicios1.afip.gov.ar/wsfev1/service.asmx"
 
-# URLs del Padrón Alcance 4
-PADRON_A4_URL_HOMO = "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl"
-PADRON_A4_URL_PROD = "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl"
+# URLs de Constancia de Inscripción (Padrón Alcance 5, ws_sr_constancia_inscripcion)
+# Servicio oficial de ARCA disponible para cualquier contribuyente con certificado digital.
+CONSTANCIA_A5_URL_HOMO = "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl"
+CONSTANCIA_A5_URL_PROD = "https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl"
 
 # URL de CuitOnline (fallback público para consulta de datos fiscales)
 CUIT_ONLINE_SEARCH_URL = "https://www.cuitonline.com/search.php?q={cuit}"
@@ -952,18 +953,213 @@ def _extract_h1(html: str) -> str:
     return ""
 
 
-def consultar_cuit_online(cuit_consulta: str) -> dict:
+def validar_cuit(cuit: str) -> bool:
+    """Valida que el CUIT tenga 11 dígitos exactos y dígito verificador correcto (mod 11)."""
+    c = re.sub(r"\D", "", str(cuit or ""))
+    if len(c) != 11:
+        return False
+    multiplicadores = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2]
+    total = sum(int(c[i]) * multiplicadores[i] for i in range(10))
+    esperado = 11 - (total % 11)
+    if esperado == 11:
+        esperado = 0
+    elif esperado == 10:
+        # CUIT con dígito verificador 10 es inválido — no se asignan
+        return False
+    return int(c[10]) == esperado
+
+
+def consultar_cuit(cuit_consulta: str) -> dict:
+    """
+    Consulta datos fiscales de un CUIT con cadena de fuentes (de más a menos confiable):
+      1. ARCA oficial — Constancia de Inscripción (Padrón A5), usa el mismo
+         certificado digital ya configurado para facturar.
+      2. afip.tangofactura.com — API JSON pública.
+      3. cuitonline.com — scraping HTML, último recurso.
+
+    Antes de consultar valida formato (11 dígitos) y dígito verificador,
+    así un CUIT mal cargado en Factusol falla rápido con mensaje claro.
+    """
+    cuit_limpio = re.sub(r"[^0-9]", "", str(cuit_consulta).strip())
+    if len(cuit_limpio) != 11:
+        raise ValueError(
+            f"CUIT inválido: '{cuit_consulta}' tiene {len(cuit_limpio)} dígitos y un CUIT tiene 11. "
+            f"Si es un DNI, complete el CUIT/CUIL real del cliente en Factusol."
+        )
+    if not validar_cuit(cuit_limpio):
+        raise ValueError(
+            f"CUIT inválido: {cuit_limpio[:2]}-{cuit_limpio[2:10]}-{cuit_limpio[10]} "
+            f"no pasa la verificación del dígito verificador. "
+            f"Revise el número cargado en Factusol (probablemente haya un dígito mal tipeado)."
+        )
+
+    errores = []
+
+    # Fuente 1: webservice oficial de ARCA (constancia de inscripción)
+    try:
+        return consultar_constancia(cuit_limpio)
+    except Exception as e:
+        logger.warning(f"Constancia ARCA falló para {cuit_limpio}: {e}")
+        errores.append(f"ARCA oficial: {e}")
+
+    # Fuente 2: tangofactura (API JSON)
+    try:
+        data = _consultar_tangofactura(cuit_limpio)
+        if data:
+            return data
+        errores.append("tangofactura.com: sin datos")
+    except Exception as e:
+        errores.append(f"tangofactura.com: {e}")
+
+    # Fuente 3: cuitonline (scraping)
+    try:
+        return _consultar_cuitonline_scraping(cuit_limpio)
+    except Exception as e:
+        errores.append(f"cuitonline.com: {e}")
+
+    detalle = " | ".join(errores)
+    hint = ""
+    if any(x in detalle.lower() for x in ["no autorizado", "computador", "unauthorized", "cee"]):
+        hint = (
+            " NOTA: el error de ARCA sugiere que falta autorizar el servicio "
+            "'Consulta de Constancia de Inscripción' para su certificado digital. "
+            "Ingrese a ARCA con clave fiscal → Administrador de Relaciones de Clave Fiscal → "
+            "adherir el servicio al mismo alias de certificado que usa para facturar (se hace una sola vez)."
+        )
+    raise ValueError(
+        f"No se pudieron obtener datos del CUIT {cuit_limpio}. Detalle: {detalle}.{hint}"
+    )
+
+
+def consultar_constancia(cuit_consulta: str) -> dict:
+    """
+    Consulta la Constancia de Inscripción (Padrón A5, ws_sr_constancia_inscripcion) de ARCA.
+
+    Fuente OFICIAL: usa el mismo certificado digital configurado para wsfe.
+    Requiere que el servicio 'Consulta de Constancia de Inscripción' esté autorizado
+    para el certificado en el Administrador de Relaciones de ARCA (trámite único).
+    A diferencia del Padrón A4 (que pide un permiso especial de AFIP), el A5 está
+    disponible para cualquier contribuyente.
+    """
+    config = get_config()
+    empresa = config.get("empresa", {})
+    arca = config.get("arca", {})
+    env = arca.get("environment", "development")
+
+    cuit_emisor = str(empresa.get("cuit", "")).replace("-", "").strip()
+    if not cuit_emisor:
+        raise ValueError("No se ha configurado el CUIT de la empresa.")
+
+    cert_path = arca.get("cert_path", "")
+    key_path = arca.get("key_path", "")
+    if not cert_path or not os.path.exists(cert_path):
+        raise ValueError(f"Certificado no encontrado: {cert_path}")
+    if not key_path or not os.path.exists(key_path):
+        raise ValueError(f"Clave privada no encontrada: {key_path}")
+
+    wsaa_url, _ = _get_urls()
+    padron_url = CONSTANCIA_A5_URL_PROD if env == "production" else CONSTANCIA_A5_URL_HOMO
+
+    # El servicio requiere su propio TA (distinto a wsfe) — cacheado ~12h
+    cache_key = f"{cuit_emisor}_{env}_constancia_a5"
+    cached = _load_cached_ta(cache_key, "")
+    if cached:
+        token, sign = cached["token"], cached["sign"]
+    else:
+        from pyafipws.wsaa import WSAA
+        wsaa = WSAA()
+        wsaa.Conectar(wsdl=wsaa_url)
+        tra = wsaa.CreateTRA(service="ws_sr_constancia_inscripcion")
+        cms = wsaa.SignTRA(tra, cert_path, key_path)
+        wsaa.LoginCMS(cms)
+        if wsaa.Excepcion:
+            raise ValueError(f"Error WSAA Constancia: {wsaa.Excepcion}")
+        token, sign = wsaa.Token, wsaa.Sign
+        expiry_str = getattr(wsaa, "ExpirationTime", "") or ""
+        _save_ta_cache(cache_key, "", token, sign, expiry_str)
+
+    # pyafipws.ws_sr_padron usa SafeConfigParser, removido en Python 3.12+
+    import configparser
+    if not hasattr(configparser, "SafeConfigParser"):
+        configparser.SafeConfigParser = configparser.ConfigParser
+
+    from pyafipws.ws_sr_padron import WSSrPadronA5
+    padron = WSSrPadronA5()
+    padron.LanzarExcepciones = True
+    padron.Conectar(wsdl=padron_url)
+    padron.Cuit = cuit_emisor
+    padron.Token = token
+    padron.Sign = sign
+
+    cuit_limpio = re.sub(r"[^0-9]", "", str(cuit_consulta))
+    padron.Consultar(cuit_limpio)
+    if padron.Excepcion:
+        raise ValueError(f"ARCA: {padron.Excepcion}")
+
+    razon_social = (padron.denominacion or "").strip()
+    if not razon_social:
+        raise ValueError(f"ARCA no devolvió datos para el CUIT {cuit_limpio}.")
+
+    tipo_persona = (padron.tipo_persona or "JURIDICA").upper()
+    nombre = apellido = ""
+    if tipo_persona == "FISICA" and "," in razon_social:
+        apellido, nombre = [p.strip() for p in razon_social.split(",", 1)]
+        razon_social = f"{apellido} {nombre}".strip()
+
+    CAT_IVA_MAP = {
+        1: "Responsable Inscripto",
+        4: "Exento",
+        5: "Consumidor Final",
+        6: "Responsable Monotributo",
+    }
+    cat_iva = padron.cat_iva if isinstance(padron.cat_iva, int) else None
+    condicion_iva = CAT_IVA_MAP.get(cat_iva, "Sin datos")
+
+    # Separar "CALLE 1234" en calle + número
+    direccion = (padron.direccion or "").strip()
+    calle, numero = direccion, ""
+    match = re.match(r"(.+?)\s+(\d{1,5})\s*$", direccion)
+    if match:
+        calle, numero = match.group(1).strip(), match.group(2)
+
+    domicilio = {
+        "calle": calle,
+        "numero": numero,
+        "piso": "",
+        "depto": "",
+        "localidad": (padron.localidad or "").strip(),
+        "provincia": (padron.provincia or "").strip(),
+        "cp": str(padron.cod_postal or "").strip(),
+    }
+
+    return {
+        "cuit": cuit_limpio,
+        "razon_social": razon_social,
+        "nombre": nombre,
+        "apellido": apellido,
+        "tipo_persona": tipo_persona,
+        "condicion_iva": condicion_iva,
+        "condicion_iva_id": cat_iva,
+        "domicilio_fiscal": domicilio,
+        "estado_cuit": (padron.estado or "").strip() or "ACTIVO",
+        "source": "ARCA (constancia de inscripción oficial)",
+        "raw": {
+            "denominacion": razon_social,
+            "tipoClave": tipo_persona,
+            "estadoClave": padron.estado or "",
+            "impuestos": list(padron.impuestos or []),
+            "monotributo": padron.monotributo,
+        },
+    }
+
+
+def _consultar_cuitonline_scraping(cuit_limpio: str) -> dict:
     """
     Consulta datos fiscales de un CUIT usando cuitonline.com (scraping).
     No requiere certificado digital ni autenticación AFIP.
     Usa httpx (ya incluido en PyInstaller) y regex para parsing HTML.
-
-    Retorna el mismo formato que consultar_padron() para compatibilidad.
+    Último recurso de la cadena de consultar_cuit().
     """
-    cuit_limpio = re.sub(r"[^0-9]", "", str(cuit_consulta).strip())
-    if len(cuit_limpio) < 10 or len(cuit_limpio) > 11:
-        raise ValueError(f"CUIT inválido: {cuit_consulta}")
-
     # Paso 1: Buscar el CUIT para obtener el slug (nombre en URL)
     search_url = CUIT_ONLINE_SEARCH_URL.format(cuit=cuit_limpio)
     search_html = _fetch_html(search_url)
@@ -992,16 +1188,8 @@ def consultar_cuit_online(cuit_consulta: str) -> dict:
         if razon_social:
             return _build_cuitonline_result(cuit_limpio, razon_social, condicion_iva, {})
 
-        # Fuente 2: Intentar con afip.tangofactura.com (puede estar caído)
-        try:
-            tango_data = _consultar_tangofactura(cuit_limpio)
-            if tango_data:
-                return tango_data
-        except Exception:
-            pass
-
         raise ValueError(
-            f"No se encontraron datos para el CUIT {cuit_consulta}. "
+            f"No se encontraron datos para el CUIT {cuit_limpio}. "
             f"El CUIT puede ser muy nuevo o no estar indexado. "
             f"Cargue los datos manualmente."
         )
@@ -1133,7 +1321,7 @@ def _extract_domicilio(text: str) -> dict:
 
 def _build_cuitonline_result(cuit: str, razon_social: str, condicion_iva: str,
                               domicilio: dict, tipo_persona: str = "JURIDICA") -> dict:
-    """Construye el resultado en el mismo formato que consultar_padron()."""
+    """Construye el resultado en el mismo formato que consultar_constancia()."""
     CONDICION_TO_ID = {
         "Responsable Inscripto": 1,
         "Responsable No Inscripto": 2,
@@ -1170,140 +1358,5 @@ def _build_cuitonline_result(cuit: str, razon_social: str, condicion_iva: str,
             "denominacion": razon_social,
             "tipoClave": tipo_persona,
             "estadoClave": "ACTIVO",
-        }
-    }
-
-
-def consultar_padron(cuit_consulta: str) -> dict:
-    """
-    Consulta el Padrón Alcance 4 de ARCA para obtener datos fiscales de un CUIT.
-
-    Retorna un dict con:
-      - cuit: str
-      - razon_social: str
-      - nombre: str  (si es persona física)
-      - apellido: str
-      - tipo_persona: str  ('FISICA' | 'JURIDICA')
-      - condicion_iva: str  (ej: 'Responsable Inscripto')
-      - condicion_iva_id: int  (código AFIP 1-7)
-      - domicilio_fiscal: dict  (calle, numero, piso, depto, localidad, provincia, cp)
-      - estado_cuit: str  (ej: 'ACTIVO')
-    """
-    config = get_config()
-    empresa = config.get("empresa", {})
-    arca = config.get("arca", {})
-    env = arca.get("environment", "development")
-
-    cuit_emisor = str(empresa.get("cuit", "")).replace("-", "").strip()
-    if not cuit_emisor:
-        raise ValueError("No se ha configurado el CUIT de la empresa.")
-
-    cert_path = arca.get("cert_path", "")
-    key_path = arca.get("key_path", "")
-
-    if not cert_path or not os.path.exists(cert_path):
-        raise ValueError(f"Certificado no encontrado: {cert_path}")
-    if not key_path or not os.path.exists(key_path):
-        raise ValueError(f"Clave privada no encontrada: {key_path}")
-
-    wsaa_url, _ = _get_urls()
-    padron_url = PADRON_A4_URL_PROD if env == "production" else PADRON_A4_URL_HOMO
-
-    # El Padrón A4 requiere su propio TA (servicio distinto a wsfe)
-    # Cacheamos con clave específica para padron_a4
-    cache_key = f"{cuit_emisor}_{env}_padron_a4"
-    cached = _load_cached_ta(cache_key, "")
-    if cached:
-        token, sign = cached["token"], cached["sign"]
-    else:
-        from pyafipws.wsaa import WSAA
-        wsaa = WSAA()
-        wsaa.Conectar(wsdl=wsaa_url)
-        tra = wsaa.CreateTRA(service="ws_sr_padron_a4")
-        cms = wsaa.SignTRA(tra, cert_path, key_path)
-        wsaa.LoginCMS(cms)
-        if wsaa.Excepcion:
-            raise ValueError(f"Error WSAA Padrón: {wsaa.Excepcion}")
-        token = wsaa.Token
-        sign = wsaa.Sign
-        # Guardar en caché
-        path = CACHE_DIR / f"ta_{hashlib.md5(cache_key.encode()).hexdigest()}.json"
-        expiry = datetime.now() + timedelta(hours=11)
-        path.write_text(json.dumps({"token": token, "sign": sign, "expiry": expiry.isoformat()}))
-
-    # Consultar padrón
-    from pyafipws.ws_sr_padron_a4 import WSSrPadronA4
-    padron = WSSrPadronA4()
-    padron.Conectar(wsdl=padron_url)
-    padron.Cuit = cuit_emisor
-    padron.Token = token
-    padron.Sign = sign
-
-    cuit_limpio = str(cuit_consulta).replace("-", "").replace(" ", "").strip()
-    padron.Consultar(cuit_limpio)
-
-    if padron.Excepcion:
-        raise ValueError(f"Error Padrón ARCA: {padron.Excepcion}")
-
-    # Mapear condición IVA
-    CONDICION_IVA_MAP = {
-        1: "Responsable Inscripto",
-        2: "Responsable No Inscripto",
-        3: "Exento",
-        4: "No Responsable",
-        5: "Consumidor Final",
-        6: "Responsable Monotributo",
-        7: "Sujeto No Categorizado",
-    }
-
-    # Extraer condicion IVA del resultado
-    cond_iva_id = None
-    cond_iva_str = "Sin datos"
-    # pyafipws expone los datos en atributos del objeto
-    try:
-        # Intentar obtener de los datos de caracterizaciones
-        if hasattr(padron, "datos") and padron.datos:
-            datos = padron.datos
-            # Buscar IVA en caracterizaciones
-            for car in datos.get("caracterizaciones", []):
-                code = car.get("idCaracterizacion", 0)
-                if code in (1, 2, 3, 4, 5, 6, 7):
-                    cond_iva_id = code
-                    cond_iva_str = CONDICION_IVA_MAP.get(code, "Desconocido")
-                    break
-    except Exception:
-        pass
-
-    # Construir domicilio fiscal
-    domicilio = {}
-    try:
-        dom = getattr(padron, "domicilio", None) or {}
-        if isinstance(dom, dict):
-            domicilio = {
-                "calle": dom.get("direccion", ""),
-                "numero": dom.get("numero", ""),
-                "piso": dom.get("piso", ""),
-                "depto": dom.get("departamento", ""),
-                "localidad": dom.get("localidad", ""),
-                "provincia": dom.get("descripcionProvincia", ""),
-                "cp": dom.get("codPostal", ""),
-            }
-    except Exception:
-        pass
-
-    return {
-        "cuit": cuit_limpio,
-        "razon_social": getattr(padron, "denominacion", "") or "",
-        "nombre": getattr(padron, "nombre", "") or "",
-        "apellido": getattr(padron, "apellido", "") or "",
-        "tipo_persona": getattr(padron, "tipoClave", "") or "",
-        "condicion_iva": cond_iva_str,
-        "condicion_iva_id": cond_iva_id,
-        "domicilio_fiscal": domicilio,
-        "estado_cuit": getattr(padron, "estadoClave", "") or "",
-        "raw": {
-            "denominacion": getattr(padron, "denominacion", None),
-            "tipoClave": getattr(padron, "tipoClave", None),
-            "estadoClave": getattr(padron, "estadoClave", None),
         }
     }
