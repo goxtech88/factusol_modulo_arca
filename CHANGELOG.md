@@ -1,5 +1,17 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.8.2 (2026-07-24)
+
+### Anulado el boton "Actualizar datos desde CUIT" (verificacion de padron)
+- **Problema**: la verificacion de CUIT contra el padron (condicion fiscal del cliente) seguia funcionando mal y confundia a los usuarios.
+- **Solucion**: se anulo la funcion por pedido del cliente:
+  - El boton **"Actualizar datos desde CUIT"** ya no se muestra en el detalle de factura.
+  - `actualizarDatosCuit()` quedo neutralizada (retorna de inmediato con aviso en consola); no consulta el padron ni modifica el cliente en Factusol.
+  - El codigo original quedo intacto y comentado para poder reactivarlo en el futuro.
+- Sin cambios en backend: el endpoint `/api/arca/enrich-customer/` sigue existiendo pero ya no se invoca desde la UI.
+
+---
+
 ## v1.8.1 (2026-07-11)
 
 ### Fix definitivo - Validador de CUITs ("Actualizar datos desde CUIT")

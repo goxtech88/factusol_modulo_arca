@@ -498,9 +498,11 @@ const InvoicesComponent = {
                     <div class="invoice-cliente-header">
                         <span class="invoice-cliente-title"><i data-lucide="user"></i> Datos del Cliente en Factusol</span>
                         ${cuit
-                            ? `<button class="btn btn-sm btn-padron" id="btn-actualizar-cuit"
-                                onclick="InvoicesComponent.actualizarDatosCuit(${codcli}, '${cuit}', '${tipfac}', '${codfac}')">`
-                                + `<i data-lucide="refresh-cw"></i> Actualizar datos desde CUIT</button>`
+                            // BOTÓN ANULADO (2026-07-24, pedido del usuario): la consulta al padrón
+                            // de ARCA para verificar CUIT / condición fiscal funciona mal.
+                            // Se oculta el botón "Actualizar datos desde CUIT" y se neutraliza
+                            // actualizarDatosCuit() más abajo. Para reactivar, revertir ambos cambios.
+                            ? ``
                             : `<span class="padron-no-cuit"><i data-lucide="alert-circle"></i> Sin CUIT</span>`}
                     </div>
                     <div class="invoice-header-grid">
@@ -617,6 +619,12 @@ const InvoicesComponent = {
 
     // ── Actualizar datos del cliente desde CUIT ────────────────────────────
     async actualizarDatosCuit(codcli, cuit, tipfac, codfac) {
+        // FUNCIÓN ANULADA (2026-07-24, pedido del usuario): la verificación de CUIT
+        // contra el padrón de ARCA (condición fiscal) funciona mal. Se neutraliza
+        // la función: no consulta el padrón ni modifica el cliente en Factusol.
+        // El código original queda intacto debajo por si se quiere reactivar.
+        console.warn('[ARCA] actualizarDatosCuit deshabilitada: verificación de padrón anulada.');
+        return;
         const btn = document.getElementById('btn-actualizar-cuit');
         if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="spin-icon"></i> Actualizando...'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
 
