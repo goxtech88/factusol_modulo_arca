@@ -958,9 +958,19 @@ def auto_validate_interval(
     seconds: int,
     current_user: User = Depends(get_current_user),
 ):
-    """Cambia el intervalo de chequeo (30-600 segundos)."""
+    """Cambia el intervalo de chequeo (5-600 segundos)."""
     from app.services import auto_validate
     return auto_validate.set_interval(seconds)
+
+
+@router.post("/auto-validate/grace")
+def auto_validate_grace(
+    seconds: int,
+    current_user: User = Depends(get_current_user),
+):
+    """Cambia la espera de gracia antes de validar una factura nueva (0-300 seg)."""
+    from app.services import auto_validate
+    return auto_validate.set_grace(seconds)
 
 
 @router.post("/auto-validate/payment-filters")

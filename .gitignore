@@ -52,6 +52,11 @@ LicenseGen.spec
 
 # Workspace
 *.code-workspace
+.claude/scheduled_tasks.lock
+
+# Copias de trabajo traidas del servidor para inspeccionar (no son del modulo)
+.tmp_backend/
+_remote_pages/
 
 # Logs
 *.log

@@ -1,5 +1,23 @@
 # Changelog - Factusol ARCA Sync
 
+## v1.8.4 (2026-07-30)
+
+### Auto-validacion "modo mostrador": chequeo casi instantaneo, configurable desde el panel
+- **Intervalo minimo bajado de 30s a 5s.** El selector del panel ahora ofrece **5 seg / 10 seg / 15 seg** ademas de las opciones previas (30s a 10 min). El backend acepta 5-600 segundos.
+- **La consulta a Factusol ahora se acota a las facturas de HOY en el propio SQL** (`get_invoices(tipfac, date_filter="today")`). Antes traia la serie **completa** y filtraba por fecha en Python: con el correr del año esa consulta se vuelve cada vez mas pesada, y era lo que hacia inviable bajar el intervalo. Ahora el costo por chequeo es constante y chico.
+- **Nueva "espera de gracia"** (`auto_validate.grace_seconds`, default **10s**, configurable en el panel de 0 a 60s): una factura recien aparecida en Factusol no se valida hasta que lleve N segundos visible. Sin esto, un chequeo cada 5s puede agarrar una factura **a medio cargar** (el operador creo la cabecera y todavia esta agregando lineas) y mandarla a AFIP con un total incompleto — error fiscal que despues solo se corrige con una Nota de Credito. Con "Sin espera" (0s) valida apenas la ve.
+- El estado del panel ahora muestra el intervalo **y** la espera (`Activo — cada 5s (espera 10s)`), y al cambiar cualquiera de los dos el panel se refresca solo.
+
+---
+
+## v1.8.3 (2026-07-24)
+
+### Fix - Emisor Monotributista: Factura C (y NC C) rechazada por AFIP con error 10071
+- **Problema**: `build_voucher_data()` armaba el array de alicuotas de IVA a partir de los importes del header de Factusol (BAS/IIVA por slot) sin tener en cuenta el tipo de comprobante. Para un emisor Monotributista (que siempre emite Factura C) esto hacia que se llamara a `AgregarIva()` del WSFE aunque el comprobante fuera tipo C, y AFIP rechazaba con `10071: Para comprobantes tipo C el objeto IVA no debe informarse`. Afectaba tanto a facturas normales como a Notas de Credito (NC C), porque ambos flujos comparten `build_voucher_data()`.
+- **Solucion**: para comprobantes tipo C (11=Factura C, 12=ND C, 13=NC C), el neto y el IVA calculados se pliegan en un unico `ImpNeto` (el Monotributista no discrimina IVA) y no se informa ningun objeto de alicuota — ni se llama a `AgregarIva()`.
+
+---
+
 ## v1.8.2 (2026-07-24)
 
 ### Anulado el boton "Actualizar datos desde CUIT" (verificacion de padron)

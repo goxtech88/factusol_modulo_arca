@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8099", "--directory", "C:/OneDrive/Develop/GoxTech_ARCA_Site/web/arca_factusol"],
       "port": 8099
+    },
+    {
+      "name": "arca-app",
+      "runtimeExecutable": "C:/Users/Admin/AppData/Local/Programs/Python/Python312/python.exe",
+      "runtimeArgs": ["-X", "utf8", "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8765"],
+      "port": 8765
     }
   ]
 }

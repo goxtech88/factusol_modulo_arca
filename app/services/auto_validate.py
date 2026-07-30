@@ -22,6 +22,18 @@ _last_run: str | None = None
 _last_result: str = ""
 _log_lines: list[dict] = []   # últimas N líneas de log
 
+# Momento en que se vio por primera vez cada factura pendiente:
+#   {(tipfac, codfac): timestamp monotonic}
+# Se usa para la "espera de gracia" del modo mostrador: no validar una factura
+# recien creada hasta que lleve N segundos estable, asi no se manda a AFIP a
+# medio cargar (el operador todavia esta agregando lineas).
+_first_seen: dict[tuple, float] = {}
+
+DEFAULT_INTERVAL = 60
+DEFAULT_GRACE = 10
+MIN_INTERVAL = 5
+MAX_INTERVAL = 600
+
 
 def _add_log(msg: str, level: str = "info"):
     """Agrega línea al log circular (max 50)."""
@@ -36,15 +48,22 @@ def _add_log(msg: str, level: str = "info"):
     logger.info(f"{prefix} [AutoCAE] {msg}")
 
 
+def _defaults() -> dict:
+    return {
+        "enabled": False,
+        "interval_seconds": DEFAULT_INTERVAL,
+        "grace_seconds": DEFAULT_GRACE,
+    }
+
+
 def get_status() -> dict:
     """Devuelve el estado actual del auto-validador."""
-    config = get_config()
-    enabled = config.get("auto_validate", {}).get("enabled", False)
-    interval = config.get("auto_validate", {}).get("interval_seconds", 60)
+    av = get_config().get("auto_validate", {})
     return {
-        "enabled": enabled,
+        "enabled": av.get("enabled", False),
         "running": _running,
-        "interval_seconds": interval,
+        "interval_seconds": av.get("interval_seconds", DEFAULT_INTERVAL),
+        "grace_seconds": av.get("grace_seconds", DEFAULT_GRACE),
         "last_run": _last_run,
         "last_result": _last_result,
         "log": _log_lines[-20:],
@@ -55,7 +74,7 @@ def toggle(enabled: bool) -> dict:
     """Enciende o apaga el auto-validador."""
     config = load_config()
     if "auto_validate" not in config:
-        config["auto_validate"] = {"enabled": False, "interval_seconds": 60}
+        config["auto_validate"] = _defaults()
     config["auto_validate"]["enabled"] = enabled
     save_config(config)
 
@@ -70,12 +89,37 @@ def toggle(enabled: bool) -> dict:
 
 
 def set_interval(seconds: int) -> dict:
-    """Cambia el intervalo de chequeo."""
+    """Cambia el intervalo de chequeo (5-600 segundos).
+
+    Los valores por debajo de 30s son el "modo mostrador": la consulta a
+    Factusol esta acotada a las facturas de HOY, asi que es barata y se puede
+    repetir cada pocos segundos sin castigar la base.
+    """
     config = load_config()
     if "auto_validate" not in config:
-        config["auto_validate"] = {"enabled": False, "interval_seconds": 60}
-    config["auto_validate"]["interval_seconds"] = max(30, min(600, seconds))
+        config["auto_validate"] = _defaults()
+    config["auto_validate"]["interval_seconds"] = max(MIN_INTERVAL, min(MAX_INTERVAL, int(seconds)))
     save_config(config)
+    _add_log(f"Intervalo de chequeo: cada {config['auto_validate']['interval_seconds']}s", "info")
+    return get_status()
+
+
+def set_grace(seconds: int) -> dict:
+    """Cambia la espera de gracia (0-300 segundos).
+
+    Una factura recien aparecida en Factusol no se valida hasta que lleve al
+    menos estos segundos visible. Protege del caso mostrador: el operador crea
+    la factura y sigue cargando lineas, y un chequeo muy rapido la mandaria a
+    AFIP incompleta (error fiscal que despues hay que corregir con una NC).
+    0 = validar apenas aparece.
+    """
+    config = load_config()
+    if "auto_validate" not in config:
+        config["auto_validate"] = _defaults()
+    config["auto_validate"]["grace_seconds"] = max(0, min(300, int(seconds)))
+    save_config(config)
+    g = config["auto_validate"]["grace_seconds"]
+    _add_log(f"Espera de gracia: {'sin espera' if g == 0 else f'{g}s'}", "info")
     return get_status()
 
 
@@ -85,7 +129,7 @@ def set_payment_filters(fopfac_codes: list[str]) -> dict:
     """
     config = load_config()
     if "auto_validate" not in config:
-        config["auto_validate"] = {"enabled": False, "interval_seconds": 60}
+        config["auto_validate"] = _defaults()
     config["auto_validate"]["fopfac_codes"] = fopfac_codes
     save_config(config)
     _add_log(
@@ -119,7 +163,7 @@ async def _auto_validate_loop():
             continue
 
         _running = True
-        interval = av_config.get("interval_seconds", 60)
+        interval = av_config.get("interval_seconds", DEFAULT_INTERVAL)
 
         # Auto-validacion disponible en todos los planes desde v1.5.0
         try:
@@ -167,11 +211,13 @@ def _validate_pending_sync() -> int:
     try:
         # Leer filtro de formas de pago
         config = get_config()
-        allowed_fopfac = set(
-            str(c) for c in config.get("auto_validate", {}).get("fopfac_codes", [])
-        )
+        av_config = config.get("auto_validate", {})
+        allowed_fopfac = set(str(c) for c in av_config.get("fopfac_codes", []))
         # Lista vacía = todas permitidas
         filter_by_fopfac = len(allowed_fopfac) > 0
+        grace = int(av_config.get("grace_seconds", DEFAULT_GRACE) or 0)
+        now = time.monotonic()
+        seen_now: set[tuple] = set()
 
         # Solo PVs de usuarios activos con auto-validación habilitada
         pvs = (
@@ -185,7 +231,10 @@ def _validate_pending_sync() -> int:
 
         for pv_config in pvs:
             tipfac = pv_config.serie_factusol
-            invoices = factusol_service.get_invoices(tipfac)
+            # Acotar la consulta a HOY en el propio SQL: el auto-validador solo
+            # mira facturas del dia, y traer la serie entera se vuelve cada vez
+            # mas caro con el correr del año (bloqueaba bajar el intervalo).
+            invoices = factusol_service.get_invoices(tipfac, date_filter="today")
 
             for inv in invoices:
                 codfac = inv.get("CODFAC")
@@ -214,11 +263,24 @@ def _validate_pending_sync() -> int:
                 if existing:
                     continue
 
+                # ── Espera de gracia ──
+                # La factura ya paso todos los filtros: es candidata. Anotamos
+                # cuando la vimos por primera vez y no la validamos hasta que
+                # lleve `grace` segundos, para no mandarla a AFIP mientras el
+                # operador todavia le agrega lineas.
+                key = (tipfac, codfac)
+                seen_now.add(key)
+                first = _first_seen.setdefault(key, now)
+                if grace > 0 and (now - first) < grace:
+                    continue
+
                 # ── Validar ──
                 try:
                     result = _validate_single_sync(tipfac, codfac, pv_config, db)
                     if result:
                         validated += 1
+                        _first_seen.pop(key, None)
+                        seen_now.discard(key)
                         _add_log(
                             f"CAE {tipfac}-{codfac}: {result.get('cae', '?')}",
                             "success",
@@ -228,6 +290,12 @@ def _validate_pending_sync() -> int:
 
                 # Pausa entre facturas para no saturar AFIP
                 time.sleep(2)
+
+        # Olvidar las facturas que ya no estan pendientes (validadas a mano,
+        # borradas, o cambio de dia): si vuelven a aparecer, la gracia arranca
+        # de cero.
+        for stale in set(_first_seen) - seen_now:
+            _first_seen.pop(stale, None)
 
     finally:
         db.close()

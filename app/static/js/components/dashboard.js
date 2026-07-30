@@ -97,6 +97,7 @@ const DashboardComponent = {
     _renderAutoValidate(container, status) {
         const isOn = status.enabled;
         const interval = status.interval_seconds || 60;
+        const grace = status.grace_seconds ?? 10;
         const logLines = (status.log || []).slice(-8);
 
         let logsHtml = '';
@@ -109,8 +110,11 @@ const DashboardComponent = {
             `</div>`;
         }
 
-        // Opciones de intervalo
+        // Opciones de intervalo (5-15 seg = "modo mostrador")
         const intervalOptions = [
+            { value: 5,   label: '5 seg' },
+            { value: 10,  label: '10 seg' },
+            { value: 15,  label: '15 seg' },
             { value: 30,  label: '30 seg' },
             { value: 60,  label: '1 min' },
             { value: 120, label: '2 min' },
@@ -122,6 +126,20 @@ const DashboardComponent = {
             `<option value="${o.value}" ${o.value === interval ? 'selected' : ''}>${o.label}</option>`
         ).join('');
 
+        // Espera de gracia: segundos que tiene que llevar una factura nueva
+        // antes de mandarla a AFIP (evita validarla a medio cargar)
+        const graceOptions = [
+            { value: 0,   label: 'Sin espera' },
+            { value: 5,   label: '5 seg' },
+            { value: 10,  label: '10 seg' },
+            { value: 20,  label: '20 seg' },
+            { value: 30,  label: '30 seg' },
+            { value: 60,  label: '1 min' },
+        ];
+        const graceSelect = graceOptions.map(o =>
+            `<option value="${o.value}" ${o.value === grace ? 'selected' : ''}>${o.label}</option>`
+        ).join('');
+
         container.innerHTML = `
             <div class="auto-validate-header">
                 <div class="auto-validate-info">
@@ -129,18 +147,27 @@ const DashboardComponent = {
                     <div>
                         <h4>Auto-validación CAE</h4>
                         <p class="${isOn ? 'text-success' : 'text-muted'}">
-                            ${isOn ? `Activo — cada ${interval}s` : 'Desactivado'}
+                            ${isOn ? `Activo — cada ${interval}s${grace > 0 ? ` (espera ${grace}s)` : ''}` : 'Desactivado'}
                             ${status.last_run ? ` · Último: ${status.last_run}` : ''}
                             ${status.last_result ? ` · ${status.last_result}` : ''}
                         </p>
                     </div>
                 </div>
                 <div class="auto-validate-controls">
-                    <div class="auto-validate-interval ${isOn ? '' : 'hidden'}" id="auto-interval-group">
+                    <div class="auto-validate-interval ${isOn ? '' : 'hidden'}" id="auto-interval-group"
+                        title="Cada cuánto revisa si hay facturas nuevas sin CAE">
                         <i data-lucide="timer"></i>
                         <select class="select-styled select-sm" id="auto-interval-select"
                             onchange="DashboardComponent.changeInterval(this.value)">
                             ${intervalSelect}
+                        </select>
+                    </div>
+                    <div class="auto-validate-interval ${isOn ? '' : 'hidden'}" id="auto-grace-group"
+                        title="Espera antes de validar una factura recién creada, para no mandarla a AFIP a medio cargar">
+                        <i data-lucide="hourglass"></i>
+                        <select class="select-styled select-sm" id="auto-grace-select"
+                            onchange="DashboardComponent.changeGrace(this.value)">
+                            ${graceSelect}
                         </select>
                     </div>
                     <label class="toggle-switch">
@@ -168,6 +195,22 @@ const DashboardComponent = {
         try {
             await API.post(`/api/arca/auto-validate/interval?seconds=${seconds}`);
             App.toast(`Intervalo cambiado a ${seconds} segundos`, 'success');
+            this.loadAutoValidate();
+        } catch (err) {
+            App.toast(err.message, 'error');
+        }
+    },
+
+    async changeGrace(seconds) {
+        try {
+            await API.post(`/api/arca/auto-validate/grace?seconds=${seconds}`);
+            App.toast(
+                seconds == 0
+                    ? 'Se validará apenas aparezca la factura'
+                    : `Espera de ${seconds} segundos antes de validar`,
+                'success',
+            );
+            this.loadAutoValidate();
         } catch (err) {
             App.toast(err.message, 'error');
         }
