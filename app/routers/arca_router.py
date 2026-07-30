@@ -547,6 +547,36 @@ def create_credit_note(
 
     tipo_nc = result.get("tipo_nc", arca_service.tipo_factura_to_nota_credito(tipo_cbte_original))
 
+    # Clonar el comprobante en Factusol (F_FAC/F_LFA + reversion de stock) --
+    # este endpoint siempre es NC total. Se hace DESPUES de que ARCA ya dio el
+    # CAE: si falla no se relanza (el CAE ya es irreversible), se loguea el
+    # error y nc_tipfac/nc_codfac quedan None para reintento manual.
+    nc_tipfac_out = None
+    nc_codfac_out = None
+    factusol_nc_grabado = False
+    factusol_nc_error = None
+    if get_config().get("factusol", {}).get("nc_factusol_enabled", False):
+        try:
+            serie_nc = get_config().get("factusol", {}).get("serie_nc") or "9"
+            nc_fac_result = factusol_service.create_credit_note_invoice(
+                original_header=detail["header"],
+                original_lines=detail["lines"],
+                serie_nc=serie_nc,
+            )
+            nc_tipfac_out = nc_fac_result["tipfac"]
+            nc_codfac_out = nc_fac_result["codfac"]
+            factusol_service.write_cae_to_factura(
+                tipfac=nc_tipfac_out,
+                codfac=nc_codfac_out,
+                cae=result.get("CAE", ""),
+                voucher_number=result.get("voucher_number", 0),
+                cae_vto=result.get("CAEFchVto", ""),
+            )
+            factusol_nc_grabado = True
+        except Exception as _fac_err:
+            factusol_nc_error = str(_fac_err)
+            print(f"⚠️ No se pudo clonar la NC en Factusol (F_FAC/F_LFA): {_fac_err}")
+
     # Guardar log de la NC
     nc_log = CAELog(
         user_id=current_user.id,
@@ -568,6 +598,8 @@ def create_credit_note(
         cmp_asoc_tipo=tipo_cbte_original,
         cmp_asoc_pv=cae_original.punto_venta,
         cmp_asoc_nro=cae_original.voucher_number,
+        nc_tipfac=nc_tipfac_out,
+        nc_codfac=nc_codfac_out,
     )
     db.add(nc_log)
     db.commit()
@@ -591,6 +623,8 @@ def create_credit_note(
         "tipo_nombre": nc_nombre,
         "comprobante_nro": _pedfac,
         "resultado": result.get("resultado"),
+        "factusol_nc_grabado": factusol_nc_grabado,
+        "factusol_nc_error": factusol_nc_error,
         "message": f"{nc_nombre} emitida exitosamente - {_pedfac}",
     }
 

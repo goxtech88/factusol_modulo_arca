@@ -25,8 +25,9 @@ const ConfigComponent = {
             try {
                 await API.put('/api/config/factusol', {
                     db_path: document.getElementById('cfg-db-path').value,
+                    serie_nc: document.getElementById('cfg-serie-nc').value,
                 });
-                App.toast('Ruta de base de datos guardada', 'success');
+                App.toast('Configuración de Factusol guardada', 'success');
             } catch (err) { App.toast(err.message, 'error'); }
         });
 
@@ -207,6 +208,7 @@ const ConfigComponent = {
 
             // Factusol
             document.getElementById('cfg-db-path').value = config.factusol?.db_path || '';
+            document.getElementById('cfg-serie-nc').value = config.factusol?.serie_nc || '9';
 
             // ARCA
             document.getElementById('cfg-environment').value = config.arca?.environment || 'development';

@@ -46,4 +46,12 @@ class CAELog(Base):
     cmp_asoc_pv = Column(Integer, nullable=True)
     cmp_asoc_nro = Column(Integer, nullable=True)
 
+    # Comprobante PROPIO de la NC en Factusol (serie NC + nuevo CODFAC, ver
+    # factusol_service.create_credit_note_invoice). tipfac/codfac de arriba
+    # siguen apuntando a la FACTURA ORIGINAL -- no confundir. Nullable: solo
+    # se completan si el clonado en Factusol se hizo con exito (puede fallar
+    # o no aplicar, ej. NC parcial).
+    nc_tipfac = Column(Integer, nullable=True)
+    nc_codfac = Column(Integer, nullable=True)
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

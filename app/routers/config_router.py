@@ -2,6 +2,8 @@
 Router para configuración del sistema (admin only).
 Incluye gestión de Punto de Venta del usuario actual (sin requerir plan completa).
 """
+import re
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -26,6 +28,7 @@ class EmpresaConfig(BaseModel):
 
 class FactusolConfig(BaseModel):
     db_path: Optional[str] = None
+    serie_nc: Optional[str] = None
 
 class ArcaConfig(BaseModel):
     access_token: Optional[str] = None
@@ -76,6 +79,11 @@ def update_empresa(data: EmpresaConfig, _admin: User = Depends(require_admin)):
 
 @router.put("/factusol")
 def update_factusol(data: FactusolConfig, _admin: User = Depends(require_admin)):
+    if data.serie_nc is not None and not re.fullmatch(r"[0-9A-Za-z]", data.serie_nc):
+        raise HTTPException(
+            status_code=400,
+            detail="La serie de NC debe ser un único carácter alfanumérico (TIPFAC en Factusol es Texto de 1 posición), ej: '9'.",
+        )
     config = get_config()
     for key, val in data.model_dump(exclude_none=True).items():
         config["factusol"][key] = val

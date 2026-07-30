@@ -45,6 +45,8 @@ def _auto_migrate():
         "cmp_asoc_pv": "INTEGER",
         "cmp_asoc_nro": "INTEGER",
         "fecha_cbte": "VARCHAR(10)",
+        "nc_tipfac": "INTEGER",
+        "nc_codfac": "INTEGER",
     }
     try:
         with engine.begin() as conn:

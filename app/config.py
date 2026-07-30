@@ -40,6 +40,14 @@ DEFAULT_CONFIG = {
     },
     "factusol": {
         "db_path": "",
+        # Serie (TIPFAC) reservada para Notas de Credito -- se clona ahi la
+        # factura original con importes en negativo al emitir una NC.
+        "serie_nc": "9",
+        # Apagado por defecto: create_credit_note_invoice() (INSERT en F_FAC/
+        # F_LFA/F_STO) todavia no se verifico contra el esquema real de un
+        # Factusol en produccion (ver diag_schema_nc.py / diag_golden_record.py).
+        # Activar solo despues de correr esa verificacion.
+        "nc_factusol_enabled": False,
     },
     "arca": {
         "access_token": "",

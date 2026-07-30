@@ -338,6 +338,165 @@ def update_invoice_date(tipfac: int, codfac: int, nueva_fecha) -> bool:
         conn.close()
 
 
+# ── Notas de Credito: clonado del comprobante en Factusol ──────────────────
+#
+# Factusol (software espanol) no tiene un tipo de comprobante nativo para
+# "Nota de Credito AFIP": modela esto como "factura rectificativa" -- otra
+# fila de F_FAC en una serie propia, con los importes en negativo, vinculada
+# a la factura original via TDRFAC/CDRFAC/EDRFAC. Es el mismo procedimiento
+# que usa la propia UI de Factusol al pedir una NC ("elegis la serie, cantidad
+# en negativo").
+#
+# IMPORTANTE: los valores de ESTFAC/TDRFAC/CDRFAC/EDRFAC de abajo son el mejor
+# valor conocido a partir del schema documentado + campos ya usados en
+# produccion, pero no estan 100% verificados contra una NC creada a mano en
+# Factusol real. Correr diag_golden_record.py (raiz del repo) antes de
+# confiar en produccion, y ajustar aca si el resultado difiere.
+_ESTFAC_NC_DEFAULT = 2  # placeholder: "Cobrada" en el enum ESTFAC -- confirmar con diag_golden_record.py
+
+
+def _live_columns(cursor, table: str) -> set[str]:
+    """Columnas realmente existentes en `table` segun la metadata ODBC (no el .md exportado)."""
+    return {row.column_name.upper() for row in cursor.columns(table=table)}
+
+
+def _filter_existing(fields: dict, live_cols: set[str]) -> dict:
+    """Descarta campos que no existen en el schema real de esta instancia de Factusol."""
+    missing = [c for c in fields if c.upper() not in live_cols]
+    if missing:
+        import logging
+        logging.getLogger("factusol_service").warning(
+            f"create_credit_note_invoice: columnas ausentes en el schema real, se omiten: {missing}"
+        )
+    return {c: v for c, v in fields.items() if c.upper() in live_cols}
+
+
+def create_credit_note_invoice(
+    original_header: dict,
+    original_lines: list[dict],
+    serie_nc,
+) -> dict:
+    """
+    Clona la factura original (`original_header`/`original_lines`, tal como
+    los devuelve get_invoice_detail) como un nuevo comprobante de Factusol en
+    la serie NC configurada, con cantidades e importes en negativo, vinculado
+    a la factura original via TDRFAC/CDRFAC/EDRFAC. Tambien revierte el stock
+    (F_STO) de cada articulo -- negocio con stock simple, sin talla/color/lote.
+
+    Solo pensada para NC TOTALES (clonado 1:1 de la factura completa) -- no
+    recibe factor de escala para NC parciales.
+
+    No graba datos de CAE (eso lo hace write_cae_to_factura, reusado con el
+    tipfac/codfac que retorna esta funcion, una vez que ARCA ya autorizo la NC).
+
+    Atomico: una sola conexion/cursor, un solo commit al final; cualquier
+    excepcion revierte todo (header + lineas + stock, todo o nada).
+
+    Retorna {"tipfac": int, "codfac": int} del comprobante NC recien creado.
+    """
+    from datetime import date as _date
+
+    tipfac_nc = int(serie_nc)
+    almacen = original_header.get("ALMFAC")
+    fecfac_orig = original_header.get("FECFAC")
+    ejercicio = getattr(fecfac_orig, "year", None) or _date.today().year
+
+    conn = _get_connection()
+    try:
+        cursor = conn.cursor()
+        live_fac_cols = _live_columns(cursor, "F_FAC")
+        live_lfa_cols = _live_columns(cursor, "F_LFA")
+
+        def _neg(campo: str) -> float:
+            return -round(float(original_header.get(campo) or 0), 2)
+
+        nuevo_codfac = None
+        last_err = None
+        for _intento in range(5):
+            cursor.execute("SELECT MAX(CODFAC) FROM F_FAC WHERE TIPFAC = ?", [tipfac_nc])
+            candidato = int(cursor.fetchone()[0] or 0) + 1
+
+            header_fields = _filter_existing({
+                "TIPFAC": tipfac_nc,
+                "CODFAC": candidato,
+                "FECFAC": fecfac_orig,
+                "CLIFAC": original_header.get("CLIFAC"),
+                "CNOFAC": original_header.get("CNOFAC"),
+                "ALMFAC": almacen,
+                "FOPFAC": original_header.get("FOPFAC"),
+                "CNIFAC": original_header.get("CNIFAC"),
+                "ESTFAC": _ESTFAC_NC_DEFAULT,
+                "TDRFAC": original_header.get("TIPFAC"),
+                "CDRFAC": original_header.get("CODFAC"),
+                "EDRFAC": ejercicio,
+                "NET1FAC": _neg("NET1FAC"), "NET2FAC": _neg("NET2FAC"),
+                "NET3FAC": _neg("NET3FAC"), "NET4FAC": _neg("NET4FAC"),
+                "BAS1FAC": _neg("BAS1FAC"), "BAS2FAC": _neg("BAS2FAC"),
+                "BAS3FAC": _neg("BAS3FAC"), "BAS4FAC": _neg("BAS4FAC"),
+                "IIVA1FAC": _neg("IIVA1FAC"), "IIVA2FAC": _neg("IIVA2FAC"), "IIVA3FAC": _neg("IIVA3FAC"),
+                "PIVA1FAC": original_header.get("PIVA1FAC"),
+                "PIVA2FAC": original_header.get("PIVA2FAC"),
+                "PIVA3FAC": original_header.get("PIVA3FAC"),
+                "TOTFAC": _neg("TOTFAC"),
+            }, live_fac_cols)
+
+            cols = list(header_fields.keys())
+            sql = f"INSERT INTO F_FAC ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})"
+            try:
+                cursor.execute(sql, [header_fields[c] for c in cols])
+                nuevo_codfac = candidato
+                break
+            except pyodbc.Error as e:
+                last_err = e
+                conn.rollback()
+                msg = str(e).lower()
+                if "duplicate" not in msg and "indice" not in msg and "index" not in msg and "clave" not in msg:
+                    raise
+        if nuevo_codfac is None:
+            raise RuntimeError(
+                f"No se pudo asignar CODFAC en la serie NC {tipfac_nc} tras 5 intentos: {last_err}"
+            )
+
+        for i, ln in enumerate(original_lines, start=1):
+            cantidad = float(ln.get("CANLFA") or 0)
+            total = float(ln.get("TOTLFA") or 0)
+            line_fields = _filter_existing({
+                "TIPLFA": tipfac_nc,
+                "CODLFA": nuevo_codfac,
+                "POSLFA": i,
+                "ARTLFA": ln.get("ARTLFA"),
+                "DESLFA": ln.get("DESLFA"),
+                "CANLFA": -cantidad,
+                "PRELFA": ln.get("PRELFA"),
+                "TOTLFA": -total,
+                "PIVLFA": ln.get("PIVLFA"),
+                "IVALFA": ln.get("IVALFA"),
+                "DT1LFA": ln.get("DT1LFA"),
+                "DT2LFA": ln.get("DT2LFA"),
+                "DT3LFA": ln.get("DT3LFA"),
+            }, live_lfa_cols)
+            cols = list(line_fields.keys())
+            sql = f"INSERT INTO F_LFA ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})"
+            cursor.execute(sql, [line_fields[c] for c in cols])
+
+            # Reversion de stock: la cantidad original (positiva) vuelve al almacen.
+            articulo = ln.get("ARTLFA")
+            if articulo and cantidad and almacen:
+                cursor.execute(
+                    "UPDATE F_STO SET ACTSTO = ACTSTO + ?, DISSTO = DISSTO + ? "
+                    "WHERE ARTSTO = ? AND ALMSTO = ?",
+                    [cantidad, cantidad, articulo, almacen],
+                )
+
+        conn.commit()
+        return {"tipfac": tipfac_nc, "codfac": nuevo_codfac}
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def get_payment_methods() -> list[dict]:
     """Obtiene todas las formas de pago de la tabla F_FPA."""
     conn = _get_connection()

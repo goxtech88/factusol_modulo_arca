@@ -66,6 +66,8 @@ def _serialize(log: CAELog) -> dict:
         "cmp_asoc_nro": log.cmp_asoc_nro,
         "tipfac": log.tipfac,
         "codfac": log.codfac,
+        "nc_tipfac": log.nc_tipfac,
+        "nc_codfac": log.nc_codfac,
     }
 
 
@@ -390,6 +392,40 @@ def create_credit_note(
         imp_neto_nc = imp_neto_orig
         imp_iva_nc = imp_iva_orig
 
+    # Clonar el comprobante en Factusol (F_FAC/F_LFA + reversion de stock) --
+    # solo para NC TOTALES, y solo DESPUES de que ARCA ya dio el CAE (si esto
+    # falla no se puede deshacer el CAE, que ya es irreversible: se loguea el
+    # error y queda para reintento manual, nc_tipfac/nc_codfac quedan None).
+    es_nc_total = payload.importe is None or (
+        imp_total_orig > 0 and payload.importe >= imp_total_orig - 0.01
+    )
+    nc_tipfac_out = None
+    nc_codfac_out = None
+    factusol_nc_grabado = False
+    factusol_nc_error = None
+    from app.config import get_config
+    if es_nc_total and get_config().get("factusol", {}).get("nc_factusol_enabled", False):
+        try:
+            serie_nc = get_config().get("factusol", {}).get("serie_nc") or "9"
+            nc_fac_result = factusol_service.create_credit_note_invoice(
+                original_header=detail["header"],
+                original_lines=detail["lines"],
+                serie_nc=serie_nc,
+            )
+            nc_tipfac_out = nc_fac_result["tipfac"]
+            nc_codfac_out = nc_fac_result["codfac"]
+            factusol_service.write_cae_to_factura(
+                tipfac=nc_tipfac_out,
+                codfac=nc_codfac_out,
+                cae=result.get("CAE", ""),
+                voucher_number=result.get("voucher_number", 0),
+                cae_vto=result.get("CAEFchVto", ""),
+            )
+            factusol_nc_grabado = True
+        except Exception as _fac_err:
+            factusol_nc_error = str(_fac_err)
+            print(f"⚠️ No se pudo clonar la NC en Factusol (F_FAC/F_LFA): {_fac_err}")
+
     nc_log = CAELog(
         user_id=current_user.id,
         tipfac=cae_original.tipfac,
@@ -408,6 +444,8 @@ def create_credit_note(
         cmp_asoc_tipo=cae_original.tipo_comprobante,
         cmp_asoc_pv=cae_original.punto_venta,
         cmp_asoc_nro=cae_original.voucher_number,
+        nc_tipfac=nc_tipfac_out,
+        nc_codfac=nc_codfac_out,
     )
     db.add(nc_log)
     db.commit()
@@ -417,4 +455,74 @@ def create_credit_note(
         "status": "ok",
         "message": f"{_TIPO_NOMBRE.get(tipo_nc, 'NC')} emitida exitosamente",
         "nc": _serialize(nc_log),
+        "factusol_nc_grabado": factusol_nc_grabado,
+        "factusol_nc_error": factusol_nc_error,
+    }
+
+
+@router.post("/{nc_id}/retry-factusol")
+def retry_factusol(
+    nc_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Reintenta clonar en Factusol (F_FAC/F_LFA + reversion de stock) una NC que
+    ya tiene CAE de ARCA pero cuyo comprobante no se pudo crear en Factusol en
+    su momento (nc_tipfac/nc_codfac quedaron None).
+
+    Idempotente: si la NC ya tiene nc_tipfac/nc_codfac, no reintenta (evita
+    duplicar el comprobante).
+    """
+    from app.config import get_config
+
+    nc = db.query(CAELog).filter(CAELog.id == nc_id).first()
+    if not nc or nc.tipo_comprobante not in NC_TIPOS:
+        raise HTTPException(status_code=404, detail="Nota de credito no encontrada")
+    if current_user.role != "admin" and nc.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tiene permisos sobre esta NC")
+
+    if nc.nc_tipfac and nc.nc_codfac:
+        return {
+            "status": "already_done",
+            "message": "Esta NC ya tiene comprobante en Factusol",
+            "nc_tipfac": nc.nc_tipfac,
+            "nc_codfac": nc.nc_codfac,
+        }
+
+    try:
+        detail = factusol_service.get_invoice_detail(nc.tipfac, nc.codfac)
+        if not detail:
+            raise HTTPException(status_code=404, detail="Factura original no encontrada en Factusol")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al leer Factusol: {str(e)}")
+
+    try:
+        serie_nc = get_config().get("factusol", {}).get("serie_nc") or "9"
+        nc_fac_result = factusol_service.create_credit_note_invoice(
+            original_header=detail["header"],
+            original_lines=detail["lines"],
+            serie_nc=serie_nc,
+        )
+        factusol_service.write_cae_to_factura(
+            tipfac=nc_fac_result["tipfac"],
+            codfac=nc_fac_result["codfac"],
+            cae=nc.cae,
+            voucher_number=nc.voucher_number,
+            cae_vto=nc.cae_vto,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error al clonar la NC en Factusol: {str(e)}")
+
+    nc.nc_tipfac = nc_fac_result["tipfac"]
+    nc.nc_codfac = nc_fac_result["codfac"]
+    db.commit()
+
+    return {
+        "status": "ok",
+        "message": "NC clonada en Factusol correctamente",
+        "nc_tipfac": nc.nc_tipfac,
+        "nc_codfac": nc.nc_codfac,
     }
