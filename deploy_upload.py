@@ -53,7 +53,10 @@ JUMP_HOST = os.environ.get("ARCA_JUMP_HOST", "100.64.247.47")
 JUMP_USER = os.environ.get("ARCA_JUMP_USER", "root")
 JUMP_PASS = os.environ.get("ARCA_JUMP_PASS", "254136b+")
 
-DEST_HOST = os.environ.get("ARCA_DEST_HOST", "192.168.1.212")
+# IP nueva post-migracion de red 2026-06-26 (rango 192.168.123.0/24, gateway
+# Omada). La vieja 192.168.1.212 ya no responde ("no route to host" desde el
+# jump host). Ver docs/infraestructura.md.
+DEST_HOST = os.environ.get("ARCA_DEST_HOST", "192.168.123.212")
 DEST_USER = os.environ.get("ARCA_DEST_USER", "admin")
 DEST_PASS = os.environ.get("ARCA_DEST_PASS", "Goxtech2026!")
 DEST_DIR  = os.environ.get("ARCA_DEST_DIR",  "/home/admin/web/goxtechlabs.com.ar/public_html/downloads/")

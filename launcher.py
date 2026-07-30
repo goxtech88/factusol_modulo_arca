@@ -40,6 +40,19 @@ if getattr(sys, "frozen", False):
     if sys.stderr is None:
         sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
+# La consola de Windows usa por defecto la codepage del sistema (cp1252 en
+# instalaciones en espanol), que no puede codificar los emojis que se usan en
+# varios logs/prints (checkmarks, robot, etc.). Sin esto, ese UnicodeEncodeError
+# tira abajo TODO el arranque (crashea el lifespan de FastAPI en la primera
+# instalacion, cuando _create_default_admin loguea "usuario admin creado ✅").
+# Se fuerza UTF-8 con reemplazo de caracteres no soportados en vez de crashear.
+for _stream in (sys.stdout, sys.stderr):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 logger = setup_logging()
 
 

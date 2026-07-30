@@ -518,6 +518,16 @@ def build_voucher_data(
             afip_id = pct_to_id.get(pct, 5)
             iva_array.append({"Id": afip_id, "BaseImp": base, "Importe": iva_amount})
 
+    # Comprobantes tipo C (11=Factura C, 12=ND C, 13=NC C): AFIP rechaza con
+    # error 10071 ("Para comprobantes tipo C el objeto IVA no debe informarse")
+    # si se manda el array de alicuotas. El emisor Monotributista no discrimina
+    # IVA, asi que el neto+iva calculado se informa como un unico ImpNeto, sin
+    # desglose de alicuotas ni objeto Iva.
+    if tipo_comprobante in (11, 12, 13):
+        total_neto += total_iva
+        total_iva = 0.0
+        iva_array = []
+
     # ImpTotal: usar el TOTFAC del header como fuente de verdad
     imp_total = float(invoice_header.get("TOTFAC", 0) or 0)
     if imp_total == 0:
