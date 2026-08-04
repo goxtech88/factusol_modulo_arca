@@ -1,0 +1,474 @@
+{
+  "name": "ARCA Sync - Publicar carrusel IG desde Drive",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 1,3,5"
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Trigger Lun-Mie-Vie 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "publicar-carrusel-arca",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "trigger-webhook",
+      "name": "Trigger Webhook (manual)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 500],
+      "webhookId": "publicar-carrusel-arca"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "='{{ $env.DRIVE_PARENT_FOLDER_ID }}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "id": "listar-subcarpetas",
+      "name": "Listar subcarpetas (carrusel_*)",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [450, 400],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive ARCA Marketing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "queryString": "='{{ $json.id }}' in parents and name = 'meta.json' and trashed = false",
+        "returnAll": false,
+        "filter": {},
+        "options": {}
+      },
+      "id": "buscar-meta",
+      "name": "Buscar meta.json de cada carpeta",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [700, 400],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive ARCA Marketing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "descargar-meta",
+      "name": "Descargar meta.json",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [950, 400],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive ARCA Marketing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parsea meta.json y filtra solo los que están 'pendiente' y con fecha <= hoy.\n// Devuelve UNO solo (el más antiguo) para evitar publicar varios el mismo día.\n\nconst hoy = new Date().toISOString().slice(0, 10);\nconst pendientes = [];\n\nfor (const item of $input.all()) {\n  try {\n    const raw = Buffer.from(item.binary.data.data, 'base64').toString('utf8');\n    const meta = JSON.parse(raw);\n    if (meta.status === 'pendiente' && meta.fecha_publicacion <= hoy) {\n      pendientes.push({\n        ...meta,\n        carpeta_id: item.json.parents ? item.json.parents[0] : meta.carpeta_id,\n        meta_file_id: item.json.id,\n      });\n    }\n  } catch (e) {\n    // skip\n  }\n}\n\npendientes.sort((a, b) => a.fecha_publicacion.localeCompare(b.fecha_publicacion));\n\nif (pendientes.length === 0) {\n  return [{ json: { skip: true, mensaje: 'No hay carruseles pendientes' } }];\n}\n\nreturn [{ json: pendientes[0] }];"
+      },
+      "id": "filtrar-pendientes",
+      "name": "Filtrar pendientes + elegir uno",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "skip-check",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEqual"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-hay-pendientes",
+      "name": "¿Hay pendientes?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "queryString": "='{{ $json.carpeta_id }}' in parents and (mimeType contains 'image/') and trashed = false",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "id": "listar-slides",
+      "name": "Listar slides (jpg/png)",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1700, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive ARCA Marketing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ordena por nombre (slide_01.jpg, slide_02.jpg, ...) y arma URLs públicas de Drive.\n// La carpeta debe estar compartida como \"cualquiera con el link\".\n// Las imágenes usan webContentLink que IG Graph API acepta.\n\nconst items = $input.all().map(i => i.json);\nitems.sort((a, b) => a.name.localeCompare(b.name));\n\nconst urls = items.map(f => `https://drive.google.com/uc?export=view&id=${f.id}`);\n\nreturn [{\n  json: {\n    slide_count: urls.length,\n    image_urls: urls,\n  }\n}];"
+      },
+      "id": "armar-urls",
+      "name": "Ordenar slides y armar URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1950, 300]
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "queryString": "='{{ $('filtrar-pendientes').item.json.carpeta_id }}' in parents and name = 'caption.txt' and trashed = false",
+        "returnAll": false,
+        "filter": {},
+        "options": {}
+      },
+      "id": "buscar-caption",
+      "name": "Buscar caption.txt",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [1950, 500],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive ARCA Marketing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": "={{ $json.id }}",
+        "options": {}
+      },
+      "id": "descargar-caption",
+      "name": "Descargar caption.txt",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [2200, 500],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive ARCA Marketing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const caption = Buffer.from($input.first().binary.data.data, 'base64').toString('utf8');\nconst urls = $('armar-urls').first().json.image_urls;\n\nreturn [{\n  json: {\n    caption: caption,\n    image_urls: urls,\n    slide_count: urls.length,\n  }\n}];"
+      },
+      "id": "merge-caption-urls",
+      "name": "Merge caption + urls",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2450, 400]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "image_urls",
+        "options": {}
+      },
+      "id": "split-slides",
+      "name": "Split: 1 item por slide",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [2700, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.IG_USER_ID }}/media",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "image_url",
+              "value": "={{ $json.image_urls }}"
+            },
+            {
+              "name": "is_carousel_item",
+              "value": "true"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $env.IG_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "crear-container-slide",
+      "name": "POST container por slide",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2950, 400]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "containers",
+        "options": {}
+      },
+      "id": "agrupar-containers",
+      "name": "Agrupar children IDs",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [3200, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Junta los creation_id de cada slide en una cadena separada por comas.\nconst children = $input.first().json.containers.map(c => c.id).join(',');\nconst caption = $('merge-caption-urls').first().json.caption;\nreturn [{ json: { children, caption } }];"
+      },
+      "id": "armar-children",
+      "name": "Armar children string",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3450, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.IG_USER_ID }}/media",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "media_type",
+              "value": "CAROUSEL"
+            },
+            {
+              "name": "children",
+              "value": "={{ $json.children }}"
+            },
+            {
+              "name": "caption",
+              "value": "={{ $json.caption }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $env.IG_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "crear-container-carrusel",
+      "name": "POST container CARRUSEL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3700, 400]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "id": "esperar-procesamiento",
+      "name": "Esperar 30s (procesa IG)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [3950, 400],
+      "webhookId": "wait-ig-processing"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.IG_USER_ID }}/media_publish",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "creation_id",
+              "value": "={{ $('crear-container-carrusel').first().json.id }}"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $env.IG_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "publicar",
+      "name": "POST media_publish",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4200, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Genera el nuevo meta.json con status=publicado.\nconst pendiente = $('filtrar-pendientes').first().json;\nconst publicacion = $('publicar').first().json;\n\nconst meta = {\n  ...pendiente,\n  status: 'publicado',\n  ig_post_id: publicacion.id,\n  published_at: new Date().toISOString(),\n};\ndelete meta.carpeta_id;\ndelete meta.meta_file_id;\n\nreturn [{\n  json: { contenido: JSON.stringify(meta, null, 2) },\n  binary: {\n    data: {\n      data: Buffer.from(JSON.stringify(meta, null, 2)).toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'meta.json',\n    }\n  }\n}];"
+      },
+      "id": "preparar-meta-actualizado",
+      "name": "Preparar meta.json actualizado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4450, 400]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "update",
+        "fileId": "={{ $('filtrar-pendientes').first().json.meta_file_id }}",
+        "options": {}
+      },
+      "id": "actualizar-meta",
+      "name": "Actualizar meta.json en Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [4700, 400],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "1",
+          "name": "Google Drive ARCA Marketing"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NOTIF_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"Carrusel publicado en Instagram\",\n  \"carrusel\": \"{{ $('filtrar-pendientes').first().json.nombre || $('filtrar-pendientes').first().json.titulo }}\",\n  \"ig_post_id\": \"{{ $('publicar').first().json.id }}\",\n  \"hora\": \"{{ $now.toISO() }}\"\n}",
+        "options": {}
+      },
+      "id": "notificar",
+      "name": "Notificar (Slack/Telegram)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4950, 400]
+    },
+    {
+      "parameters": {},
+      "id": "fin-sin-pendientes",
+      "name": "Fin - sin pendientes",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1700, 550]
+    }
+  ],
+  "connections": {
+    "Trigger Lun-Mie-Vie 10:00": {
+      "main": [[{ "node": "Listar subcarpetas (carrusel_*)", "type": "main", "index": 0 }]]
+    },
+    "Trigger Webhook (manual)": {
+      "main": [[{ "node": "Listar subcarpetas (carrusel_*)", "type": "main", "index": 0 }]]
+    },
+    "Listar subcarpetas (carrusel_*)": {
+      "main": [[{ "node": "Buscar meta.json de cada carpeta", "type": "main", "index": 0 }]]
+    },
+    "Buscar meta.json de cada carpeta": {
+      "main": [[{ "node": "Descargar meta.json", "type": "main", "index": 0 }]]
+    },
+    "Descargar meta.json": {
+      "main": [[{ "node": "Filtrar pendientes + elegir uno", "type": "main", "index": 0 }]]
+    },
+    "Filtrar pendientes + elegir uno": {
+      "main": [[{ "node": "¿Hay pendientes?", "type": "main", "index": 0 }]]
+    },
+    "¿Hay pendientes?": {
+      "main": [
+        [{ "node": "Listar slides (jpg/png)", "type": "main", "index": 0 }],
+        [{ "node": "Fin - sin pendientes", "type": "main", "index": 0 }]
+      ]
+    },
+    "Listar slides (jpg/png)": {
+      "main": [[{ "node": "Ordenar slides y armar URLs", "type": "main", "index": 0 }]]
+    },
+    "Ordenar slides y armar URLs": {
+      "main": [[{ "node": "Buscar caption.txt", "type": "main", "index": 0 }]]
+    },
+    "Buscar caption.txt": {
+      "main": [[{ "node": "Descargar caption.txt", "type": "main", "index": 0 }]]
+    },
+    "Descargar caption.txt": {
+      "main": [[{ "node": "Merge caption + urls", "type": "main", "index": 0 }]]
+    },
+    "Merge caption + urls": {
+      "main": [[{ "node": "Split: 1 item por slide", "type": "main", "index": 0 }]]
+    },
+    "Split: 1 item por slide": {
+      "main": [[{ "node": "POST container por slide", "type": "main", "index": 0 }]]
+    },
+    "POST container por slide": {
+      "main": [[{ "node": "Agrupar children IDs", "type": "main", "index": 0 }]]
+    },
+    "Agrupar children IDs": {
+      "main": [[{ "node": "Armar children string", "type": "main", "index": 0 }]]
+    },
+    "Armar children string": {
+      "main": [[{ "node": "POST container CARRUSEL", "type": "main", "index": 0 }]]
+    },
+    "POST container CARRUSEL": {
+      "main": [[{ "node": "Esperar 30s (procesa IG)", "type": "main", "index": 0 }]]
+    },
+    "Esperar 30s (procesa IG)": {
+      "main": [[{ "node": "POST media_publish", "type": "main", "index": 0 }]]
+    },
+    "POST media_publish": {
+      "main": [[{ "node": "Preparar meta.json actualizado", "type": "main", "index": 0 }]]
+    },
+    "Preparar meta.json actualizado": {
+      "main": [[{ "node": "Actualizar meta.json en Drive", "type": "main", "index": 0 }]]
+    },
+    "Actualizar meta.json en Drive": {
+      "main": [[{ "node": "Notificar (Slack/Telegram)", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

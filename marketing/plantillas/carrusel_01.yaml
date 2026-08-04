@@ -1,0 +1,88 @@
+# Carrusel 1 - Auto-validación de CAE
+# Formato: cargado por generador_slides.py
+# Modificar libremente; los textos vienen de marketing/carruseles.md
+
+slug: autovalidacion
+titulo: "Facturás como siempre. El CAE aparece solo."
+fecha_publicacion: "2026-05-12"
+hora: "10:00"
+
+slides:
+  - tipo: hook
+    titulo: "¿Seguís pegando el CAE a mano en Factusol?"
+    subtitulo: "Hay una forma de que aparezca solo."
+
+  - tipo: contenido
+    titulo: "El problema"
+    bullets:
+      - "30 facturas por día"
+      - "90 segundos cada una copiando CAE"
+      - "= 45 minutos perdidos diarios"
+
+  - tipo: contenido
+    titulo: "Y además..."
+    bullets:
+      - "Errores de tipeo en el CAE"
+      - "QR mal pegado o sin pegar"
+      - "Olvidos de ventas del día"
+      - "Auditoría imposible"
+
+  - tipo: contenido
+    titulo: "ARCA Sync hace esto solo"
+    bullets:
+      - "Cada 60 segundos detecta facturas nuevas"
+      - "Pide CAE a ARCA automáticamente"
+      - "Escribe el CAE en Factusol"
+      - "Genera el QR reglamentario"
+
+  - tipo: contenido
+    titulo: "¿Cómo se ve?"
+    bullets:
+      - "1. Facturás en Factusol como siempre"
+      - "2. El sistema detecta la factura nueva"
+      - "3. Pide CAE a ARCA"
+      - "4. Escribe el CAE en F_FAC"
+      - "5. Genera el QR"
+
+  - tipo: numero
+    numero: "45min"
+    etiqueta: "Recuperás por día. Cero errores. Cero intervenciones."
+
+  - tipo: contenido
+    titulo: "Lo que escribe en Factusol"
+    bullets:
+      - "Nº CAE"
+      - "Fecha de vencimiento"
+      - "QR (imagen)"
+      - "Código de barras AFIP"
+      - "Nº de comprobante (B-0001-00000023)"
+
+  - tipo: contenido
+    titulo: "¿Tenés varios puntos de venta?"
+    bullets:
+      - "A, B, C en simultáneo"
+      - "Cada usuario solo ve sus PV"
+      - "Roles configurables por empresa"
+
+  - tipo: contenido
+    titulo: "¿Y si ARCA se cae?"
+    bullets:
+      - "El sistema reintenta solo"
+      - "Cuando ARCA vuelve, valida lo pendiente"
+      - "Vos ni te enterás"
+
+  - tipo: cta
+    titulo: "15 días gratis"
+    lineas:
+      - "Instalamos en tu servidor."
+      - "Configuramos tus PV."
+      - "Y arrancás."
+      - ""
+      - "📲 WhatsApp +54 9 11 XXXX-XXXX"
+      - "🌐 goxtech.ar"
+
+caption: |
+  ¿Cuántas horas por mes perdés pegando el CAE en Factusol?
+  Te lo solucionamos en 24h. Probalo 15 días gratis 👉 link en bio.
+
+hashtags: "#factusol #afip #arca #facturacionelectronica #pymesargentinas #automatizacion #contadores #softwarecontable #emprendedoresargentinos #goxtech"

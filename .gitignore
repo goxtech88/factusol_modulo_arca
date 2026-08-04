@@ -60,3 +60,10 @@ _remote_pages/
 
 # Logs
 *.log
+
+# Marketing - imágenes generadas y assets locales
+marketing/salida/
+marketing/assets/*.png
+marketing/assets/*.jpg
+marketing/assets/*.ttf
+!marketing/assets/.gitkeep
